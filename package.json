@@ -1,21 +1,48 @@
 {
-  "name": "@org/source",
+  "name": "rufieltics",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "author": {
+    "name": "itsferdiardiansa",
+    "url": "https://github.com/itsferdiardiansa"
+  },
   "private": true,
-  "dependencies": {},
+  "engines": {
+    "node": ">=24.13.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@10.8.1",
+  "scripts": {
+    "preinstall": "npx only-allow pnpm",
+    "postinstall": "mkdir -p .nx",
+    "prepare": "husky",
+    "clean-install": "rm -rf .nx dist node_modules/.cache/nx pnpm-lock.yaml && pnpm i",
+    "changeset": "changeset --no-commit",
+    "changeset:version": "changeset version",
+    "changeset:publish": "changeset publish",
+    "format": "prettier 'apps/**/*.{ts,tsx}' 'packages/**/*.{ts,tsx}' --check",
+    "format:write": "prettier --write",
+    "lint": "eslint --config eslint.config.mjs --no-cache",
+    "lint:fix": "pnpm run lint --fix",
+    "type-check": "nx affected --target=typecheck",
+    "type-check:all": "nx run-many --target=typecheck --all"
+  },
   "devDependencies": {
+    "@changesets/cli": "^2.29.8",
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
+    "@nx/eslint-plugin": "^22.2.0",
     "@nx/js": "22.4.1",
     "@swc-node/register": "~1.9.1",
     "@swc/core": "~1.5.7",
     "@swc/helpers": "~0.5.11",
+    "eslint": "^9.36.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "nx": "22.4.1",
     "prettier": "~3.6.2",
     "tslib": "^2.3.0",
-    "typescript": "~5.9.2"
-  },
-  "workspaces": [
-    "packages/*"
-  ]
+    "typescript": "~5.9.2",
+    "typescript-eslint": "^8.53.1"
+  }
 }

@@ -1,0 +1,22 @@
+{
+  "name": "@rufieltics/tasks",
+  "version": "0.0.0",
+  "description": "trigger dev tasks for scraping data from external sources",
+  "keywords": [
+    "trigger.dev",
+    "cron-job"
+  ],
+  "homepage": "https://github.com/itsferdiardiansa/Rufieltics#readme",
+  "bugs": {
+    "url": "https://github.com/itsferdiardiansa/Rufieltics/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/itsferdiardiansa/Rufieltics.git"
+  },
+  "license": "ISC",
+  "author": "itsferdiardiansa",
+  "type": "module",
+  "main": "main.ts",
+  "scripts": {}
+}
