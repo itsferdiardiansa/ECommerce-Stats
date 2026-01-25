@@ -13,6 +13,9 @@ permissions:
   contents: read
   security-events: write
 
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
+
 jobs:
   analyze:
     name: analyze code
