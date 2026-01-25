@@ -7,6 +7,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
+
 jobs:
   deploy-db:
     runs-on: ubuntu-latest
