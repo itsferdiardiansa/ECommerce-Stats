@@ -6,17 +6,28 @@
     "trigger.dev",
     "cron-job"
   ],
-  "homepage": "https://github.com/itsferdiardiansa/Rufieltics#readme",
-  "bugs": {
-    "url": "https://github.com/itsferdiardiansa/Rufieltics/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/itsferdiardiansa/Rufieltics.git"
-  },
   "license": "ISC",
   "author": "itsferdiardiansa",
   "type": "module",
-  "main": "main.ts",
-  "scripts": {}
+  "exports": {
+    ".": "./src/trigger/index.ts",
+    "./trigger": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "trigger dev",
+    "deploy": "trigger deploy"
+  },
+  "dependencies": {
+    "@rufieltics/db": "workspace:*",
+    "@trigger.dev/sdk": "^4.3.3",
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "@trigger.dev/build": "^4.3.3",
+    "@types/node": "^20.6.1",
+    "trigger.dev": "^4.3.3",
+    "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.9.0"
+  }
 }
