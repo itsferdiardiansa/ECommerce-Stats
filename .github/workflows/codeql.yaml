@@ -38,6 +38,7 @@ jobs:
       - name: Setup & Install
         uses: itsferdiardiansa/ci-toolbox/actions/setup-node@v1.0.0
         with:
+          node-version: 24
           install-deps: true
 
       - name: Perform CodeQL Analysis
