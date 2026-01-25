@@ -15,6 +15,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
+    "@prisma/client-runtime-utils": "7.3.0",
     "dotenv": "^16.0.0",
     "pg": "^8.17.2"
   },
