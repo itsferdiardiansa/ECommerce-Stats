@@ -13,6 +13,7 @@
   },
   "packageManager": "pnpm@10.8.1",
   "scripts": {
+    "vercel-build": "next build",
     "preinstall": "npx only-allow pnpm",
     "postinstall": "mkdir -p .nx",
     "prepare": "husky",
@@ -25,7 +26,10 @@
     "lint": "eslint --config eslint.config.mjs --no-cache",
     "lint:fix": "pnpm run lint --fix",
     "type-check": "nx affected --target=typecheck",
-    "type-check:all": "nx run-many --target=typecheck --all"
+    "type-check:all": "nx run-many --target=typecheck --all",
+    "dev:up": "docker compose up --build",
+    "dev:init-db": "docker compose run --rm init-db",
+    "dev:tasks": "pnpm --filter @rufieltics/tasks run dev"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",

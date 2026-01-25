@@ -41,8 +41,16 @@ Thumbs.db
 .nx/cache
 .nx/workspace-data
 
+node-compile-cache/
+
 # Environment files
 .env
 .env.local
 .env.*.local
 *.tsbuildinfo
+.vercel
+.env*.local
+.secrets
+
+# docker data
+data/
