@@ -36,4 +36,4 @@ jobs:
       - name: Deploy to Trigger.dev
         working-directory: packages/tasks
         run: |
-          pnpm run deploy --dry-run --skip-update-check --log-level debug
+          pnpm run deploy
