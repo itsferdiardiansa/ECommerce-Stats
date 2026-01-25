@@ -1,0 +1,111 @@
+name: Deploy to Vercel
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target Environment'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
+      project_dir:
+        description: 'Path to the project directory to deploy (e.g., apps/web)'
+        required: true
+        default: 'apps/web'
+      project_name:
+        description: 'Vercel project name (slug) to deploy to'
+        required: true
+        default: 'rufieltics-dashboard'
+      ref:
+        description: 'Optional branch name to simulate (for local testing)'
+        required: false
+        default: ''
+
+jobs:
+  deploy-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Deployment Rules
+        run: |
+          BRANCH="${{ inputs.ref }}"
+          if [[ -z "$BRANCH" ]]; then
+            if [[ -n "${GITHUB_REF}" ]]; then
+              BRANCH="${GITHUB_REF#refs/heads/}"
+            else
+              BRANCH="${{ github.ref_name }}"
+            fi
+          fi
+          TARGET="${{ inputs.environment }}"
+          
+          if [[ "$TARGET" == "production" && "$BRANCH" != "main" ]]; then
+            echo "::error::Validation Failed: Production deployments are strictly restricted to the 'main' branch."
+            exit 1
+          fi
+
+          if [[ "$TARGET" == "preview" && "$BRANCH" == "main" ]]; then
+            echo "::error::Validation Failed: The 'main' branch is reserved for Production. Preview deployments are for feature branches only."
+            exit 1
+          fi
+
+      - name: Setup
+        uses: itsferdiardiansa/ci-toolbox/actions/setup-node@v1.0.0
+        with:
+          node-version: 24
+          install-deps: true
+
+      - name: Configure Vercel Env
+        id: env
+        run: |
+          if [ "${{ inputs.environment }}" = "production" ]; then
+            echo "VERCEL_ARGS=--prod" >> $GITHUB_ENV
+            echo "VERCEL_TARGET_ENV=production" >> $GITHUB_ENV
+          else
+            echo "VERCEL_ARGS=" >> $GITHUB_ENV
+            echo "VERCEL_TARGET_ENV=preview" >> $GITHUB_ENV
+          fi
+
+      - name: Resolve Vercel Project ID
+        id: resolve
+        run: |
+          # fail early if project dir missing
+          if [ ! -d "${{ inputs.project_dir }}" ]; then
+            echo "::error::Project directory '${{ inputs.project_dir }}' not found."
+            exit 1
+          fi
+
+          PROJECT_NAME="${{ inputs.project_name }}"
+          SCOPE="${{ secrets.VERCEL_TEAM_ID }}"
+
+          echo "Resolving Vercel project id for $PROJECT_NAME using scope (team) $SCOPE"
+          PROJECT_ID=$(pnpm dlx vercel projects ls --scope "$SCOPE" --token "${{ secrets.VERCEL_TOKEN }}" --json | node -e "const d=require('fs').readFileSync(0,'utf8');const j=JSON.parse(d);const p=(j.projects||[]).find(x=>x.name===process.argv[1]); console.log(p? p.id : '');" "$PROJECT_NAME")
+
+          if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
+            echo "::error::Failed to resolve project id for '$PROJECT_NAME'. Ensure the project name and VERCEL_TEAM_ID secret are correct."
+            exit 1
+          fi
+
+          echo "VERCEL_PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
+          echo "VERCEL_ORG_ID=$SCOPE" >> $GITHUB_ENV
+          echo "Resolved project id $PROJECT_ID for project $PROJECT_NAME"
+
+          # Write local .vercel/project.json so subsequent vercel commands target the correct project
+          mkdir -p "${{ inputs.project_dir }}/.vercel"
+          echo "{\"projectId\":\"$PROJECT_ID\",\"orgId\":\"$SCOPE\",\"projectName\":\"$PROJECT_NAME\"}" > "${{ inputs.project_dir }}/.vercel/project.json"
+          echo "Wrote ${{ inputs.project_dir }}/.vercel/project.json"
+
+      - name: Pull Vercel Env
+        run: pnpm dlx vercel pull --yes --environment=${{ env.VERCEL_TARGET_ENV }} --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: ${{ inputs.project_dir }}
+
+      - name: Build Project Artifacts
+        run: pnpm dlx vercel build ${{ env.VERCEL_ARGS }} --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: ${{ inputs.project_dir }}
+
+      - name: Deploy Project Artifacts
+        run: pnpm dlx vercel deploy --prebuilt ${{ env.VERCEL_ARGS }} --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: ${{ inputs.project_dir }}

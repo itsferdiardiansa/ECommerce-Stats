@@ -1,0 +1,83 @@
+name: Deploy DB
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-db:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup
+        uses: itsferdiardiansa/ci-toolbox/actions/setup-node@v1.0.0
+        with:
+          node-version: 24
+          install-deps: true
+
+      - name: Install PostgreSQL Client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl gnupg lsb-release
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Validate & Set Environment Secrets
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            # Production: ensure prod secrets exist
+            if [ -z "${{ secrets.DATABASE_URL_PROD }}" ]; then
+              echo "::error::DATABASE_URL_PROD is required for production deploys."
+              exit 1
+            fi
+            if [ -z "${{ secrets.DIRECT_URL_PROD }}" ]; then
+              echo "::error::DIRECT_URL_PROD is required for production deploys."
+              exit 1
+            fi
+
+            echo "DATABASE_URL=${{ secrets.DATABASE_URL_PROD }}" >> $GITHUB_ENV
+            echo "DIRECT_URL=${{ secrets.DIRECT_URL_PROD }}" >> $GITHUB_ENV
+            echo "DB_ENV=production" >> $GITHUB_ENV
+          else
+            # Staging/other: ensure staging secrets exist
+            if [ -z "${{ secrets.DATABASE_URL_STAGING }}" ]; then
+              echo "::error::DATABASE_URL_STAGING is required for non-production deploys."
+              exit 1
+            fi
+
+            echo "DATABASE_URL=${{ secrets.DATABASE_URL_STAGING }}" >> $GITHUB_ENV
+            echo "DIRECT_URL=${{ secrets.DIRECT_URL_STAGING }}" >> $GITHUB_ENV
+            echo "DB_ENV=staging" >> $GITHUB_ENV
+          fi
+
+      - name: Backup Production DB
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Backing up production database to packages/db/backup.dump"
+          pg_dump --dbname="$DATABASE_URL" --format=custom --file=packages/db/backup.dump
+
+      - name: Upload DB Backup
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup
+          path: packages/db/backup.dump
+
+      - name: Apply Migrations
+        run: pnpm --filter @rufieltics/db run migrate:deploy
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @rufieltics/db run generate
+
+      - name: Smoke Test DB
+        working-directory: packages/db
+        run: |
+          echo "Running smoke test (psql)..."
+          psql "$DATABASE_URL" -c "SELECT 1;" || (echo "::error::Smoke test failed (psql)" && exit 1)

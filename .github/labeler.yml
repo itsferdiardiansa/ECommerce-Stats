@@ -1,0 +1,50 @@
+scope:packages:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'packages/**'
+
+scope:apps:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'apps/**'
+
+area:tests:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/*.spec.ts'
+      - '**/*.test.ts'
+      - '**/*.spec.tsx'
+      - '**/*.test.tsx'
+
+area:config:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '.eslintrc*'
+      - 'eslint.config.*'
+      - '.prettierrc*'
+      - '.lintstagedrc.*'
+      - 'nx.json'
+      - 'tsconfig*'
+      - '*.config.*'
+
+area:docs:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'docs/**'
+      - '**/*.md'
+      - 'LICENSE'
+
+area:ci:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '.github/**'
+      - '.husky/**'
+
+# Area: Dependencies
+area:deps:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.nvmrc'
