@@ -63,6 +63,9 @@ jobs:
       - name: Backup Production DB
         if: github.ref == 'refs/heads/main'
         run: |
+          export PATH="/usr/lib/postgresql/17/bin:$PATH"
+          echo "Using pg_dump at $(which pg_dump)"
+          pg_dump --version
           echo "Backing up production database to packages/db/backup.dump"
           pg_dump --dbname="$DATABASE_URL" --format=custom --file=packages/db/backup.dump
 
