@@ -1,10 +1,7 @@
 import type { NextConfig } from 'next';
 
 const baseConfig: NextConfig = {
-  images: {
-    remotePatterns: []
-  },
-  serverExternalPackages: ['@rufieltics/db']
+  reactCompiler: true
 };
 
 const configWithPlugins = baseConfig;
