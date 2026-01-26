@@ -1,26 +1,126 @@
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  parentId    Int?
+  parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  products    Product[]
+}
+
+model Brand {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  logo        String?
+  description String?
+  products    Product[]
+}
+
+enum OrderStatus {
+  Processing
+  Shipped
+  Delivered
+  Cancelled
+  Unknown
+}
+
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "client"
-  output = "./generated"
-  adapter = "@prisma/adapter-pg"
+  output     = "./generated"
+  adapter    = "@prisma/adapter-pg"
 }
 
 datasource db {
-  provider = "postgresql" 
+  provider = "postgresql"
 }
 
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
+  name      String?
+  username  String?  @unique
+  avatar    String?
+  phone     String?
+  isActive  Boolean  @default(true)
+  lastLogin DateTime?
   createdAt DateTime @default(now())
-  posts     Post[]
+  updatedAt DateTime @updatedAt @default(now())
+  orders    Order[]
+  reviews   ProductReview[]
 }
 
-model Post {
+model Product {
+  id           Int         @id
+  name         String
+  description  String?
+  unit         String?
+  image        String?
+  discount     Float?
+  availability Boolean     @default(false)
+  price        Float?      @default(0)
+  rating       Float?      @default(0)
+  createdAt    DateTime    @default(now())
+  categoryId   Int?
+  category     Category? @relation(fields: [categoryId], references: [id])
+  brandId      Int?
+  brand        Brand?    @relation(fields: [brandId], references: [id])
+  updatedAt    DateTime        @updatedAt
+  syncedAt     DateTime
+  orderItems   OrderItem[]
+  reviews      ProductReview[]
+
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([syncedAt])
+}
+
+model ProductReview {
   id        Int      @id @default(autoincrement())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  Int
-  author    User     @relation(fields: [authorId], references: [id])
+  productId Int
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  rating    Float
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  syncedAt  DateTime
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, userId])
+  @@index([userId])
+  @@index([rating])
+}
+
+model Order {
+  id             Int         @id
+  userId         Int?
+  user           User?    @relation(fields: [userId], references: [id])
+  status         OrderStatus @default(Unknown)
+  totalPrice     Float       @default(0)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  syncedAt       DateTime
+  items          OrderItem[]
+
+  @@index([status])
+  @@index([syncedAt])
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  productId Int
+  quantity  Int      @default(1)
+  unitPrice Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  syncedAt  DateTime
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, productId])
+  @@index([productId])
 }
