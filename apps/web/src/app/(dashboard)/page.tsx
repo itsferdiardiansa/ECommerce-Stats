@@ -1,44 +1,44 @@
-import { Suspense } from 'react';
+import { Suspense } from 'react'
 import {
   TotalRevenueCard,
   TotalOrderCountCard,
   AverageOrderValueCard,
   AverageProductRatingCard,
-  StatCardSkeleton
-} from '@/features/overview/components/stat-cards';
+  StatCardSkeleton,
+} from '@/features/overview/components/stat-cards'
 import {
   OrderStatusPieChart,
-  PieGraphSkeleton
-} from '@/features/overview/components/order-status-pie-chart';
+  PieGraphSkeleton,
+} from '@/features/overview/components/order-status-pie-chart'
 import {
   BarGraphSkeleton,
-  ProductCategoryBarChart
-} from '@/features/overview/components/product-category-bar-chart';
+  ProductCategoryBarChart,
+} from '@/features/overview/components/product-category-bar-chart'
 import {
   RecentOrdersList,
   TopProductsList,
   RecentOrdersListSkeleton,
-  TopProductsListSkeleton
-} from '@/features/overview/components/data-lists';
+  TopProductsListSkeleton,
+} from '@/features/overview/components/data-lists'
 import {
   RevenueByCategoryChart,
-  RevenueByCategoryChartSkeleton
-} from '@/features/overview/components/revenue-by-category-chart';
-import { LastSyncAlert } from '@/features/overview/components/last-sync-alert';
-import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+  RevenueByCategoryChartSkeleton,
+} from '@/features/overview/components/revenue-by-category-chart'
+import { LastSyncAlert } from '@/features/overview/components/last-sync-alert'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 
 export default function OverviewPage() {
   return (
-    <div className='flex flex-1 flex-col space-y-4'>
-      <div className='flex items-center justify-between space-y-2'>
-        <h2 className='text-2xl font-bold tracking-tight'>Hi, Ferdi</h2>
+    <div className="flex flex-1 flex-col space-y-4">
+      <div className="flex items-center justify-between space-y-2">
+        <h2 className="text-2xl font-bold tracking-tight">Hi, Ferdi</h2>
       </div>
 
       <ErrorBoundary>
         <LastSyncAlert />
       </ErrorBoundary>
 
-      <div className='*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs md:grid-cols-2 lg:grid-cols-4'>
+      <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs md:grid-cols-2 lg:grid-cols-4">
         <ErrorBoundary>
           <Suspense fallback={<StatCardSkeleton />}>
             <TotalRevenueCard />
@@ -61,7 +61,7 @@ export default function OverviewPage() {
         </ErrorBoundary>
       </div>
 
-      <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <ErrorBoundary>
           <Suspense fallback={<PieGraphSkeleton />}>
             <OrderStatusPieChart />
@@ -75,7 +75,7 @@ export default function OverviewPage() {
         </ErrorBoundary>
       </div>
 
-      <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <ErrorBoundary>
           <Suspense fallback={<RecentOrdersListSkeleton />}>
             <RecentOrdersList />
@@ -89,7 +89,7 @@ export default function OverviewPage() {
         </ErrorBoundary>
       </div>
 
-      <div className='grid grid-cols-1 gap-4'>
+      <div className="grid grid-cols-1 gap-4">
         <ErrorBoundary>
           <Suspense fallback={<RevenueByCategoryChartSkeleton />}>
             <RevenueByCategoryChart />
@@ -97,5 +97,5 @@ export default function OverviewPage() {
         </ErrorBoundary>
       </div>
     </div>
-  );
+  )
 }

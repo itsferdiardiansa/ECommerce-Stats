@@ -7,9 +7,9 @@
     "url": "https://github.com/itsferdiardiansa"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "nx next:dev",
+    "build": "nx next:build",
+    "start": "nx next:start",
     "lint": "next lint",
     "lint:fix": "eslint src --fix && bun format",
     "lint:strict": "eslint --max-warnings=0 src",
@@ -73,9 +73,6 @@
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^6.11.0",
     "babel-plugin-react-compiler": "^1.0.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^15.2.11",
-    "prettier": "3.4.2",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "tw-animate-css": "^1.2.4"
   }

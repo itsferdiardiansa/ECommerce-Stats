@@ -1,15 +1,16 @@
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/Alert';
-import { getLastSync } from '@rufieltics/db';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import { getCachedLastSync } from '@/services/analytics'
+import { formatDateTime } from '@/lib/utils'
 
 export async function LastSyncAlert() {
-  const lastSync = await getLastSync();
+  const lastSync = await getCachedLastSync()
 
   return (
     <Alert>
       <AlertTitle>Last Sync Information</AlertTitle>
       <AlertDescription>
-        Last synchronized: {lastSync.toLocaleString()}
+        Last synchronized: {formatDateTime(lastSync)}
       </AlertDescription>
     </Alert>
-  );
+  )
 }

@@ -1,14 +1,13 @@
-'use client';
-import React from 'react';
-import { ActiveThemeProvider } from '../ActiveTheme';
+'use client'
+import React from 'react'
+import { ActiveThemeProvider } from './ActiveTheme'
 
-// Clerk authentication disabled
 export default function Providers({
   activeThemeValue,
-  children
+  children,
 }: {
-  activeThemeValue: string;
-  children: React.ReactNode;
+  activeThemeValue: string
+  children: React.ReactNode
 }) {
   return (
     <>
@@ -16,5 +15,5 @@ export default function Providers({
         {children}
       </ActiveThemeProvider>
     </>
-  );
+  )
 }

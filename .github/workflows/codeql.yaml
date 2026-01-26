@@ -14,7 +14,7 @@ permissions:
   security-events: write
 
 env:
-  DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
 jobs:
   analyze:

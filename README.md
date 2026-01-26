@@ -31,7 +31,7 @@ pnpm --filter @rufieltics/web run dev
 3. To start Trigger.dev locally, run:
 
 ```bash
-pnpm --filter @rufieltics/triggerdev run dev
+pnpm --filter @rufieltics/tasks run dev
 ```
 
 ## Building for Production
@@ -49,7 +49,7 @@ This will create an optimized production build in the `.next` directory.
 To deploy Trigger.dev, run:
 
 ```bash
-pnpm --filter @rufieltics/triggerdev run deploy
+pnpm --filter @rufieltics/tasks run deploy
 ```
 
 ## Contributing

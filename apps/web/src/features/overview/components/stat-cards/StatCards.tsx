@@ -1,129 +1,129 @@
-import { Badge } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/badge'
 import {
   Card,
   CardHeader,
   CardTitle,
   CardDescription,
   CardAction,
-  CardFooter
-} from '@/components/ui/Card';
-import { IconTrendingUp } from '@tabler/icons-react';
+  CardFooter,
+} from '@/components/ui/card'
+import { IconTrendingUp } from '@tabler/icons-react'
 import {
-  getTotalRevenue,
-  getTotalOrderCount,
-  getAverageOrderValue,
-  getAverageProductRating
-} from '@rufieltics/db';
-import { formatCurrency, formatNumber } from '@/lib/format';
+  getCachedTotalRevenue,
+  getCachedTotalOrderCount,
+  getCachedAverageOrderValue,
+  getCachedAverageProductRating,
+} from '@/services/analytics'
+import { formatCurrency, formatNumber } from '@/lib/format'
 
 export async function TotalRevenueCard() {
-  const revenue = await getTotalRevenue();
+  const revenue = await getCachedTotalRevenue()
 
   return (
-    <Card className='@container/card'>
+    <Card className="@container/card">
       <CardHeader>
         <CardDescription>Total Revenue</CardDescription>
-        <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
+        <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
           {formatCurrency(revenue)}
         </CardTitle>
         <CardAction>
-          <Badge variant='outline'>
+          <Badge variant="outline">
             <IconTrendingUp />
             Revenue
           </Badge>
         </CardAction>
       </CardHeader>
-      <CardFooter className='flex-col items-start gap-1.5 text-sm'>
-        <div className='line-clamp-1 flex gap-2 font-medium'>
-          Total sales revenue <IconTrendingUp className='size-4' />
+      <CardFooter className="flex-col items-start gap-1.5 text-sm">
+        <div className="line-clamp-1 flex gap-2 font-medium">
+          Total sales revenue <IconTrendingUp className="size-4" />
         </div>
-        <div className='text-muted-foreground'>From all completed orders</div>
+        <div className="text-muted-foreground">From all completed orders</div>
       </CardFooter>
     </Card>
-  );
+  )
 }
 
 export async function TotalOrderCountCard() {
-  const orderCount = await getTotalOrderCount();
+  const orderCount = await getCachedTotalOrderCount()
 
   return (
-    <Card className='@container/card'>
+    <Card className="@container/card">
       <CardHeader>
         <CardDescription>Total Orders</CardDescription>
-        <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
+        <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
           {formatNumber(orderCount)}
         </CardTitle>
         <CardAction>
-          <Badge variant='outline'>
+          <Badge variant="outline">
             <IconTrendingUp />
             Orders
           </Badge>
         </CardAction>
       </CardHeader>
-      <CardFooter className='flex-col items-start gap-1.5 text-sm'>
-        <div className='line-clamp-1 flex gap-2 font-medium'>
-          All time orders <IconTrendingUp className='size-4' />
+      <CardFooter className="flex-col items-start gap-1.5 text-sm">
+        <div className="line-clamp-1 flex gap-2 font-medium">
+          All time orders <IconTrendingUp className="size-4" />
         </div>
-        <div className='text-muted-foreground'>
+        <div className="text-muted-foreground">
           Total number of orders placed
         </div>
       </CardFooter>
     </Card>
-  );
+  )
 }
 
 export async function AverageOrderValueCard() {
-  const avgValue = await getAverageOrderValue();
+  const avgValue = await getCachedAverageOrderValue()
 
   return (
-    <Card className='@container/card'>
+    <Card className="@container/card">
       <CardHeader>
         <CardDescription>Average Order Value</CardDescription>
-        <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
+        <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
           {formatCurrency(avgValue)}
         </CardTitle>
         <CardAction>
-          <Badge variant='outline'>
+          <Badge variant="outline">
             <IconTrendingUp />
             AOV
           </Badge>
         </CardAction>
       </CardHeader>
-      <CardFooter className='flex-col items-start gap-1.5 text-sm'>
-        <div className='line-clamp-1 flex gap-2 font-medium'>
-          Average per order <IconTrendingUp className='size-4' />
+      <CardFooter className="flex-col items-start gap-1.5 text-sm">
+        <div className="line-clamp-1 flex gap-2 font-medium">
+          Average per order <IconTrendingUp className="size-4" />
         </div>
-        <div className='text-muted-foreground'>
+        <div className="text-muted-foreground">
           Mean value across all orders
         </div>
       </CardFooter>
     </Card>
-  );
+  )
 }
 
 export async function AverageProductRatingCard() {
-  const avgRating = await getAverageProductRating();
+  const avgRating = await getCachedAverageProductRating()
 
   return (
-    <Card className='@container/card'>
+    <Card className="@container/card">
       <CardHeader>
         <CardDescription>Average Rating</CardDescription>
-        <CardTitle className='text-2xl font-semibold tabular-nums @[250px]/card:text-3xl'>
+        <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
           {avgRating.toFixed(1)}
         </CardTitle>
         <CardAction>
-          <Badge variant='outline'>
+          <Badge variant="outline">
             <IconTrendingUp />
             Rating
           </Badge>
         </CardAction>
       </CardHeader>
-      <CardFooter className='flex-col items-start gap-1.5 text-sm'>
-        <div className='line-clamp-1 flex gap-2 font-medium'>
-          Customer satisfaction <IconTrendingUp className='size-4' />
+      <CardFooter className="flex-col items-start gap-1.5 text-sm">
+        <div className="line-clamp-1 flex gap-2 font-medium">
+          Customer satisfaction <IconTrendingUp className="size-4" />
         </div>
-        <div className='text-muted-foreground'>Average product rating</div>
+        <div className="text-muted-foreground">Average product rating</div>
       </CardFooter>
     </Card>
-  );
+  )
 }

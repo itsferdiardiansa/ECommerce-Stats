@@ -19,7 +19,7 @@ env:
   TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
   TRIGGER_PROJECT_REF: ${{ secrets.TRIGGER_PROJECT_REF }}
   TRIGGER_NON_INTERACTIVE: 1
-  DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
 jobs:
   deploy-trigger:

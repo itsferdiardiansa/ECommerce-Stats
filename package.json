@@ -15,7 +15,6 @@
   "scripts": {
     "vercel-build": "next build",
     "preinstall": "npx only-allow pnpm",
-    "postinstall": "mkdir -p .nx",
     "prepare": "husky",
     "clean-install": "rm -rf .nx dist node_modules/.cache/nx pnpm-lock.yaml && pnpm i",
     "changeset": "changeset --no-commit",
@@ -37,6 +36,7 @@
     "@commitlint/config-conventional": "^20.0.0",
     "@nx/eslint-plugin": "^22.2.0",
     "@nx/js": "22.4.1",
+    "@nx/next": "22.4.1",
     "@swc-node/register": "~1.9.1",
     "@swc/core": "~1.5.7",
     "@swc/helpers": "~0.5.11",
@@ -50,7 +50,10 @@
     "typescript-eslint": "^8.53.1"
   },
   "dependencies": {
+    "next": "~16.0.1",
     "node-fetch": "^3.3.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "react-icons": "^5.5.0",
     "with-nx": "link:@nx/next/plugins/with-nx"
   }

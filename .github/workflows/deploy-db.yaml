@@ -8,7 +8,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
   PNPM_CONFIG_FROZEN_LOCKFILE: "false"
 
 jobs:
@@ -37,8 +37,8 @@ jobs:
         run: |
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             # Production: ensure prod secrets exist
-            if [ -z "${{ secrets.DATABASE_URL_PROD }}" ]; then
-              echo "::error::DATABASE_URL_PROD is required for production deploys."
+            if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+              echo "::error::DATABASE_URL is required for production deploys."
               exit 1
             fi
             if [ -z "${{ secrets.DIRECT_URL_PROD }}" ]; then
@@ -46,7 +46,7 @@ jobs:
               exit 1
             fi
 
-            echo "DATABASE_URL=${{ secrets.DATABASE_URL_PROD }}" >> $GITHUB_ENV
+            echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> $GITHUB_ENV
             echo "DIRECT_URL=${{ secrets.DIRECT_URL_PROD }}" >> $GITHUB_ENV
             echo "DB_ENV=production" >> $GITHUB_ENV
           else

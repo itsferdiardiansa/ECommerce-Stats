@@ -1,1 +1,1 @@
-export * from './LastSyncAlert';
+export * from './LastSyncAlert'

@@ -1,2 +1,2 @@
-export * from './StatCards';
-export * from './StatCardSkeleton';
+export * from './StatCards'
+export * from './StatCardSkeleton'

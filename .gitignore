@@ -54,3 +54,7 @@ node-compile-cache/
 
 # docker data
 data/
+
+# Next.js
+.next
+out

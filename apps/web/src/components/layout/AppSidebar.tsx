@@ -1,11 +1,14 @@
-'use client';
+'use client'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import * as React from 'react'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
-  DropdownMenuTrigger
-} from '@/components/ui/DropdownMenu';
-import { Avatar, AvatarFallback } from '@/components/ui/Avatar';
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   Sidebar,
   SidebarContent,
@@ -19,62 +22,67 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-  SidebarRail
-} from '@/components/ui/Sidebar';
-import { navItems } from '@/config/nav-config';
-import { useMediaQuery } from '@/hooks/use-media-query';
-import { IconChevronRight, IconChevronsDown } from '@tabler/icons-react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import * as React from 'react';
-import { Icons } from '../Icons';
-import { OrgSwitcher } from '../OrgSwitcher';
+  SidebarRail,
+} from '@/components/ui/sidebar'
+import { navItems } from '@/config/navConfig'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { cn } from '@/lib/utils'
+import { IconChevronRight, IconChevronsDown } from '@tabler/icons-react'
+import { OrgSwitcher } from './OrgSwitcher'
 
 const mockUser = {
   fullName: 'its_ferdi',
   email: 'example@example.com',
-  initials: 'IF'
-};
+  initials: 'IF',
+}
 
 export default function AppSidebar() {
-  const pathname = usePathname();
-  const { isOpen } = useMediaQuery();
+  const pathname = usePathname()
+  const { isOpen } = useMediaQuery()
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
-  React.useEffect(() => {}, [isOpen]);
+  React.useEffect(() => {}, [isOpen])
 
   return (
-    <Sidebar collapsible='icon'>
+    <Sidebar collapsible="icon">
       <SidebarHeader>
         <OrgSwitcher />
       </SidebarHeader>
-      <SidebarContent className='overflow-x-hidden'>
+      <SidebarContent className="overflow-x-hidden">
         <SidebarGroup>
           <SidebarGroupLabel>Overview</SidebarGroupLabel>
           <SidebarMenu>
-            {navItems.map((item) => {
-              const Icon = item.icon
-                ? (Icons as Record<string, React.ElementType>)[item.icon]
-                : Icons.logo;
-              return item?.items && item?.items?.length > 0 ? (
-                <SidebarMenuItem>
+            {navItems.map(item => {
+              const hasChildren = !!(item?.items && item.items.length > 0)
+              const isActiveItem =
+                pathname === item.url ||
+                (hasChildren && item.items!.some(si => si.url === pathname))
+
+              return hasChildren ? (
+                <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     tooltip={item.title}
-                    isActive={pathname === item.url}
+                    isActive={isActiveItem}
                   >
-                    {item.icon && <Icon />}
-                    <span>{item.title}</span>
-                    <IconChevronRight className='ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90' />
+                    <span className="truncate">{item.title}</span>
+                    <IconChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]:rotate-90" />
                   </SidebarMenuButton>
                   <SidebarMenuSub>
-                    {item.items?.map((subItem) => (
+                    {item.items?.map(subItem => (
                       <SidebarMenuSubItem key={subItem.title}>
                         <SidebarMenuSubButton
                           asChild
                           isActive={pathname === subItem.url}
                         >
-                          <Link href={subItem.url}>
-                            <span>{subItem.title}</span>
+                          <Link
+                            href={subItem.url}
+                            className={cn(
+                              'w-full',
+                              pathname === subItem.url &&
+                                'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                            )}
+                          >
+                            <span className="truncate">{subItem.title}</span>
                           </Link>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
@@ -86,15 +94,21 @@ export default function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     tooltip={item.title}
-                    isActive={pathname === item.url}
+                    isActive={isActiveItem}
                   >
-                    <Link href={item.url}>
-                      <Icon />
-                      <span>{item.title}</span>
+                    <Link
+                      href={item.url}
+                      className={cn(
+                        'w-full',
+                        isActiveItem &&
+                          'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+                      )}
+                    >
+                      <span className="truncate">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              );
+              )
             })}
           </SidebarMenu>
         </SidebarGroup>
@@ -105,44 +119,44 @@ export default function AppSidebar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
-                  size='lg'
-                  className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
+                  size="lg"
+                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                  <Avatar className='h-8 w-8 rounded-lg'>
-                    <AvatarFallback className='rounded-lg'>
+                  <Avatar className="h-8 w-8 rounded-lg">
+                    <AvatarFallback className="rounded-lg">
                       {mockUser.initials}
                     </AvatarFallback>
                   </Avatar>
-                  <div className='grid flex-1 text-left text-sm leading-tight'>
-                    <span className='truncate font-medium'>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-medium">
                       {mockUser.fullName}
                     </span>
-                    <span className='text-muted-foreground truncate text-xs'>
+                    <span className="text-muted-foreground truncate text-xs">
                       {mockUser.email}
                     </span>
                   </div>
-                  <IconChevronsDown className='ml-auto size-4' />
+                  <IconChevronsDown className="ml-auto size-4" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className='w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg'
-                side='bottom'
-                align='end'
+                className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+                side="bottom"
+                align="end"
                 sideOffset={4}
               >
-                <DropdownMenuLabel className='p-0 font-normal'>
-                  <div className='px-1 py-1.5'>
-                    <div className='flex items-center gap-2'>
-                      <Avatar className='h-8 w-8 rounded-lg'>
-                        <AvatarFallback className='rounded-lg'>
+                <DropdownMenuLabel className="p-0 font-normal">
+                  <div className="px-1 py-1.5">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8 rounded-lg">
+                        <AvatarFallback className="rounded-lg">
                           {mockUser.initials}
                         </AvatarFallback>
                       </Avatar>
-                      <div className='grid flex-1 text-left text-sm leading-tight'>
-                        <span className='truncate font-medium'>
+                      <div className="grid flex-1 text-left text-sm leading-tight">
+                        <span className="truncate font-medium">
                           {mockUser.fullName}
                         </span>
-                        <span className='text-muted-foreground truncate text-xs'>
+                        <span className="text-muted-foreground truncate text-xs">
                           {mockUser.email}
                         </span>
                       </div>
@@ -156,5 +170,5 @@ export default function AppSidebar() {
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
-  );
+  )
 }

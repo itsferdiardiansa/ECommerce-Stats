@@ -1,48 +1,48 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { ChartConfig, ChartContainer } from '@/components/ui/Chart';
-import BarGraphClient from './ProductCategoryBarChartClient';
-import { getProductCountByCategory } from '@rufieltics/db';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ChartConfig, ChartContainer } from '@/components/ui/chart'
+import BarGraphClient from './ProductCategoryBarChartClient'
+import { getCachedProductCountByCategory } from '@/services/analytics'
 
 const chartConfig = {
   count: {
-    label: 'Products'
-  }
-} satisfies ChartConfig;
+    label: 'Products',
+  },
+} satisfies ChartConfig
 
 export type BarGraphDatum = {
-  category: string;
-  count: number;
-};
+  category: string
+  count: number
+}
 
 export async function ProductCategoryBarChart() {
-  const result = await getProductCountByCategory();
+  const result = await getCachedProductCountByCategory()
 
   const chartData: BarGraphDatum[] = result
-    .map((row) => ({
+    .map(row => ({
       category: row.category || 'Uncategorized',
-      count: row.count
+      count: row.count,
     }))
-    .sort((a, b) => b.count - a.count);
+    .sort((a, b) => b.count - a.count)
 
   return (
-    <Card className='@container/card !pt-3'>
-      <CardHeader className='flex flex-col items-stretch gap-0 border-b !p-0 sm:flex-row'>
-        <div className='flex flex-1 flex-col justify-center gap-1 px-4 px-6 pt-2 pb-6'>
+    <Card className="@container/card !pt-3">
+      <CardHeader className="flex flex-col items-stretch gap-0 border-b !p-0 sm:flex-row">
+        <div className="flex flex-1 flex-col justify-center gap-1 px-4 px-6 pt-2 pb-6">
           <CardTitle>Products by Category</CardTitle>
         </div>
       </CardHeader>
-      <CardContent className='px-2 pt-4 sm:px-6 sm:pt-6'>
+      <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         <ChartContainer
           config={chartConfig}
-          className='h-[280px] min-h-[260px] w-full'
+          className="h-[280px] min-h-[260px] w-full"
         >
           <BarGraphClient data={chartData} />
         </ChartContainer>
       </CardContent>
     </Card>
-  );
+  )
 }
 
-export const BarGraph = ProductCategoryBarChart;
+export const BarGraph = ProductCategoryBarChart
 
-export default ProductCategoryBarChart;
+export default ProductCategoryBarChart

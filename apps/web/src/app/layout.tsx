@@ -1,47 +1,47 @@
-import type { Metadata, Viewport } from 'next';
-import { cookies } from 'next/headers';
-import React from 'react';
-import Providers from '@/components/layout/Providers';
-import ThemeProvider from '@/components/layout/theme-toggle/ThemeProvider';
-import AppSidebar from '@/components/layout/AppSidebar';
-import Header from '@/components/layout/Header';
-import { SidebarInset, SidebarProvider } from '@/components/ui/Sidebar';
-import PageContainer from '@/components/layout/PageContainer';
-import { fontVariables } from '@/lib/font';
-import { cn } from '@/lib/utils';
-import './globals.css';
-import './theme.css';
+import type { Metadata, Viewport } from 'next'
+import { cookies } from 'next/headers'
+import React from 'react'
+import Providers from '@/components/layout/Providers'
+import ThemeProvider from '@/components/layout/theme-toggle/ThemeProvider'
+import AppSidebar from '@/components/layout/AppSidebar'
+import Header from '@/components/layout/Header'
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+import PageContainer from '@/components/layout/PageContainer'
+import { fontVariables } from '@/lib/font'
+import { cn } from '@/lib/utils'
+import './globals.css'
+import './theme.css'
 
 const META_THEME_COLORS = {
   light: '#ffffff',
-  dark: '#09090b'
-};
+  dark: '#09090b',
+}
 
 export const metadata: Metadata = {
   title: 'E-commerce Analytics Dashboard',
   description: 'An analytics dashboard template for e-commerce businesses.',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: META_THEME_COLORS.light },
-    { media: '(prefers-color-scheme: dark)', color: META_THEME_COLORS.dark }
-  ]
-};
+    { media: '(prefers-color-scheme: dark)', color: META_THEME_COLORS.dark },
+  ],
+}
 
 export const viewport: Viewport = {
-  themeColor: META_THEME_COLORS.light
-};
+  themeColor: META_THEME_COLORS.light,
+}
 
 export default async function RootLayout({
-  children
+  children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
-  const cookieStore = await cookies();
-  const activeThemeValue = cookieStore.get('active_theme')?.value;
-  const isScaled = activeThemeValue?.endsWith('-scaled');
-  const defaultOpen = cookieStore.get('sidebar_state')?.value === 'true';
+  const cookieStore = await cookies()
+  const activeThemeValue = cookieStore.get('active_theme')?.value
+  const isScaled = activeThemeValue?.endsWith('-scaled')
+  const defaultOpen = cookieStore.get('sidebar_state')?.value === 'true'
 
   return (
-    <html lang='en' suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -51,7 +51,7 @@ export default async function RootLayout({
                   document.querySelector('meta[name="theme-color"]').setAttribute('content', '${META_THEME_COLORS.dark}')
                 }
               } catch (_) {}
-            `
+            `,
           }}
         />
       </head>
@@ -64,8 +64,8 @@ export default async function RootLayout({
         )}
       >
         <ThemeProvider
-          attribute='class'
-          defaultTheme='system'
+          attribute="class"
+          defaultTheme="system"
           enableSystem
           disableTransitionOnChange
           enableColorScheme
@@ -82,5 +82,5 @@ export default async function RootLayout({
         </ThemeProvider>
       </body>
     </html>
-  );
+  )
 }

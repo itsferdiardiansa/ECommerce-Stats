@@ -1,3 +1,3 @@
-export * from './ProductCategoryBarChart';
-export * from './ProductCategoryBarChartClient';
-export * from './ProductCategoryBarChartSkeleton';
+export * from './ProductCategoryBarChart'
+export * from './ProductCategoryBarChartClient'
+export * from './ProductCategoryBarChartSkeleton'
