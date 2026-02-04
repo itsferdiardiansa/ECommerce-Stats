@@ -5,6 +5,8 @@
     "module": "preserve",
     "moduleResolution": "bundler",
     "noImplicitAny": false,
+    "outDir": "dist",
+    "rootDir": "src",
     "paths": {
       "@/*": ["./src/*"],
       "@prisma/*": ["./prisma/*"]
