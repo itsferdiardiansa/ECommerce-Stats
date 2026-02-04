@@ -11,7 +11,13 @@ export function createStoreRepository(db: PrismaClient) {
     if (!trimmed) return null
     const existing = await db.category.findUnique({ where: { name: trimmed } })
     if (existing) return existing.id
-    const created = await db.category.create({ data: { name: trimmed } })
+    const slug = trimmed
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+    const created = await db.category.create({
+      data: { name: trimmed, slug: slug || `cat-${Date.now()}` },
+    })
     return created.id
   }
 
@@ -21,7 +27,13 @@ export function createStoreRepository(db: PrismaClient) {
     if (!trimmed) return null
     const existing = await db.brand.findUnique({ where: { name: trimmed } })
     if (existing) return existing.id
-    const created = await db.brand.create({ data: { name: trimmed } })
+    const slug = trimmed
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+    const created = await db.brand.create({
+      data: { name: trimmed, slug: slug || `brand-${Date.now()}` },
+    })
     return created.id
   }
 
@@ -51,10 +63,9 @@ export function createStoreRepository(db: PrismaClient) {
         name: product.name,
         description: product.description,
         price: product.price,
-        unit: product.unit,
-        image: product.image,
-        discount: product.discount,
-        availability: product.availability,
+        // image: product.image, // REMOVED
+        // discount: product.discount, // REMOVED - not in schema
+        // availability: product.availability, // REMOVED - not in schema
         rating: product.rating,
         categoryId,
         brandId,
@@ -62,13 +73,17 @@ export function createStoreRepository(db: PrismaClient) {
       },
       create: {
         id: product.product_id,
+        sku: `sku-${product.product_id}`, // SKU is required @unique
+        slug:
+          product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') +
+          `-${product.product_id}`, // Slug is required @unique
         name: product.name,
         description: product.description,
         price: product.price,
-        unit: product.unit,
-        image: product.image,
-        discount: product.discount,
-        availability: product.availability,
+        // image: product.image, // REMOVED
+        // unit: product.unit, // REMOVED
+        // discount: product.discount, // REMOVED
+        // availability: product.availability, // REMOVED
         rating: product.rating,
         categoryId,
         brandId,
@@ -89,32 +104,40 @@ export function createStoreRepository(db: PrismaClient) {
                   name: `External User ${review.user_id}`,
                 },
               })
-            } catch (_) {
+            } catch {
               internalUser = await db.user.findUnique({ where: { email } })
             }
           }
         }
         const reviewUserId = internalUser?.id ?? review.user_id
-        await db.productReview.upsert({
+        // Fixed: Use findFirst + update/create because there is no composite unique constraint on (productId, userId)
+        const existingReview = await db.productReview.findFirst({
           where: {
-            productId_userId: {
-              productId: product.product_id,
-              userId: reviewUserId,
-            },
-          },
-          update: {
-            rating: review.rating,
-            comment: review.comment,
-            syncedAt,
-          },
-          create: {
             productId: product.product_id,
             userId: reviewUserId,
-            rating: review.rating,
-            comment: review.comment,
-            syncedAt,
           },
         })
+
+        if (existingReview) {
+          await db.productReview.update({
+            where: { id: existingReview.id },
+            data: {
+              rating: review.rating,
+              comment: review.comment,
+              syncedAt,
+            },
+          })
+        } else {
+          await db.productReview.create({
+            data: {
+              productId: product.product_id,
+              userId: reviewUserId,
+              rating: review.rating,
+              comment: review.comment,
+              syncedAt,
+            },
+          })
+        }
       }
     }
   }
@@ -128,44 +151,64 @@ export function createStoreRepository(db: PrismaClient) {
         ? (order.status as (typeof OrderStatus)[keyof typeof OrderStatus])
         : undefined
     const linkedUserId = await ensureUserId(order.user_id)
+
+    // Fixed: totalPrice -> grandTotal, subtotal required
+    const orderData = {
+      userId: linkedUserId ?? undefined,
+      status,
+      grandTotal: order.total_price || 0,
+      subtotal: order.total_price || 0, // Assuming subtotal = grandTotal for simple sync
+      syncedAt,
+    }
+
     const orderRecord = await db.order.upsert({
       where: { id: order.order_id },
-      update: {
-        userId: linkedUserId ?? undefined,
-        status,
-        totalPrice: order.total_price,
-        syncedAt,
-      },
+      update: orderData,
       create: {
         id: order.order_id,
-        userId: linkedUserId ?? undefined,
-        status,
-        totalPrice: order.total_price,
-        syncedAt,
+        orderNumber: `ORD-${order.order_id}`, // orderNumber is required @unique
+        ...orderData,
       },
     })
+
     for (const item of order.items) {
       const product = await db.product.findUnique({
         where: { id: item.product_id },
       })
       if (!product) continue
-      await db.orderItem.upsert({
+
+      // Fixed: Use findFirst + update/create because there is no composite unique constraint on (orderId, productId)
+      const existingItem = await db.orderItem.findFirst({
         where: {
-          orderId_productId: { orderId: orderRecord.id, productId: product.id },
-        },
-        update: {
-          quantity: item.quantity,
-          unitPrice: product.price as number,
-          syncedAt,
-        },
-        create: {
           orderId: orderRecord.id,
           productId: product.id,
-          quantity: item.quantity,
-          unitPrice: product.price as number,
-          syncedAt,
         },
       })
+
+      const itemData = {
+        quantity: item.quantity,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        unitPrice: product.price as any, // Cast to any to avoid Decimal mismatch
+        totalPrice: Number(product.price) * item.quantity,
+        syncedAt,
+      }
+
+      if (existingItem) {
+        await db.orderItem.update({
+          where: { id: existingItem.id },
+          data: itemData,
+        })
+      } else {
+        await db.orderItem.create({
+          data: {
+            orderId: orderRecord.id,
+            productId: product.id,
+            sku: product.sku,
+            name: product.name,
+            ...itemData,
+          },
+        })
+      }
     }
   }
 

@@ -1,0 +1,344 @@
+generator analyticsClient {
+  provider   = "prisma-client-js"
+  output     = "./generated-analytics"
+  engineType = "client"
+  adapter    = "@prisma/adapter-pg"
+}
+
+datasource analyticsDb {
+  provider = "postgresql"
+}
+
+model FactOrder {
+  id             BigInt    @id @default(autoincrement())
+  orderId        BigInt    @unique
+  userId         BigInt?
+  orderTs        DateTime
+  dateId         Int
+  subtotal       Decimal   @analyticsDb.Decimal(18, 4)
+  taxTotal       Decimal   @analyticsDb.Decimal(18, 4)
+  shippingTotal  Decimal   @analyticsDb.Decimal(18, 4)
+  discountTotal  Decimal   @analyticsDb.Decimal(18, 4)
+  grandTotal     Decimal   @analyticsDb.Decimal(18, 4)
+  marginTotal    Decimal?  @analyticsDb.Decimal(18, 4)
+  itemCount      Int
+  status         String
+  paymentStatus  String
+  shippingStatus String
+  currency       String
+  source         String?
+  couponCode     String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+
+  @@index([orderTs])
+  @@index([userId])
+  @@index([status])
+  @@map("fact_orders")
+}
+
+model FactOrderItem {
+  id             BigInt   @id @default(autoincrement())
+  orderItemId    BigInt   @unique
+  orderId        BigInt
+  productId      BigInt
+  productScId    BigInt?
+  dateId         Int
+  orderTs        DateTime
+  qty            Int
+  unitPrice      Decimal  @analyticsDb.Decimal(18, 4)
+  unitCost       Decimal? @analyticsDb.Decimal(18, 4)
+  taxAmount      Decimal  @default(0) @analyticsDb.Decimal(18, 4)
+  discountAmount Decimal  @default(0) @analyticsDb.Decimal(18, 4)
+  extendedPrice  Decimal  @analyticsDb.Decimal(18, 4)
+  margin         Decimal? @analyticsDb.Decimal(18, 4)
+  variantSku     String?
+  productName    String
+  categoryName   String?
+  brandName      String?
+  isReturned     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@index([orderTs])
+  @@index([productId])
+  @@index([orderId])
+  @@map("fact_order_items")
+}
+
+model FactPayment {
+  id        BigInt   @id @default(autoincrement())
+  paymentId BigInt   @unique
+  orderId   BigInt?
+  dateId    Int
+  timestamp DateTime
+  amount    Decimal  @analyticsDb.Decimal(18, 4)
+  currency  String
+  provider  String
+  method    String?
+  status    String
+  errorCode String?
+  isSuccess Boolean
+  createdAt DateTime @default(now())
+
+  @@index([timestamp])
+  @@index([status])
+  @@map("fact_payments")
+}
+
+model FactShipment {
+  id           BigInt    @id @default(autoincrement())
+  shipmentId   BigInt    @unique
+  orderId      BigInt
+  dateId       Int
+  weight       Float?
+  cost         Decimal?  @analyticsDb.Decimal(18, 4)
+  carrier      String
+  serviceLevel String?
+  shippedTs    DateTime?
+  deliveredTs  DateTime?
+  deliveryDays Float?
+  isOnTime     Boolean?
+  createdAt    DateTime  @default(now())
+
+  @@index([carrier])
+  @@map("fact_shipments")
+}
+
+model FactSession {
+  id           BigInt    @id @default(autoincrement())
+  sessionId    String    @unique
+  userId       BigInt?
+  visitorId    String?
+  dateId       Int
+  startTime    DateTime
+  endTime      DateTime?
+  durationSec  Int?
+  pageViews    Int       @default(0)
+  eventsCount  Int       @default(0)
+  cartAddCount Int       @default(0)
+  orderCount   Int       @default(0)
+  bounce       Boolean   @default(false)
+  source       String?
+  medium       String?
+  campaign     String?
+  deviceType   String?
+  browser      String?
+  os           String?
+  country      String?
+  city         String?
+
+  @@index([startTime])
+  @@index([userId])
+  @@map("fact_sessions")
+}
+
+model FactPageview {
+  id            BigInt   @id @default(autoincrement())
+  sessionId     String
+  userId        BigInt?
+  url           String
+  path          String
+  referrer      String?
+  timestamp     DateTime
+  timeOnPageSec Int?
+  scrollDepth   Int?
+  loadTimeMs    Int?
+  productId     BigInt?
+  categoryId    Int?
+
+  @@index([timestamp])
+  @@index([sessionId])
+  @@map("fact_pageviews")
+}
+
+model FactSearch {
+  id               BigInt   @id @default(autoincrement())
+  sessionId        String
+  timestamp        DateTime
+  query            String
+  resultCount      Int
+  clickedResultPos Int?
+  converted        Boolean  @default(false)
+
+  @@index([query])
+  @@map("fact_searches")
+}
+
+model FactCartActivity {
+  id            BigInt   @id @default(autoincrement())
+  sessionId     String
+  userId        BigInt?
+  timestamp     DateTime
+  action        String
+  productId     BigInt
+  sku           String
+  quantityDelta Int
+  priceSnapshot Decimal  @analyticsDb.Decimal(18, 4)
+
+  @@index([timestamp])
+  @@map("fact_cart_activity")
+}
+
+model FactReview {
+  id             BigInt   @id @default(autoincrement())
+  reviewId       BigInt   @unique
+  productId      BigInt
+  userId         BigInt?
+  dateId         Int
+  timestamp      DateTime
+  rating         Int
+  hasText        Boolean
+  hasImages      Boolean
+  textLength     Int
+  sentimentScore Float?
+  verified       Boolean
+
+  @@index([productId])
+  @@index([rating])
+  @@map("fact_reviews")
+}
+
+model DimProduct {
+  productScId  BigInt    @id @default(autoincrement())
+  productId    BigInt
+  sku          String
+  name         String
+  categoryId   Int?
+  brandId      Int?
+  currentPrice Decimal   @analyticsDb.Decimal(18, 4)
+  costPrice    Decimal?  @analyticsDb.Decimal(18, 4)
+  isActive     Boolean
+  validFrom    DateTime
+  validTo      DateTime?
+  isCurrent    Boolean   @default(true)
+  categoryName String?
+  brandName    String?
+  supplier     String?
+  tags         String[]
+
+  @@index([productId])
+  @@index([isCurrent])
+  @@map("dim_products")
+}
+
+model DimUser {
+  userScId       BigInt    @id @default(autoincrement())
+  userId         BigInt
+  email          String?
+  city           String?
+  country        String?
+  gender         String?
+  ageGroup       String?
+  segment        String?
+  ltv            Decimal?  @analyticsDb.Decimal(18, 4)
+  firstOrderDate DateTime?
+  validFrom      DateTime
+  validTo        DateTime?
+  isCurrent      Boolean   @default(true)
+
+  @@index([userId])
+  @@index([email])
+  @@map("dim_users")
+}
+
+model DimDate {
+  dateId       Int      @id
+  date         DateTime @unique
+  dayOfWeek    Int
+  dayName      String
+  dayOfMonth   Int
+  weekOfYear   Int
+  month        Int
+  monthName    String
+  quarter      Int
+  year         Int
+  isWeekend    Boolean
+  isHoliday    Boolean
+  fiscalYear   Int?
+  fiscalPeriod Int?
+
+  @@map("dim_date")
+}
+
+model DimMarketing {
+  id           BigInt   @id @default(autoincrement())
+  utmSource    String?
+  utmMedium    String?
+  utmCampaign  String?
+  utmTerm      String?
+  utmContent   String?
+  channelGroup String?
+  createdAt    DateTime @default(now())
+
+  @@unique([utmSource, utmMedium, utmCampaign, utmTerm, utmContent])
+  @@map("dim_marketing")
+}
+
+model DimLocation {
+  id          Int     @id @default(autoincrement())
+  city        String?
+  state       String?
+  postalCode  String?
+  country     String
+  countryCode String
+  region      String?
+
+  @@unique([country, state, city, postalCode])
+  @@map("dim_locations")
+}
+
+model IngestOffset {
+  id            BigInt    @id @default(autoincrement())
+  source        String    @unique
+  partition     Int       @default(0)
+  lastOffset    BigInt?
+  lastTimestamp DateTime?
+  payloadHash   String?
+  updatedAt     DateTime  @updatedAt
+
+  @@map("ingest_offsets")
+}
+
+model StagingRawEvent {
+  id          BigInt    @id @default(autoincrement())
+  eventType   String
+  source      String
+  payload     Json
+  headers     Json?
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+  status      String    @default("pending")
+  error       String?
+  retryCount  Int       @default(0)
+
+  @@index([receivedAt])
+  @@index([status])
+  @@map("staging_raw_events")
+}
+
+model AggDailyStats {
+  dateId         Int      @id
+  totalRevenue   Decimal  @analyticsDb.Decimal(18, 2)
+  totalOrders    Int
+  totalVisits    Int
+  conversionRate Decimal? @analyticsDb.Decimal(5, 4)
+  aov            Decimal? @analyticsDb.Decimal(10, 2)
+  updatedAt      DateTime @updatedAt
+
+  @@map("agg_daily_stats")
+}
+
+model AggProductPerformance {
+  dateId    Int
+  productId BigInt
+  views     Int     @default(0)
+  cartAdds  Int     @default(0)
+  purchases Int     @default(0)
+  revenue   Decimal @default(0) @analyticsDb.Decimal(18, 2)
+  returns   Int     @default(0)
+
+  @@id([dateId, productId])
+  @@map("agg_product_performance")
+}

@@ -6,12 +6,19 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "migrate:dev": "prisma migrate dev --name init --schema=prisma/schema.prisma",
-    "migrate:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",
-    "generate": "prisma generate --schema=prisma/schema.prisma",
-    "db:studio": "prisma studio",
+    "generate": "pnpm run generate:main && pnpm run generate:analytics",
+    "generate:main": "prisma generate --schema=prisma/schema.prisma",
+    "generate:analytics": "prisma generate --config prisma.analytics.config.ts",
+    "migrate:dev": "pnpm run migrate:dev:main && pnpm run migrate:dev:analytics",
+    "migrate:dev:main": "prisma migrate dev --schema=prisma/schema.prisma",
+    "migrate:dev:analytics": "prisma migrate dev --config prisma.analytics.config.ts",
+    "migrate:deploy": "pnpm run migrate:deploy:main && pnpm run migrate:deploy:analytics",
+    "migrate:deploy:main": "prisma migrate deploy --schema=prisma/schema.prisma",
+    "migrate:deploy:analytics": "prisma migrate deploy --config prisma.analytics.config.ts",
+    "studio": "prisma studio --schema=prisma/schema.prisma",
+    "studio:analytics": "prisma studio --config prisma.analytics.config.ts",
     "build": "tsc --project tsconfig.build.json && tsc-alias --project tsconfig.build.json && node scripts/copyPrismaGenerated.mjs",
-    "postinstall": "npx prisma generate && pnpm run build"
+    "postinstall": "pnpm run generate && pnpm run build"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.3.0",

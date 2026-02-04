@@ -13,7 +13,10 @@ export async function getTotalRevenue() {
   const items = await db.orderItem.findMany({
     select: { unitPrice: true, quantity: true },
   })
-  return items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
+  return items.reduce(
+    (sum, item) => sum + item.unitPrice.toNumber() * item.quantity,
+    0
+  )
 }
 
 export async function getTotalOrderCount() {
@@ -22,9 +25,9 @@ export async function getTotalOrderCount() {
 
 export async function getAverageOrderValue() {
   const result = await db.order.aggregate({
-    _avg: { totalPrice: true },
+    _avg: { grandTotal: true },
   })
-  return result._avg.totalPrice || 0
+  return result._avg.grandTotal?.toNumber() || 0
 }
 
 export async function getAverageProductRating(productId?: number) {
@@ -107,7 +110,7 @@ export async function getRevenueByCategory(): Promise<RevenueByCategoryRow[]> {
     const prev = revenueByCategoryMap.get(categoryName) ?? 0
     revenueByCategoryMap.set(
       categoryName,
-      prev + (item.unitPrice ?? 0) * (item.quantity ?? 0)
+      prev + item.unitPrice.toNumber() * (item.quantity ?? 0)
     )
   }
   return Array.from(revenueByCategoryMap.entries()).map(
@@ -152,11 +155,11 @@ export async function getOrderValueByStatus(): Promise<
 > {
   const result = await db.order.groupBy({
     by: ['status'],
-    _avg: { totalPrice: true },
+    _avg: { grandTotal: true },
   })
   return result.map(data => ({
     status: data.status,
-    avgValue: data._avg.totalPrice || 0,
+    avgValue: data._avg.grandTotal?.toNumber() || 0,
   }))
 }
 
