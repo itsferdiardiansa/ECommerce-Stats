@@ -42,7 +42,9 @@ function isExpired(entry: CacheEntry<unknown>) {
 
 async function getOrSetCached<T>(
   keyParts: readonly string[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fetcher: (...args: any[]) => Promise<T>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   args: any[] = []
 ): Promise<T> {
   const key = makeCacheKey([...keyParts, ...args.map(String)])

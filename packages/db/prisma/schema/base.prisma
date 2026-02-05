@@ -1,0 +1,12 @@
+generator client {
+  provider        = "prisma-client-js"
+  engineType      = "client"
+  output          = "../generated"
+  adapter         = "@prisma/adapter-pg"
+  previewFeatures = ["driverAdapters", "multiSchema", "prismaSchemaFolder"]
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["public", "auth", "user", "analytics", "billing"]
+}

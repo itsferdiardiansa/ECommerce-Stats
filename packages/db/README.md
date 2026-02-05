@@ -89,38 +89,6 @@ This section explains how the database schema (see `prisma/schema.prisma`) maps 
 
 ---
 
-#### ERD
-
-```mermaid
-erDiagram
-    USER ||--o{ ORDER : places
-    ORDER ||--|{ ORDER_ITEM : contains
-    ORDER_ITEM }o--|| PRODUCT : references
-    PRODUCT }|--|| BRAND : belongs_to
-    PRODUCT }|--|| CATEGORY : belongs_to
-    PRODUCT ||--o{ PRODUCT_REVIEW : has
-    USER ||--o{ PRODUCT_REVIEW : writes
-    CATEGORY ||--o{ CATEGORY : parent_of
-```
-
-#### DFD
-
-```mermaid
-flowchart LR
-    Client[Client] -->|create order| API[API Server]
-    API -->|insert order| DB[(Postgres DB)]
-    DB -->|return order| API
-    API -->|respond| Client
-
-    ExtSource[External Source] -->|sync data| SyncScript[Sync Script]
-    SyncScript -->|update products| DB
-
-    Client -->|create review| API
-    API --> DB
-```
-
----
-
 ### Data Flow Diagram (DFD) — common flows
 
 1. User checkout flow

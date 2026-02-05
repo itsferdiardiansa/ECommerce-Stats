@@ -56,7 +56,7 @@ export default function AppSidebar() {
               const hasChildren = !!(item?.items && item.items.length > 0)
               const isActiveItem =
                 pathname === item.url ||
-                (hasChildren && item.items!.some(si => si.url === pathname))
+                (hasChildren && item.items?.some(si => si.url === pathname))
 
               return hasChildren ? (
                 <SidebarMenuItem key={item.title}>

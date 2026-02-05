@@ -2,7 +2,7 @@ import { defineConfig } from '@trigger.dev/sdk'
 import { prismaExtension } from '@trigger.dev/build/extensions/prisma'
 
 export default defineConfig({
-  project: process.env.TRIGGER_PROJECT_REF!,
+  project: process.env.TRIGGER_PROJECT_REF ?? '',
   dirs: ['./src'],
   retries: {
     enabledInDev: false,

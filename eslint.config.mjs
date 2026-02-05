@@ -7,7 +7,7 @@ export default [
   {
     ignores: [
       '**/dist',
-      '**/generated',
+      '**/prisma',
       '**/node_modules',
       '**/.vercel',
       '**/.next'

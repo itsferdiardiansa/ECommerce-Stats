@@ -5,9 +5,13 @@
     "module": "preserve",
     "moduleResolution": "bundler",
     "noImplicitAny": false,
+    "outDir": "dist",
+    "rootDir": "src",
     "paths": {
       "@/*": ["./src/*"],
       "@prisma/*": ["./prisma/*"]
     }
-  }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "scripts", "prisma"]
 }

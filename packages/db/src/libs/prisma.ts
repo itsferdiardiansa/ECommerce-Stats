@@ -1,13 +1,10 @@
 import 'dotenv/config'
-import { PrismaClient as PrismaClientConstructor } from '../../prisma/generated/index.js'
+import { PrismaClient } from '@prisma/generated'
 import { PrismaPg } from '@prisma/adapter-pg'
-import pkg from '../../prisma/generated/index.js'
 
-const { PrismaClient } = pkg
+let _db: PrismaClient | null = null
 
-let _db: PrismaClientConstructor | null = null
-
-export function getDb(): PrismaClientConstructor {
+export function getDb(): PrismaClient {
   const dbUrl = process.env.DATABASE_URL
 
   if (!dbUrl) {
@@ -17,10 +14,6 @@ export function getDb(): PrismaClientConstructor {
   if (!_db) {
     const adapter = new PrismaPg({
       connectionString: dbUrl,
-      waitingCount: 10,
-      idleTimeoutMillis: 5000,
-      expiredCount: 10,
-      query_timeout: 60000,
     })
     _db = new PrismaClient({ adapter })
   }
