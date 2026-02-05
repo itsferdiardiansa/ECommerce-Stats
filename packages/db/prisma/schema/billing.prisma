@@ -1,0 +1,162 @@
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+  UNPAID
+  PAUSED
+
+  @@schema("billing")
+}
+
+enum BillingPeriod {
+  MONTHLY
+  YEARLY
+  ONE_TIME
+
+  @@schema("billing")
+}
+
+model Plan {
+  id            String         @id @default(cuid())
+  name          String
+  description   String?
+  stripePriceId String?        @unique
+  variantId     String?
+  
+  price         Decimal        @db.Decimal(10, 2)
+  currency      String         @default("USD")
+  interval      BillingPeriod  @default(MONTHLY)
+  
+  maxUsers      Int            @default(1)
+  maxDashboards Int            @default(3)
+  features      Json?
+  
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  subscriptions Subscription[]
+
+  @@schema("billing")
+}
+
+model Subscription {
+  id              String             @id @default(cuid())
+  organizationId  String             @unique
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  planId          String
+  plan            Plan               @relation(fields: [planId], references: [id])
+  
+  status          SubscriptionStatus @default(ACTIVE)
+  
+  providerSubId   String             @unique
+  customerId      String
+  
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean         @default(false)
+  canceledAt         DateTime?
+  trialEndsAt        DateTime?
+  
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  
+  invoices        Invoice[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@schema("billing")
+}
+
+model Invoice {
+  id              String   @id @default(cuid())
+  subscriptionId  String?
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id])
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id])
+  
+  providerInvoiceId String @unique
+  amount          Decimal  @db.Decimal(10, 2)
+  currency        String   @default("USD")
+  status          InvoiceStatus
+  
+  invoicePdfUrl   String?
+  hostedInvoiceUrl String?
+  
+  paidAt          DateTime?
+  createdAt       DateTime @default(now())
+
+  payments        BillingPayment[]
+
+  @@index([organizationId])
+  @@schema("billing")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  VOID
+  UNCOLLECTIBLE
+
+  @@schema("billing")
+}
+
+model BillingPaymentMethod {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  providerMethodId String      @unique
+  type            String       @default("card")
+  brand           String?
+  last4           String?
+  expMonth        Int?
+  expYear         Int?
+  
+  isDefault       Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  payments        BillingPayment[]
+
+  @@index([organizationId])
+  @@schema("billing")
+}
+
+model BillingPayment {
+  id              String        @id @default(cuid())
+  amount          Decimal       @db.Decimal(10, 2)
+  currency        String        @default("USD")
+  status          PaymentStatus
+  
+  providerPaymentId String      @unique
+  
+  invoiceId       String?
+  invoice         Invoice?      @relation(fields: [invoiceId], references: [id])
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id])
+  methodId        String?
+  paymentMethod   BillingPaymentMethod? @relation(fields: [methodId], references: [id])
+  
+  createdAt       DateTime      @default(now())
+
+  @@index([invoiceId])
+  @@index([organizationId])
+  @@schema("billing")
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELED
+  REFUNDED
+  REQUIRES_ACTION
+
+  @@schema("billing")
+}

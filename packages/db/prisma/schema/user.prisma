@@ -1,0 +1,302 @@
+model User {
+  id              Int             @id @default(autoincrement())
+  email           String          @unique
+  username        String?         @unique
+  passwordHash    String?
+  name            String?
+  avatar          String?
+  phone           String?
+  emailVerifiedAt DateTime?
+  phoneVerifiedAt DateTime?
+  
+  isActive            Boolean         @default(true)
+  isStaff             Boolean         @default(false)
+  isTwoFactorEnabled  Boolean         @default(false)
+  
+  lastLoginAt         DateTime?
+  passwordChangedAt   DateTime?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  deletedAt           DateTime?
+  
+  sessions              Session[]
+  accounts              Account[]
+  authenticators        Authenticator[]
+  loginHistory          LoginHistory[]
+  passwordHistory       PasswordHistory[]
+  twoFactorConfirmation TwoFactorConfirmation?
+  
+  profile             UserProfile?
+  addresses           UserAddress[]
+  orders              Order[]
+  reviews             ProductReview[]
+  auditLogs           AuditLog[]
+  wishlists           Wishlist[]
+  cart                Cart[]
+  memberships         OrganizationMember[]
+  apiKeys             ApiKey[]
+  createdDashboards   Dashboard[]
+  settings            UserSettings?
+  
+  identityVerification IdentityVerification?
+
+  @@index([email])
+  @@index([username])
+  @@schema("user")
+}
+
+model UserProfile {
+  id             Int       @id @default(autoincrement())
+  userId         Int       @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio            String?   @db.Text
+  birthDate      DateTime?
+  gender         String?
+  currencyPref   String    @default("USD")
+  languagePref   String    @default("en")
+  marketingOptIn Boolean   @default(false)
+  themePref      String    @default("system")
+  loyaltyPoints  Int       @default(0)
+  tierLevel      String    @default("standard")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@schema("user")
+}
+
+model UserAddress {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String   @default("shipping")
+  isDefault  Boolean  @default(false)
+  label      String?
+  street1    String
+  street2    String?
+  city       String
+  state      String
+  postalCode String
+  country    String
+  phone      String?
+  latitude   Float?
+  longitude  Float?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  orders     Order[]
+
+  @@schema("user")
+}
+
+model Wishlist {
+  id        Int            @id @default(autoincrement())
+  userId    Int
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String         @default("My Wishlist")
+  isPublic  Boolean        @default(false)
+  token     String?        @unique
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  items     WishlistItem[]
+
+  @@schema("user")
+}
+
+model WishlistItem {
+  id         Int      @id @default(autoincrement())
+  wishlistId Int
+  wishlist   Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  productId  Int
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  note       String?
+  addedAt    DateTime @default(now())
+
+  @@unique([wishlistId, productId])
+  @@schema("user")
+}
+
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  oldValues Json?
+  newValues Json?
+  ipAddress String?
+  userAgent String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@schema("user")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  ANALYST
+  VIEWER
+
+  @@schema("user")
+}
+
+enum AccessScope {
+  READ_ANALYTICS
+  WRITE_EVENTS
+  MANAGE_SETTINGS
+  
+  @@schema("user")
+}
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  logo        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  members     OrganizationMember[]
+  apiKeys     ApiKey[]
+  dashboards  Dashboard[]
+
+  subscription Subscription?
+  invoices     Invoice[]
+  paymentMethods BillingPaymentMethod[]
+  payments       BillingPayment[]
+  
+  verification IdentityVerification?
+
+  @@schema("user")
+}
+
+model OrganizationMember {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         Int
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           Role         @default(VIEWER)
+  joinedAt       DateTime     @default(now())
+
+  @@unique([organizationId, userId])
+  @@schema("user")
+}
+
+model ApiKey {
+  id             String       @id @default(cuid())
+  key            String       @unique
+  secretHash     String
+  name           String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         Int
+  user           User         @relation(fields: [userId], references: [id])
+  scopes         AccessScope[]
+  lastUsedAt     DateTime?
+  expiresAt      DateTime?
+  createdAt      DateTime     @default(now())
+  
+  @@schema("user")
+}
+
+model UserSettings {
+  id                 Int      @id @default(autoincrement())
+  userId             Int      @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  defaultTimezone    String   @default("UTC")
+  weekStartsOn       String   @default("Monday")
+  dateFormat         String   @default("MM/DD/YYYY")
+  
+  alertsEmail        Boolean  @default(true)
+  weeklyReport       Boolean  @default(true)
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@schema("user")
+}
+
+model Dashboard {
+  id             String       @id @default(cuid())
+  name           String
+  description    String?
+  layout         Json
+  isPublic       Boolean      @default(false)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creatorId      Int
+  creator        User         @relation(fields: [creatorId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@schema("user")
+}
+
+enum KycStatus {
+  PENDING
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  REQUIRES_ACTION
+
+  @@schema("user")
+}
+
+enum KycDocumentType {
+  PASSPORT
+  ID_CARD
+  DRIVERS_LICENSE
+  UTILITY_BILL
+  COMPANY_REGISTRATION
+  TAX_DOCUMENT
+  OTHER
+
+  @@schema("user")
+}
+
+model IdentityVerification {
+  id              String    @id @default(cuid())
+  userId          Int?      @unique
+  user            User?     @relation(fields: [userId], references: [id])
+  
+  organizationId  String?      @unique
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  
+  status          KycStatus @default(PENDING)
+  level           String    @default("STANDARD")
+  
+  legalName       String?
+  registrationNo  String?
+  taxId           String?
+  country         String?
+  
+  notes           String?
+  rejectionReason String?
+  
+  submittedAt     DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  verifiedAt      DateTime?
+  
+  documents       KycDocument[]
+
+  @@schema("user")
+}
+
+model KycDocument {
+  id             String               @id @default(cuid())
+  verificationId String
+  verification   IdentityVerification @relation(fields: [verificationId], references: [id], onDelete: Cascade)
+  
+  type           KycDocumentType
+  fileUrl        String
+  status         KycStatus            @default(PENDING)
+  metadata       Json?
+  
+  uploadedAt     DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@schema("user")
+}

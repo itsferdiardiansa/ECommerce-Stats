@@ -1,4 +1,4 @@
-import type { ApiOrder, ApiProduct } from '@/entities/store/types'
+import type { ApiOrder, ApiProduct } from '@/domains/store/types'
 
 export function varyNumber(value: number, pct = 0.05): number {
   const delta = value * pct * (Math.random() * 2 - 1)
