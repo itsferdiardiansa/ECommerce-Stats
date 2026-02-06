@@ -38,13 +38,13 @@ export * from './domains/analytics/index'
 export * from './domains/store/sync'
 export * from './domains/store/repositories'
 
-// Identity - Auth Domains
-export * from './domains/identity/auth/accounts'
-export * from './domains/identity/auth/sessions'
-export * from './domains/identity/auth/verification'
-export * from './domains/identity/auth/authenticators'
-export * from './domains/identity/auth/login-history'
-export * from './domains/identity/auth/password-history'
+// Auth
+export * from './domains/auth/accounts'
+export * from './domains/auth/sessions'
+export * from './domains/auth/verification'
+export * from './domains/auth/authenticators'
+export * from './domains/auth/login-history'
+export * from './domains/auth/password-history'
 
 export * from './domains/identity/user'
 export * from './domains/identity/user-address'
