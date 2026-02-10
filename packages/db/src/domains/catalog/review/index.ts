@@ -4,10 +4,10 @@ import {
   ReviewFilterParams,
   CreateReviewInput,
   UpdateReviewInput,
-} from './types'
+} from './types.js'
 import { PaginatedResult } from '@/types/filters'
 
-export * from './types'
+export * from './types.js'
 
 export async function createReview(data: CreateReviewInput) {
   return db.productReview.create({ data })

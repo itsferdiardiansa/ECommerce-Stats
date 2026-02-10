@@ -4,10 +4,10 @@ import {
   CreateWishlistInput,
   UpdateWishlistInput,
   WishlistFilterParams,
-} from './types'
+} from './types.js'
 import { PaginatedResult } from '@/types/filters'
 
-export * from './types'
+export * from './types.js'
 
 export async function createWishlist(data: CreateWishlistInput) {
   if (!data.token && data.isPublic) {

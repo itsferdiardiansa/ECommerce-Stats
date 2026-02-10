@@ -1,9 +1,13 @@
 import { db } from '@/libs/prisma'
 import { Prisma } from '@prisma/generated'
-import { BrandFilterParams, CreateBrandInput, UpdateBrandInput } from './types'
+import {
+  BrandFilterParams,
+  CreateBrandInput,
+  UpdateBrandInput,
+} from './types.js'
 import { PaginatedResult } from '@/types/filters'
 
-export * from './types'
+export * from './types.js'
 
 export async function createBrand(data: CreateBrandInput) {
   if (!data.slug && data.name) {

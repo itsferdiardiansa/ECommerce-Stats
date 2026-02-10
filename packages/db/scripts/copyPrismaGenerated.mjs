@@ -5,8 +5,6 @@ import { fileURLToPath } from 'node:url'
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const sourceDir = resolve(projectRoot, 'prisma', 'generated')
 const destDir = resolve(projectRoot, 'dist', 'prisma', 'generated')
-const sourceDirAnalytics = resolve(projectRoot, 'prisma', 'generated-analytics')
-const destDirAnalytics = resolve(projectRoot, 'dist', 'prisma', 'generated-analytics')
 
 async function copyDir(src, dest) {
 	await mkdir(dest, { recursive: true })
@@ -25,6 +23,3 @@ async function copyDir(src, dest) {
 
 await rm(destDir, { recursive: true, force: true })
 await copyDir(sourceDir, destDir)
-
-await rm(destDirAnalytics, { recursive: true, force: true })
-await copyDir(sourceDirAnalytics, destDirAnalytics)

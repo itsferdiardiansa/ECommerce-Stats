@@ -2,18 +2,34 @@
   "name": "@rufieltics/db",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "description": "Rufieltics database package",
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
+  "publishConfig": {
+    "directory": "dist"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
   "scripts": {
     "generate": "prisma generate --schema=prisma/schema",
     "migrate:dev": "prisma migrate dev --schema=prisma/schema",
     "migrate:deploy": "prisma migrate deploy --schema=prisma/schema",
     "studio": "prisma studio --schema=prisma/schema",
-    "build": "tsc --project tsconfig.build.json && tsc-alias --project tsconfig.build.json && node scripts/copyPrismaGenerated.mjs",
-    "postinstall": "pnpm run generate && pnpm run build"
+    "build": "tsx scripts/build.ts",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage --watch false",
+    "postinstall": "pnpm generate && pnpm build"
   },
   "dependencies": {
+    "@nestjs/swagger": "^11.2.6",
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
     "@prisma/client-runtime-utils": "7.3.0",
@@ -26,16 +42,15 @@
     "@types/node": "^25.0.10",
     "@types/pg": "^8.16.0",
     "prisma": "^7.3.0",
+    "prisma-zod-generator": "^2.1.4",
     "tsc-alias": "^1.1.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "vite-tsconfig-paths": "^6.0.5",
+    "vitest": "^4.0.18",
+    "zod": "^4.3.6"
   },
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    },
-    "./prisma/generated/index.js": "./prisma/generated/index.js"
+  "peerDependencies": {
+    "zod": "^4.3.6"
   }
 }

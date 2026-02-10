@@ -4,10 +4,8 @@ import {
   ProductVariantFilterParams,
   CreateProductVariantInput,
   UpdateProductVariantInput,
-} from './types'
+} from './types.js'
 import { PaginatedResult } from '@/types/filters'
-
-export * from './types'
 
 export async function createProductVariant(data: CreateProductVariantInput) {
   return db.productVariant.create({ data })

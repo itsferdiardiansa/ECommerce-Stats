@@ -4,10 +4,10 @@ import {
   CreateProductInput,
   ProductFilterParams,
   UpdateProductInput,
-} from './types'
+} from './types.js'
 import { PaginatedResult } from '@/types/filters'
 
-export * from './types'
+export * from './types.js'
 
 export async function createProduct(data: CreateProductInput) {
   if (Number(data.price) < 0) {
@@ -36,9 +36,7 @@ export async function deleteProduct(id: number) {
   return db.product.delete({ where: { id } })
 }
 
-export async function listProducts(
-  params: ProductFilterParams = {}
-): Promise<
+export async function listProducts(params: ProductFilterParams = {}): Promise<
   PaginatedResult<
     Prisma.ProductGetPayload<{
       include: { category: true; brand: true; images: true }

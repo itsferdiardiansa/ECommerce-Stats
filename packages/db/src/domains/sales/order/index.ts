@@ -1,9 +1,13 @@
 import { db } from '@/libs/prisma'
 import { Prisma } from '@prisma/generated'
-import { CreateOrderInput, OrderFilterParams, UpdateOrderInput } from './types'
+import {
+  CreateOrderInput,
+  OrderFilterParams,
+  UpdateOrderInput,
+} from './types.js'
 import { PaginatedResult } from '@/types/filters'
 
-export * from './types'
+export * from './types.js'
 
 export async function createOrder(data: CreateOrderInput) {
   if (!data.orderNumber) {

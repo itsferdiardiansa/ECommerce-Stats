@@ -1,10 +1,10 @@
 import { db } from '@/libs/prisma'
-import { createStoreRepository } from './repositories'
-import type { ApiOrder, ApiProduct } from './types'
+import { createStoreRepository } from './index.js'
+import type { ApiOrder, ApiProduct } from './types.js'
 
 const storeRepo = createStoreRepository(db)
 
-export type { ApiOrder, ApiProduct, ApiProductReview } from './types'
+export type { ApiOrder, ApiProduct, ApiProductReview } from './types.js'
 
 export async function ensureCategoryId(name?: string) {
   return storeRepo.ensureCategoryId(name)

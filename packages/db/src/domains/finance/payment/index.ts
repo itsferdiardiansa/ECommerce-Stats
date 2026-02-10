@@ -4,10 +4,10 @@ import {
   PaymentFilterParams,
   CreatePaymentInput,
   UpdatePaymentInput,
-} from './types'
+} from './types.js'
 import { PaginatedResult } from '@/types/filters'
 
-export * from './types'
+export * from './types.js'
 
 export async function createPayment(data: CreatePaymentInput) {
   return db.payment.create({ data })

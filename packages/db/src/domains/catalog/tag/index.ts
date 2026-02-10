@@ -1,9 +1,9 @@
 import { db } from '@/libs/prisma'
 import { Prisma } from '@prisma/generated'
-import { CreateTagInput, TagFilterParams, UpdateTagInput } from './types'
+import { CreateTagInput, TagFilterParams, UpdateTagInput } from './types.js'
 import { PaginatedResult } from '@/types/filters'
 
-export * from './types'
+export * from './types.js'
 
 export async function createTag(data: CreateTagInput) {
   if (!data.slug && data.name) {

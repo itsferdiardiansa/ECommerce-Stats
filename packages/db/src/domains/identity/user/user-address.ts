@@ -4,10 +4,10 @@ import {
   UserAddressFilterParams,
   CreateUserAddressInput,
   UpdateUserAddressInput,
-} from './types'
+} from './types.js'
 import { PaginatedResult } from '@/types/filters'
 
-export * from './types'
+export * from './types.js'
 
 export async function createUserAddress(data: CreateUserAddressInput) {
   if (data.isDefault) {

@@ -1,9 +1,7 @@
 import { db } from '@/libs/prisma'
 import { Prisma } from '@prisma/generated'
-import { CreateUserInput, UpdateUserInput, UserFilterParams } from './types'
+import { CreateUserInput, UpdateUserInput, UserFilterParams } from './types.js'
 import { PaginatedResult } from '@/types/filters'
-
-export * from './types'
 
 export async function createUser(data: CreateUserInput) {
   if (!data?.email || !data.email.includes('@')) {

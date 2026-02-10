@@ -1,55 +1,55 @@
 import { OrderStatus } from '@prisma/generated'
 import type { PrismaClient, User } from '@prisma/generated'
-import type { ApiOrder, ApiProduct } from './types'
+import type { ApiOrder, ApiProduct } from './types.js'
+import { normalizeName, slugify, makeExternalUserData } from '@/libs/utils'
 
 export type StoreRepository = ReturnType<typeof createStoreRepository>
 
 export function createStoreRepository(db: PrismaClient) {
   async function ensureCategoryId(name?: string) {
-    if (!name) return null
-    const trimmed = name.trim()
-    if (!trimmed) return null
-    const existing = await db.category.findUnique({ where: { name: trimmed } })
-    if (existing) return existing.id
-    const slug = trimmed
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-    const created = await db.category.create({
-      data: { name: trimmed, slug: slug || `cat-${Date.now()}` },
+    const normalized = normalizeName(name)
+
+    if (!normalized) return null
+
+    const existing = await db.category.findUnique({
+      where: { name: normalized },
     })
+
+    if (existing) return existing.id
+
+    const slug = slugify(normalized, 'cat')
+    const created = await db.category.create({
+      data: { name: normalized, slug },
+    })
+
     return created.id
   }
 
   async function ensureBrandId(name?: string) {
-    if (!name) return null
-    const trimmed = name.trim()
-    if (!trimmed) return null
-    const existing = await db.brand.findUnique({ where: { name: trimmed } })
+    const normalized = normalizeName(name)
+
+    if (!normalized) return null
+
+    const existing = await db.brand.findUnique({ where: { name: normalized } })
+
     if (existing) return existing.id
-    const slug = trimmed
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-    const created = await db.brand.create({
-      data: { name: trimmed, slug: slug || `brand-${Date.now()}` },
-    })
+
+    const slug = slugify(normalized, 'brand')
+    const created = await db.brand.create({ data: { name: normalized, slug } })
+
     return created.id
   }
 
   async function ensureUserId(userId?: number) {
     if (typeof userId !== 'number') return null
+
     const existing = await db.user.findUnique({ where: { id: userId } })
+
     if (existing) return existing.id
-    const email = `external-order-${userId}@example.com`
-    const created = await db.user.create({
-      data: {
-        id: userId,
-        email,
-        name: `External User ${userId}`,
-        isActive: true,
-      },
-    })
+
+    const data = makeExternalUserData(userId)
+    const created = await db.user.create({ data })
+
     return created.id
   }
 
@@ -57,6 +57,7 @@ export function createStoreRepository(db: PrismaClient) {
     const syncedAt = new Date()
     const categoryId = await ensureCategoryId(product.category)
     const brandId = await ensureBrandId(product.brand)
+
     await db.product.upsert({
       where: { id: product.product_id },
       update: {
@@ -83,6 +84,7 @@ export function createStoreRepository(db: PrismaClient) {
         syncedAt,
       },
     })
+
     if (Array.isArray(product.reviews)) {
       for (const review of product.reviews) {
         let internalUser: User | null = null
@@ -94,6 +96,8 @@ export function createStoreRepository(db: PrismaClient) {
               internalUser = await db.user.create({
                 data: {
                   email,
+                  username: `external_${review.user_id}_${Date.now()}`,
+                  passwordHash: '',
                   name: `External User ${review.user_id}`,
                 },
               })
@@ -102,6 +106,7 @@ export function createStoreRepository(db: PrismaClient) {
             }
           }
         }
+
         const reviewUserId = internalUser?.id ?? review.user_id
         const existingReview = await db.productReview.findFirst({
           where: {

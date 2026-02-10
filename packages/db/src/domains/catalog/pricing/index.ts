@@ -1,9 +1,9 @@
 import { db } from '@/libs/prisma'
 import { Prisma } from '@prisma/generated'
-import { PriceHistoryFilterParams, CreatePriceHistoryInput } from './types'
+import { PriceHistoryFilterParams, CreatePriceHistoryInput } from './types.js'
 import { PaginatedResult } from '@/types/filters'
 
-export * from './types'
+export * from './types.js'
 
 export async function createPriceHistory(data: CreatePriceHistoryInput) {
   return db.priceHistory.create({ data })

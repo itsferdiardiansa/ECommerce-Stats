@@ -2,12 +2,13 @@ export * from './libs/prisma'
 export * from './libs/transform'
 
 // Identity
-export * from './domains/identity/user'
-export * from './domains/identity/user-address'
+export * as User from './domains/identity/user'
+export * as UserAddress from './domains/identity/user/user-address'
+export type * as UserTypes from './domains/identity/user/types'
 
 // Catalog
 export * from './domains/catalog/product'
-export * from './domains/catalog/product-variant'
+export * from './domains/catalog/product/product-variant'
 export * from './domains/catalog/category'
 export * from './domains/catalog/brand'
 export * from './domains/catalog/tag'
@@ -32,11 +33,11 @@ export * from './domains/finance/billing'
 export * from './domains/system/audit'
 
 // Analytics
-export * from './domains/analytics/index'
+export * from './domains/analytics'
 
 // Store / Integrations
 export * from './domains/store/sync'
-export * from './domains/store/repositories'
+export * from './domains/store'
 
 // Auth
 export * from './domains/auth/accounts'
@@ -47,4 +48,4 @@ export * from './domains/auth/login-history'
 export * from './domains/auth/password-history'
 
 export * from './domains/identity/user'
-export * from './domains/identity/user-address'
+export * from './domains/identity/user/user-address'

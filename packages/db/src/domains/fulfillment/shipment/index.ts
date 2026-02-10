@@ -4,10 +4,10 @@ import {
   ShipmentFilterParams,
   CreateShipmentInput,
   UpdateShipmentInput,
-} from './types'
+} from './types.js'
 import { PaginatedResult } from '@/types/filters'
 
-export * from './types'
+export * from './types.js'
 
 export async function createShipment(data: CreateShipmentInput) {
   return db.shipment.create({ data })

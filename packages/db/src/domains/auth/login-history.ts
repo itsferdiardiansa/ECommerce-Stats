@@ -1,9 +1,8 @@
 import { Prisma, LoginReason } from '@prisma/generated'
-import { getDb } from '@/libs/prisma'
+import { db } from '@/libs/prisma'
 
 export const LoginLogs = {
   async logAttempt(data: Prisma.LoginHistoryUncheckedCreateInput) {
-    const db = getDb()
     return db.loginHistory.create({ data })
   },
 
@@ -11,7 +10,6 @@ export const LoginLogs = {
     userId: number,
     metadata?: { ip?: string; agent?: string; city?: string; country?: string }
   ) {
-    const db = getDb()
     return db.loginHistory.create({
       data: {
         userId,
@@ -30,7 +28,6 @@ export const LoginLogs = {
     reason: LoginReason,
     metadata?: { ip?: string; agent?: string }
   ) {
-    const db = getDb()
     return db.loginHistory.create({
       data: {
         userId,
@@ -49,7 +46,6 @@ export const LoginLogs = {
     where?: Prisma.LoginHistoryWhereInput
     orderBy?: Prisma.LoginHistoryOrderByWithRelationInput
   }) {
-    const db = getDb()
     const { skip, take, cursor, where, orderBy } = params
     return db.loginHistory.findMany({
       skip,
@@ -61,7 +57,6 @@ export const LoginLogs = {
   },
 
   async getRecentAttempts(userId: number, minutes = 15) {
-    const db = getDb()
     const since = new Date(Date.now() - minutes * 60 * 1000)
 
     return db.loginHistory.findMany({
