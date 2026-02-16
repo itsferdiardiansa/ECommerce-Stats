@@ -3,13 +3,14 @@
   "compilerOptions": {
     "composite": false,
     "incremental": true,
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "rootDir": "src",
     "outDir": "dist",
     "emitDeclarationOnly": false,
     "declaration": true,
-    "tsBuildInfoFile": "dist/.tsbuildinfo"
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    "noUnusedLocals": false
   },
-  "include": ["src"]
+  "exclude": ["src/**/__tests__/"]
 }

@@ -2,3 +2,5 @@
 **/generated-*
 
 coverage/
+
+src/dtos
