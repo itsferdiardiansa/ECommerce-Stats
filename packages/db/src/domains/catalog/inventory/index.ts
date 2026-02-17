@@ -1,9 +1,9 @@
 import { db } from '@/libs/prisma'
 import { Prisma } from '@prisma/generated'
-import { InventoryLogFilterParams, CreateInventoryLogInput } from './types.js'
+import { InventoryLogFilterParams, CreateInventoryLogInput } from './types'
 import { PaginatedResult } from '@/types/filters'
 
-export * from './types.js'
+export * from './types'
 
 export async function createInventoryLog(data: CreateInventoryLogInput) {
   return db.inventoryLog.create({ data })

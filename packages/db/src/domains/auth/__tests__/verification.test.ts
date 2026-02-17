@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { Verification } from '../verification.js'
+import { Verification } from '../verification'
 import { db } from '@/libs/prisma'
 import type { Prisma } from '@prisma/generated'
 

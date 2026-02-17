@@ -4,10 +4,10 @@ import {
   CouponFilterParams,
   CreateCouponInput,
   UpdateCouponInput,
-} from './types.js'
+} from './types'
 import { PaginatedResult } from '@/types/filters'
 
-export * from './types.js'
+export * from './types'
 
 export async function createCoupon(data: CreateCouponInput) {
   return db.coupon.create({ data })

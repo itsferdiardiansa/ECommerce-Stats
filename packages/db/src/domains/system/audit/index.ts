@@ -1,9 +1,9 @@
 import { db } from '@/libs/prisma'
 import { Prisma } from '@prisma/generated'
-import { AuditLogFilterParams, CreateAuditLogInput } from './types.js'
+import { AuditLogFilterParams, CreateAuditLogInput } from './types'
 import { PaginatedResult } from '@/types/filters'
 
-export * from './types.js'
+export * from './types'
 
 export async function createAuditLog(data: CreateAuditLogInput) {
   return db.auditLog.create({ data })

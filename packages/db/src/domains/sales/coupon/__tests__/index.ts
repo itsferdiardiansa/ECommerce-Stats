@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import * as coupon from '../index.js'
-import type { CreateCouponInput, UpdateCouponInput } from '../index.js'
+import * as coupon from '..'
+import type { CreateCouponInput, UpdateCouponInput } from '..'
 import { db } from '@/libs/prisma'
 
 vi.mock('@/libs/prisma', () => ({

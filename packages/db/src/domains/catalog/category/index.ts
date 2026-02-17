@@ -4,10 +4,10 @@ import {
   CategoryFilterParams,
   CreateCategoryInput,
   UpdateCategoryInput,
-} from './types.js'
+} from './types'
 import { PaginatedResult } from '@/types/filters'
 
-export * from './types.js'
+export * from './types'
 
 export async function createCategory(data: CreateCategoryInput) {
   if (!data.slug && data.name) {

@@ -7,7 +7,7 @@ import {
   deleteUserAddress,
   listUserAddresses,
   type CreateUserAddressInput,
-} from '../user-address.js'
+} from '../user-address'
 import { db } from '@/libs/prisma'
 
 // Mock the db client

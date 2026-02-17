@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import * as pricing from '../index.js'
+import * as pricing from '..'
+import type { CreatePriceHistoryInput } from '..'
 import { db } from '@/libs/prisma'
-import type { CreatePriceHistoryInput } from '../index.js'
 
 vi.mock('@/libs/prisma', () => ({
   db: {

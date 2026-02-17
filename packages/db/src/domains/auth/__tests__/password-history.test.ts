@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { PasswordSecurity } from '../password-history.js'
+import { PasswordSecurity } from '../password-history'
 import { db } from '@/libs/prisma'
 
 vi.mock('@/libs/prisma', () => ({

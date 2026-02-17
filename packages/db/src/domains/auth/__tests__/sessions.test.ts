@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { Sessions } from '../sessions.js'
+import { Sessions } from '../sessions'
 import { db } from '@/libs/prisma'
 import type { Prisma } from '@prisma/generated'
 

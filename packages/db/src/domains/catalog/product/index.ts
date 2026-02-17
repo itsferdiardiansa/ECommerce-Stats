@@ -4,10 +4,10 @@ import {
   CreateProductInput,
   ProductFilterParams,
   UpdateProductInput,
-} from './types.js'
+} from './types'
 import { PaginatedResult } from '@/types/filters'
 
-export * from './types.js'
+export * from './types'
 
 export async function createProduct(data: CreateProductInput) {
   if (Number(data.price) < 0) {

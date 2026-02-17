@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import * as payment from '../index.js'
-import type { CreatePaymentInput, UpdatePaymentInput } from '../index.js'
+import * as payment from '..'
+import type { CreatePaymentInput, UpdatePaymentInput } from '..'
 import { db } from '@/libs/prisma'
 
 vi.mock('@/libs/prisma', () => ({

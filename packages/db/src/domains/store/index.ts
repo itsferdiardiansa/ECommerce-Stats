@@ -1,6 +1,6 @@
 import { OrderStatus } from '@prisma/generated'
 import type { PrismaClient, User } from '@prisma/generated'
-import type { ApiOrder, ApiProduct } from './types.js'
+import type { ApiOrder, ApiProduct } from './types'
 import { normalizeName, slugify, makeExternalUserData } from '@/libs/utils'
 
 export type StoreRepository = ReturnType<typeof createStoreRepository>

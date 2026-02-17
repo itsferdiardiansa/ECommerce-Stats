@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { LoginLogs } from '../login-history.js'
+import { LoginLogs } from '../login-history'
 import { LoginReason } from '@prisma/generated'
 import { db } from '@/libs/prisma'
 import type { Prisma } from '@prisma/generated'

@@ -1,11 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import {
-  createUser,
-  getUserById,
-  listUsers,
-  updateUser,
-  deleteUser,
-} from '../index.js'
+import { createUser, getUserById, listUsers, updateUser, deleteUser } from '..'
 import { db } from '@/libs/prisma'
 
 vi.mock('@/libs/prisma', () => ({

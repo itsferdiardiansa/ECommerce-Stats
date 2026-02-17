@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import * as tag from '../index.js'
+import * as tag from '..'
+import type { CreateTagInput } from '..'
 import { db } from '@/libs/prisma'
-import type { CreateTagInput } from '../index.js'
 
 vi.mock('@/libs/prisma', () => ({
   db: {

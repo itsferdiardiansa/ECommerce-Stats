@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { db } from '@/libs/prisma'
 import { Prisma } from '@prisma/generated'
-import * as billing from '../index.js'
+import * as billing from '..'
 
 vi.mock('@/libs/prisma', () => ({
   db: {

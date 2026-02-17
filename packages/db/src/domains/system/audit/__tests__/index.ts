@@ -1,8 +1,8 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import type { Prisma } from '@prisma/generated'
 import * as prisma from '@/libs/prisma'
-import { createAuditLog, getAuditLogById, listAuditLogs } from '../index.js'
-import type { CreateAuditLogInput } from '../types.js'
+import { createAuditLog, getAuditLogById, listAuditLogs } from '..'
+import type { CreateAuditLogInput } from '../types'
 
 vi.mock('@/libs/prisma', () => {
   const create = vi.fn()

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import * as category from '../index.js'
+import * as category from '..'
 import { db } from '@/libs/prisma'
-import type { CreateCategoryInput, UpdateCategoryInput } from '../index.js'
+import type { CreateCategoryInput, UpdateCategoryInput } from '..'
 
 vi.mock('@/libs/prisma', () => ({
   db: {

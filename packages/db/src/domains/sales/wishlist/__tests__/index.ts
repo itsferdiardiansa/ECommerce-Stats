@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import * as wishlist from '../index.js'
-import type { CreateWishlistInput, UpdateWishlistInput } from '../index.js'
+import * as wishlist from '..'
+import type { CreateWishlistInput, UpdateWishlistInput } from '..'
 import { db } from '@/libs/prisma'
 
 vi.mock('@/libs/prisma', () => ({

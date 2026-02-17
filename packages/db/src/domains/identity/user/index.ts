@@ -1,6 +1,6 @@
 import { db } from '@/libs/prisma'
 import { Prisma } from '@prisma/generated'
-import { CreateUserInput, UpdateUserInput, UserFilterParams } from './types.js'
+import { CreateUserInput, UpdateUserInput, UserFilterParams } from './types'
 import { PaginatedResult } from '@/types/filters'
 
 export async function createUser(data: CreateUserInput) {

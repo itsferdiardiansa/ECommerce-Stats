@@ -1,7 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import type { PrismaClient } from '@prisma/generated'
-import { createStoreRepository } from '../index.js'
-import type { ApiProduct, ApiOrder } from '../types.js'
+import { createStoreRepository } from '..'
+import type { ApiProduct, ApiOrder } from '../types'
 
 describe('store repository - upsertProduct and upsertOrder', () => {
   let dbMock: Record<string, unknown>

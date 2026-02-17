@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import * as review from '../index.js'
+import * as review from '..'
 import { db } from '@/libs/prisma'
-import type { CreateReviewInput, UpdateReviewInput } from '../index.js'
+import type { CreateReviewInput, UpdateReviewInput } from '..'
 
 vi.mock('@/libs/prisma', () => ({
   db: {

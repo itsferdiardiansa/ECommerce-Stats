@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { Authenticators } from '../authenticators.js'
+import { Authenticators } from '../authenticators'
 import { db } from '@/libs/prisma'
 import type { Prisma } from '@prisma/generated'
 

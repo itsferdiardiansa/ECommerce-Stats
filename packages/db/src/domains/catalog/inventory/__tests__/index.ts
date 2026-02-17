@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import * as inventory from '../index.js'
+import * as inventory from '..'
+import type { CreateInventoryLogInput } from '..'
 import { db } from '@/libs/prisma'
-import type { CreateInventoryLogInput } from '../index.js'
 
 vi.mock('@/libs/prisma', () => ({
   db: {

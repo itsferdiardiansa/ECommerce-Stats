@@ -1,9 +1,9 @@
 import { db } from '@/libs/prisma'
 import { Prisma } from '@prisma/generated'
-import { CartFilterParams, CreateCartInput, UpdateCartInput } from './types.js'
+import { CartFilterParams, CreateCartInput, UpdateCartInput } from './types'
 import { PaginatedResult } from '@/types/filters'
 
-export * from './types.js'
+export * from './types'
 
 export async function createCart(data: CreateCartInput) {
   if (!data.token) {

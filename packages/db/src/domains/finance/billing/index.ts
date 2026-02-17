@@ -10,10 +10,10 @@ import {
   InvoiceFilterParams,
   CreateInvoiceInput,
   UpdateInvoiceInput,
-} from './types.js'
+} from './types'
 import { PaginatedResult } from '@/types/filters'
 
-export * from './types.js'
+export * from './types'
 
 export async function createPlan(data: CreatePlanInput) {
   return db.plan.create({ data })

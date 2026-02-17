@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import * as order from '../index.js'
-import type { CreateOrderInput, UpdateOrderInput } from '../index.js'
+import * as order from '..'
+import type { CreateOrderInput, UpdateOrderInput } from '..'
 import { OrderStatus } from '@prisma/generated'
 import { db } from '@/libs/prisma'
 

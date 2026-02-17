@@ -4,7 +4,7 @@ import {
   ProductVariantFilterParams,
   CreateProductVariantInput,
   UpdateProductVariantInput,
-} from './types.js'
+} from './types'
 import { PaginatedResult } from '@/types/filters'
 
 export async function createProductVariant(data: CreateProductVariantInput) {
