@@ -3,8 +3,13 @@ generator client {
   engineType      = "client"
   output          = "../generated"
   adapter         = "@prisma/adapter-pg"
-  previewFeatures = ["driverAdapters", "multiSchema", "prismaSchemaFolder"]
+  previewFeatures = []
 }
+
+// generator zod {
+//   provider = "prisma-zod-generator"
+//   output   = "../../src/dtos"
+// }
 
 datasource db {
   provider = "postgresql"

@@ -1,2 +1,6 @@
 **/generated/
 **/generated-*
+
+coverage/
+
+src/dtos

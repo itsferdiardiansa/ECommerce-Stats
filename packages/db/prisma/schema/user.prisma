@@ -1,15 +1,15 @@
 model User {
   id              Int             @id @default(autoincrement())
   email           String          @unique
-  username        String?         @unique
-  passwordHash    String?
-  name            String?
+  username        String          @unique
+  passwordHash    String
+  name            String
   avatar          String?
   phone           String?
   emailVerifiedAt DateTime?
   phoneVerifiedAt DateTime?
   
-  isActive            Boolean         @default(true)
+  isActive            Boolean         @default(false)
   isStaff             Boolean         @default(false)
   isTwoFactorEnabled  Boolean         @default(false)
   

@@ -1,5 +1,5 @@
 import { db } from '@/libs/prisma'
-import { createStoreRepository } from './repositories'
+import { createStoreRepository } from '.'
 import type { ApiOrder, ApiProduct } from './types'
 
 const storeRepo = createStoreRepository(db)

@@ -9,5 +9,16 @@ export interface UserFilterParams extends BaseFilterParams {
   tierLevel?: string
 }
 
+// export type CreateUserInput = Prisma.UserCreateInput
 export type CreateUserInput = Prisma.UserCreateInput
 export type UpdateUserInput = Prisma.UserUpdateInput
+
+export interface UserAddressFilterParams extends BaseFilterParams {
+  userId?: number
+  type?: string
+  isDefault?: boolean
+  country?: string
+}
+
+export type CreateUserAddressInput = Prisma.UserAddressCreateInput
+export type UpdateUserAddressInput = Prisma.UserAddressUpdateInput

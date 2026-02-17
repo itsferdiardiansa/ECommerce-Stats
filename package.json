@@ -27,8 +27,7 @@
     "type-check": "nx affected --target=typecheck",
     "type-check:all": "nx run-many --target=typecheck --all",
     "dev:up": "docker compose up --build",
-    "dev:init-db": "docker compose run --rm init-db",
-    "dev:tasks": "pnpm --filter @rufieltics/tasks run dev"
+    "dev:init-db": "docker compose run --rm init-db"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
