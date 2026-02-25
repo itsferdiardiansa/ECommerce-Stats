@@ -1,0 +1,27 @@
+{
+  "create": {
+    "success": "Pengguna berhasil dibuat",
+    "error": "Gagal membuat pengguna"
+  },
+  "update": {
+    "success": "Pengguna berhasil diperbarui"
+  },
+  "delete": {
+    "success": "Pengguna berhasil dihapus"
+  },
+  "validation": {
+    "required": "{field} wajib diisi",
+    "invalid": "{field} tidak valid",
+    "minLength": "{field} minimal {min} karakter",
+    "fields": {
+      "email": "Email",
+      "username": "Username",
+      "password": "Kata sandi",
+      "name": "Nama",
+      "phone": "Nomor telepon"
+    },
+    "password": {
+      "pattern": "Password harus mengandung huruf besar, huruf kecil, angka, dan karakter spesial"
+    }
+  }
+}

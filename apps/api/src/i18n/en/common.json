@@ -1,0 +1,38 @@
+{
+  "errors": {
+    "internalServerError": "Internal server error occurred.",
+    "badRequest": "Bad request.",
+    "unauthorized": "Unauthorized. Please log in.",
+    "forbidden": "You do not have permission to perform this action.",
+    "notFound": "Resource not found.",
+    "conflict": "A conflict occurred. The resource may already exist.",
+    "unprocessableEntity": "Unprocessable Entity",
+    "tooManyRequests": "Too many requests. Please try again later.",
+    "serviceUnavailable": "Service temporarily unavailable."
+  },
+  "success": {
+    "generic": "Success"
+  },
+  "fields": {
+    "email": "Email Address",
+    "password": "Password",
+    "username": "Username"
+  },
+  "validation": {
+    "required": "{field} is required",
+    "invalid": "Invalid {field}",
+    "minLength": "{field} must be at least {min} characters long",
+    "maxLength": "{field} must be at most {max} characters long",
+    "min": "{field} must be at least {min}",
+    "max": "{field} must be at most {max}",
+    "minItems": "{field} must contain at least {min} items",
+    "maxItems": "{field} must contain at most {max} items",
+    "email": "{field} must be a valid email address",
+    "url": "{field} must be a valid URL",
+    "uuid": "{field} must be a valid UUID",
+    "date": "{field} must be a valid date",
+    "password_pattern": "Password must contain uppercase, lowercase, number and special char",
+    "phone_pattern": "Phone number format is invalid",
+    "pattern": "{field} does not match the required format"
+  }
+}

@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Type } from 'class-transformer'
 import {
   IsBoolean,
   IsDate,
@@ -6,75 +6,75 @@ import {
   IsInt,
   IsOptional,
   IsString,
-} from 'class-validator';
+} from 'class-validator'
 
 // Define a Base User Class that mirrors the Prisma Model
 export class UserEntity {
   @IsInt()
-  id: number;
+  id: number
 
   @IsEmail()
-  email: string;
+  email: string
 
   @IsString()
   @IsOptional()
-  username: string | null;
+  username: string | null
 
   @IsString()
   @IsOptional()
-  passwordHash: string | null;
+  passwordHash: string | null
 
   @IsString()
   @IsOptional()
-  name: string | null;
+  name: string | null
 
   @IsString()
   @IsOptional()
-  avatar: string | null;
+  avatar: string | null
 
   @IsString()
   @IsOptional()
-  phone: string | null;
+  phone: string | null
 
   @IsDate()
   @IsOptional()
   @Type(() => Date)
-  emailVerifiedAt: Date | null;
+  emailVerifiedAt: Date | null
 
   @IsDate()
   @IsOptional()
   @Type(() => Date)
-  phoneVerifiedAt: Date | null;
+  phoneVerifiedAt: Date | null
 
   @IsBoolean()
-  isActive: boolean;
+  isActive: boolean
 
   @IsBoolean()
-  isStaff: boolean;
+  isStaff: boolean
 
   @IsBoolean()
-  isTwoFactorEnabled: boolean;
+  isTwoFactorEnabled: boolean
 
   @IsDate()
   @IsOptional()
   @Type(() => Date)
-  lastLoginAt: Date | null;
+  lastLoginAt: Date | null
 
   @IsDate()
   @IsOptional()
   @Type(() => Date)
-  passwordChangedAt: Date | null;
+  passwordChangedAt: Date | null
 
   @IsDate()
   @Type(() => Date)
-  createdAt: Date;
+  createdAt: Date
 
   @IsDate()
   @Type(() => Date)
-  updatedAt: Date;
+  updatedAt: Date
 
   @IsDate()
   @IsOptional()
   @Type(() => Date)
-  deletedAt: Date | null;
+  deletedAt: Date | null
 }

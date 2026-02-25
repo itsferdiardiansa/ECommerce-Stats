@@ -29,6 +29,11 @@
     "dev:up": "docker compose up --build",
     "dev:init-db": "docker compose run --rm init-db"
   },
+  "pnpm": {
+    "overrides": {
+      "zod": "^4.3.6"
+    }
+  },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
     "@commitlint/cli": "^20.1.0",

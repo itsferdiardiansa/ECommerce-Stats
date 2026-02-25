@@ -1,5 +1,5 @@
-import { createZodDto } from 'nestjs-zod';
-import { z } from 'zod';
+import { createZodDto } from 'nestjs-zod'
+import { z } from 'zod'
 
 const UpdateUserSchema = z.object({
   email: z
@@ -26,6 +26,6 @@ const UpdateUserSchema = z.object({
       message: 'Password must be at least 8 characters long',
     })
     .optional(),
-});
+})
 
 export class UpdateUserDto extends createZodDto(UpdateUserSchema) {}

@@ -1,0 +1,27 @@
+{
+  "create": {
+    "success": "User created successfully",
+    "error": "Failed to create user"
+  },
+  "update": {
+    "success": "User updated successfully"
+  },
+  "delete": {
+    "success": "User deleted successfully"
+  },
+  "validation": {
+    "required": "{field} is required",
+    "invalid": "Invalid {field}",
+    "minLength": "{field} must be at least {min} characters long",
+    "fields": {
+      "email": "Email",
+      "username": "Username",
+      "password": "Password",
+      "name": "Name",
+      "phone": "Phone number"
+    },
+    "password": {
+      "pattern": "Password must contain uppercase, lowercase, number and special char"
+    }
+  }
+}

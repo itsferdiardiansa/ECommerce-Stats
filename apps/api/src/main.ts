@@ -1,13 +1,19 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import { ValidationPipe } from './common/pipes/validation.pipe';
+import { NestFactory } from '@nestjs/core'
+import { AppModule } from './app.module'
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter'
+import { ValidationPipe } from './common/pipes/validation.pipe'
+import { i18nZodErrorMap } from './common/i18n-zod.map'
+import { z } from 'zod'
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  app.setGlobalPrefix('api/v1');
-  app.useGlobalFilters(new AllExceptionsFilter());
-  app.useGlobalPipes(new ValidationPipe());
-  await app.listen(process.env.PORT ?? 3000);
+  // z.config({ customError }) is the Zod v4 way; z.setErrorMap is a deprecated compat alias
+  z.config({ customError: i18nZodErrorMap })
+  const app = await NestFactory.create(AppModule)
+
+  app.setGlobalPrefix('api/v1')
+  app.useGlobalFilters(new AllExceptionsFilter())
+  app.useGlobalPipes(new ValidationPipe())
+
+  await app.listen(process.env.PORT ?? 3000)
 }
-bootstrap();
+bootstrap()
