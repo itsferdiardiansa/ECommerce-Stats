@@ -57,7 +57,7 @@ model UserProfile {
   marketingOptIn Boolean   @default(false)
   themePref      String    @default("system")
   loyaltyPoints  Int       @default(0)
-  tierLevel      String    @default("standard")
+  tierLevel      TierLevel @default(BASIC)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -231,6 +231,14 @@ model Dashboard {
   creator        User         @relation(fields: [creatorId], references: [id])
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+
+  @@schema("user")
+}
+
+enum TierLevel {
+  BASIC
+  PRO
+  PREMIUM
 
   @@schema("user")
 }

@@ -144,7 +144,7 @@ describe('User Domain', () => {
 
       const result = await listUsers({
         marketingOptIn: true,
-        tierLevel: 'gold',
+        tierLevel: 'PRO',
       })
 
       expect(db.user.count).toHaveBeenCalled()

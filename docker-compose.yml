@@ -31,12 +31,18 @@ services:
       - DATABASE_URL=${DATABASE_URL}
   
   redis:
-    image: redis:7
+    image: redis:7-alpine
     restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
     ports:
       - "6379:6379"
     volumes:
       - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   pgadmin:
     image: dpage/pgadmin4

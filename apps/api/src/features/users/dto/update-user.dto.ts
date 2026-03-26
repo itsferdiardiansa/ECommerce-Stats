@@ -2,30 +2,19 @@ import { createZodDto } from 'nestjs-zod'
 import { z } from 'zod'
 
 const UpdateUserSchema = z.object({
-  email: z
+  username: z.string().min(3).optional(),
+  password: z
     .string()
-    .email({
-      message: 'Invalid email address',
+    .min(8)
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/, {
+      error: 'common.validation.password_pattern',
     })
     .optional(),
-  username: z
-    .string()
-    .min(3, {
-      message: 'Username must be at least 3 characters long',
-    })
-    .optional(),
-  name: z
-    .string()
-    .min(3, {
-      message: 'Name must be at least 3 characters long',
-    })
-    .optional(),
-  passwordHash: z
-    .string()
-    .min(8, {
-      message: 'Password must be at least 8 characters long',
-    })
-    .optional(),
+  name: z.string().min(3).optional(),
+  avatar: z.string().url({ error: 'common.validation.url' }).nullish(),
+  isActive: z.boolean().optional(),
+  isStaff: z.boolean().optional(),
+  isTwoFactorEnabled: z.boolean().optional(),
 })
 
 export class UpdateUserDto extends createZodDto(UpdateUserSchema) {}

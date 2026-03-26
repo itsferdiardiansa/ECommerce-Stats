@@ -2,8 +2,9 @@
   "errors": {
     "internalServerError": "Internal server error occurred.",
     "badRequest": "Bad request.",
-    "unauthorized": "Unauthorized. Please log in.",
+    "unauthorized": "Unauthorized. Please provide a valid access token.",
     "forbidden": "You do not have permission to perform this action.",
+    "admin_only": "Access denied. Admin privileges required.",
     "notFound": "Resource not found.",
     "conflict": "A conflict occurred. The resource may already exist.",
     "unprocessableEntity": "Unprocessable Entity",
@@ -16,7 +17,10 @@
   "fields": {
     "email": "Email Address",
     "password": "Password",
-    "username": "Username"
+    "username": "Username",
+    "name": "Name",
+    "phone": "Phone Number",
+    "avatar": "Avatar"
   },
   "validation": {
     "required": "{field} is required",

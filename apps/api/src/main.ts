@@ -6,7 +6,6 @@ import { i18nZodErrorMap } from './common/i18n-zod.map'
 import { z } from 'zod'
 
 async function bootstrap() {
-  // z.config({ customError }) is the Zod v4 way; z.setErrorMap is a deprecated compat alias
   z.config({ customError: i18nZodErrorMap })
   const app = await NestFactory.create(AppModule)
 
@@ -16,4 +15,4 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3000)
 }
-bootstrap()
+void bootstrap()

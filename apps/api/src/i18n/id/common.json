@@ -2,8 +2,9 @@
   "errors": {
     "internalServerError": "Terjadi kesalahan server internal.",
     "badRequest": "Permintaan tidak valid.",
-    "unauthorized": "Tidak terautentikasi. Silakan masuk.",
+    "unauthorized": "Tidak terautentikasi. Silakan sediakan token akses yang valid.",
     "forbidden": "Anda tidak memiliki izin untuk melakukan tindakan ini.",
+    "admin_only": "Akses ditolak. Memerlukan hak akses admin.",
     "notFound": "Sumber daya tidak ditemukan.",
     "conflict": "Terjadi konflik. Sumber daya mungkin sudah ada.",
     "unprocessableEntity": "Entitas tidak dapat diproses",
@@ -16,7 +17,10 @@
   "fields": {
     "email": "Alamat Email",
     "password": "Kata Sandi",
-    "username": "Nama Pengguna"
+    "username": "Nama Pengguna",
+    "name": "Nama",
+    "phone": "Nomor Telepon",
+    "avatar": "Foto Profil"
   },
   "validation": {
     "required": "{field} wajib diisi",

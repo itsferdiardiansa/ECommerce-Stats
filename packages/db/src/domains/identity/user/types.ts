@@ -1,15 +1,17 @@
 import { BaseFilterParams } from '@/types/filters'
-import { Prisma } from '@prisma/generated'
+import { Prisma, TierLevel } from '@prisma/generated'
 
 export interface UserFilterParams extends BaseFilterParams {
   email?: string
   name?: string
   isActive?: boolean
+  isStaff?: boolean
+  isTwoFactorEnabled?: boolean
   marketingOptIn?: boolean
-  tierLevel?: string
+  tierLevel?: TierLevel
+  includeDeleted?: boolean
 }
 
-// export type CreateUserInput = Prisma.UserCreateInput
 export type CreateUserInput = Prisma.UserCreateInput
 export type UpdateUserInput = Prisma.UserUpdateInput
 

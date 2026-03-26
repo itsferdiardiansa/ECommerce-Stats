@@ -9,19 +9,9 @@
   "delete": {
     "success": "Pengguna berhasil dihapus"
   },
-  "validation": {
-    "required": "{field} wajib diisi",
-    "invalid": "{field} tidak valid",
-    "minLength": "{field} minimal {min} karakter",
-    "fields": {
-      "email": "Email",
-      "username": "Username",
-      "password": "Kata sandi",
-      "name": "Nama",
-      "phone": "Nomor telepon"
-    },
-    "password": {
-      "pattern": "Password harus mengandung huruf besar, huruf kecil, angka, dan karakter spesial"
-    }
+  "errors": {
+    "user_not_found": "Pengguna tidak ditemukan",
+    "user_already_deleted": "Pengguna sudah dihapus",
+    "cannot_update_deleted_user": "Tidak dapat memperbarui pengguna yang sudah dihapus. Mohon pulihkan pengguna terlebih dahulu."
   }
 }

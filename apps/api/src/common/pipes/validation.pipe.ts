@@ -3,10 +3,13 @@ import { ZodValidationPipe } from 'nestjs-zod'
 
 @Injectable()
 export class ValidationPipe extends ZodValidationPipe {
-  public override transform(value: unknown, metadata: ArgumentMetadata) {
+  public override transform(
+    value: unknown,
+    metadata: ArgumentMetadata
+  ): unknown {
     if (metadata.type === 'body' && !value) {
-      return super.transform({}, metadata)
+      return super.transform({}, metadata) as unknown
     }
-    return super.transform(value, metadata)
+    return super.transform(value, metadata) as unknown
   }
 }

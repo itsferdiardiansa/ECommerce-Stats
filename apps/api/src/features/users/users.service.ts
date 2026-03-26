@@ -1,46 +1,78 @@
-import { Injectable, BadRequestException } from '@nestjs/common'
 import {
-  createUser,
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common'
+import { I18nContext } from 'nestjs-i18n'
+import * as argon2 from 'argon2'
+import {
   deleteUser,
   getUserById,
   listUsers,
   updateUser,
 } from '@rufieltics/db/domains/identity/user'
-import * as argon2 from 'argon2'
-import type { CreateUserDto } from './dto/create-user.dto'
+import type { UserFilterParams } from '@rufieltics/db/domains/identity/user'
 import type { UpdateUserDto } from './dto/update-user.dto'
+import type { ListUserDto } from './dto/list-user.dto'
 
 @Injectable()
 export class UsersService {
-  async create(data: CreateUserDto) {
+  async findOne(id: number, i18n: I18nContext) {
+    const user = await getUserById(id)
+
+    if (!user) {
+      throw new NotFoundException(i18n.t('users.errors.user_not_found'))
+    }
+
+    return user
+  }
+
+  async update(id: number, data: UpdateUserDto, i18n: I18nContext) {
+    const existingUser = await getUserById(id)
+
+    if (!existingUser) {
+      throw new NotFoundException(i18n.t('users.errors.user_not_found'))
+    }
+
+    if (existingUser.deletedAt) {
+      throw new BadRequestException(
+        i18n.t('users.errors.cannot_update_deleted_user')
+      )
+    }
+
+    const { password, ...rest } = data
+    const payload: Record<string, unknown> = { ...rest }
+
+    if (password) {
+      payload.passwordHash = await argon2.hash(password)
+      payload.passwordChangedAt = new Date()
+    }
+
     try {
-      const { password, ...rest } = data
-      const passwordHash = await argon2.hash(password)
-      return await createUser({
-        ...rest,
-        passwordHash,
-      })
-    } catch (err) {
-      throw new BadRequestException((err as Error).message)
+      return await updateUser(id, payload)
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes('Record to update not found')
+      ) {
+        throw new NotFoundException(i18n.t('users.errors.user_not_found'))
+      }
+      throw error
     }
   }
 
-  async findOne(id: number) {
-    return getUserById(id)
-  }
-
-  async update(id: number, data: UpdateUserDto) {
-    if (data.passwordHash) {
-      data.passwordHash = await argon2.hash(data.passwordHash)
+  async remove(id: number, i18n: I18nContext) {
+    try {
+      return await deleteUser(id)
+    } catch (error) {
+      if (error instanceof Error && error.message === 'User not found') {
+        throw new NotFoundException(i18n.t('users.errors.user_not_found'))
+      }
+      throw error
     }
-    return updateUser(id, data)
   }
 
-  async remove(id: number) {
-    return deleteUser(id)
-  }
-
-  async list(params?: any) {
-    return listUsers(params)
+  async list(params: ListUserDto) {
+    return listUsers(params as unknown as UserFilterParams)
   }
 }

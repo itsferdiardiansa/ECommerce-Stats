@@ -9,19 +9,9 @@
   "delete": {
     "success": "User deleted successfully"
   },
-  "validation": {
-    "required": "{field} is required",
-    "invalid": "Invalid {field}",
-    "minLength": "{field} must be at least {min} characters long",
-    "fields": {
-      "email": "Email",
-      "username": "Username",
-      "password": "Password",
-      "name": "Name",
-      "phone": "Phone number"
-    },
-    "password": {
-      "pattern": "Password must contain uppercase, lowercase, number and special char"
-    }
+  "errors": {
+    "user_not_found": "User not found",
+    "user_already_deleted": "User has already been deleted",
+    "cannot_update_deleted_user": "Cannot update a deleted user. Please restore the user first."
   }
 }

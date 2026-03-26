@@ -5,12 +5,66 @@
 import type { Path } from "nestjs-i18n";
 /* prettier-ignore */
 export type I18nTranslations = {
+    "admin": {
+        "lockouts": {
+            "list_success": string;
+            "get_success": string;
+            "cleared_success": string;
+            "not_found": string;
+            "already_cleared": string;
+        };
+    };
+    "auth": {
+        "register": {
+            "success": string;
+        };
+        "verify": {
+            "success": string;
+        };
+        "resend": {
+            "success": string;
+        };
+        "login": {
+            "success": string;
+        };
+        "logout": {
+            "success": string;
+        };
+        "my_lockout": {
+            "success": string;
+        };
+        "errors": {
+            "email_already_exists": string;
+            "email_already_exists_deleted": string;
+            "username_already_exists": string;
+            "username_already_exists_deleted": string;
+            "user_not_found": string;
+            "invalid_credentials": string;
+            "account_not_verified": string;
+            "already_verified": string;
+            "invalid_code": string;
+            "code_expired": string;
+            "code_still_valid": string;
+            "code_still_valid_seconds": string;
+            "account_locked": string;
+            "account_locked_seconds": string;
+            "verification_locked": string;
+            "verification_locked_seconds": string;
+            "invalid_code_last_attempt": string;
+            "too_many_verification_attempts": string;
+        };
+        "validation": {
+            "code_length": string;
+            "code_numeric": string;
+        };
+    };
     "common": {
         "errors": {
             "internalServerError": string;
             "badRequest": string;
             "unauthorized": string;
             "forbidden": string;
+            "admin_only": string;
             "notFound": string;
             "conflict": string;
             "unprocessableEntity": string;
@@ -24,6 +78,9 @@ export type I18nTranslations = {
             "email": string;
             "password": string;
             "username": string;
+            "name": string;
+            "phone": string;
+            "avatar": string;
         };
         "validation": {
             "required": string;
@@ -54,20 +111,10 @@ export type I18nTranslations = {
         "delete": {
             "success": string;
         };
-        "validation": {
-            "required": string;
-            "invalid": string;
-            "minLength": string;
-            "fields": {
-                "email": string;
-                "username": string;
-                "password": string;
-                "name": string;
-                "phone": string;
-            };
-            "password": {
-                "pattern": string;
-            };
+        "errors": {
+            "user_not_found": string;
+            "user_already_deleted": string;
+            "cannot_update_deleted_user": string;
         };
     };
 };

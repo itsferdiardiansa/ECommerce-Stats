@@ -1,15 +1,5 @@
 import type { ZodErrorMap } from 'zod'
 
-/**
- * Global Zod v4 error map.
- *
- * Returns raw i18n KEYS — no translation happens here.
- * Translation is deferred to AllExceptionsFilter where the full HTTP context
- * (and therefore the correct request language) is available via I18nContext.current(host).
- *
- * Fields with an explicit schema-level error (z.string({ error: 'my.key' })) bypass
- * this map entirely — Zod resolves those before calling customError.
- */
 export const i18nZodErrorMap: ZodErrorMap = issue => {
   switch (issue.code) {
     case 'invalid_type':

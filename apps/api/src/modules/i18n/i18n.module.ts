@@ -23,7 +23,6 @@ import path from 'path'
           'src/modules/i18n/i18n.generated.ts'
         ),
       }),
-      // resolvers must be top-level in forRootAsync, not inside useFactory
       resolvers: [
         { use: QueryResolver, options: ['lang'] },
         AcceptLanguageResolver,
