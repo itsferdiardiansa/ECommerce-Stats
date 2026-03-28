@@ -8,12 +8,17 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  UseGuards,
+  ParseIntPipe,
 } from '@nestjs/common'
 import { I18n, I18nContext } from 'nestjs-i18n'
 import { UsersService } from './users.service'
 import { UpdateUserDto } from './dto/update-user.dto'
 import { ListUserDto } from './dto/list-user.dto'
 import { success, paginated } from '@/common/helpers/api-response.helper'
+import { ActiveUserGuard } from '@/common/guards/active-user.guard'
+import { CurrentUser } from '@/common/decorators/current-user.decorator'
+import type { CurrentUserPayload } from '@/common/decorators/current-user.decorator'
 
 @Controller('users')
 export class UsersController {
@@ -26,25 +31,39 @@ export class UsersController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string, @I18n() i18n: I18nContext) {
-    const user = await this.usersService.findOne(Number(id), i18n)
+  async findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @I18n() i18n: I18nContext
+  ) {
+    const user = await this.usersService.findOne(id, i18n)
     return success(i18n.t('common.success.generic'), user)
   }
 
   @Put(':id')
+  @UseGuards(ActiveUserGuard)
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateUserDto,
-    @I18n() i18n: I18nContext
+    @I18n() i18n: I18nContext,
+    @CurrentUser() user: CurrentUserPayload
   ) {
-    const user = await this.usersService.update(Number(id), dto, i18n)
-    return success(i18n.t('users.update.success'), user)
+    const result = await this.usersService.update(
+      id,
+      dto,
+      i18n,
+      user.id,
+      user.isStaff
+    )
+    return success(i18n.t('users.update.success'), result)
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  async remove(@Param('id') id: string, @I18n() i18n: I18nContext) {
-    const user = await this.usersService.remove(Number(id), i18n)
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @I18n() i18n: I18nContext
+  ) {
+    const user = await this.usersService.remove(id, i18n)
     return success(i18n.t('users.delete.success'), user)
   }
 }

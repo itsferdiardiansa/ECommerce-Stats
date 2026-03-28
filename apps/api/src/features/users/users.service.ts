@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common'
 import { I18nContext } from 'nestjs-i18n'
 import * as argon2 from 'argon2'
@@ -13,6 +14,7 @@ import {
 } from '@rufieltics/db/domains/identity/user'
 import type { UserFilterParams } from '@rufieltics/db/domains/identity/user'
 import type { UpdateUserDto } from './dto/update-user.dto'
+import type { AdminUpdateUserDto } from './dto/admin-update-user.dto'
 import type { ListUserDto } from './dto/list-user.dto'
 
 @Injectable()
@@ -27,7 +29,13 @@ export class UsersService {
     return user
   }
 
-  async update(id: number, data: UpdateUserDto, i18n: I18nContext) {
+  async update(
+    id: number,
+    data: UpdateUserDto | AdminUpdateUserDto,
+    i18n: I18nContext,
+    requestingUserId: number,
+    isAdmin = false
+  ) {
     const existingUser = await getUserById(id)
 
     if (!existingUser) {
@@ -38,6 +46,10 @@ export class UsersService {
       throw new BadRequestException(
         i18n.t('users.errors.cannot_update_deleted_user')
       )
+    }
+
+    if (!isAdmin && existingUser.id !== requestingUserId) {
+      throw new ForbiddenException(i18n.t('common.errors.forbidden'))
     }
 
     const { password, ...rest } = data

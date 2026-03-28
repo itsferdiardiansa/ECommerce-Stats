@@ -1,7 +1,7 @@
 import { createZodDto } from 'nestjs-zod'
 import { z } from 'zod'
 
-const UpdateUserSchema = z.object({
+export const UpdateUserSchema = z.object({
   username: z.string().min(3).optional(),
   password: z
     .string()
@@ -12,9 +12,6 @@ const UpdateUserSchema = z.object({
     .optional(),
   name: z.string().min(3).optional(),
   avatar: z.string().url({ error: 'common.validation.url' }).nullish(),
-  isActive: z.boolean().optional(),
-  isStaff: z.boolean().optional(),
-  isTwoFactorEnabled: z.boolean().optional(),
 })
 
 export class UpdateUserDto extends createZodDto(UpdateUserSchema) {}
