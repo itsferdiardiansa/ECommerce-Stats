@@ -5,28 +5,57 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { I18nContext } from 'nestjs-i18n'
+import { EventEmitter2 } from '@nestjs/event-emitter'
 import * as argon2 from 'argon2'
+import { randomUUID } from 'crypto'
 import {
   createUser,
   getUserByEmail,
+  getUserById,
   updateUser,
   getUserByEmailIncludingDeleted,
   getUserByUsernameIncludingDeleted,
 } from '@rufieltics/db/domains/identity/user'
+import {
+  Organizations,
+  OrganizationMembers,
+} from '@rufieltics/db/domains/identity/organization'
+import { Sessions } from '@rufieltics/db/domains/auth'
 import { RedisService } from '@/modules/redis/redis.service'
+import { JwtService } from '@/modules/jwt/jwt.service'
+import type { AccessTokenPayload } from '@/modules/jwt/jwt.service'
 import type { RegisterDto } from './dto/register.dto'
 import type { VerifyEmailDto } from './dto/verify-email.dto'
 import type { ResendVerificationDto } from './dto/resend-verification.dto'
 import type { LoginDto } from './dto/login.dto'
+import type { RefreshTokenDto } from './dto/refresh-token.dto'
 import { formatRemainingTime } from '@/utils/datetime'
+import { generateDeviceFingerprint } from '@/utils/fingerprint'
+import {
+  generateVerificationCode,
+  generateOrgSlug,
+  pickPrimaryMembership,
+} from '@/utils/auth'
+import { LoginSuccessEvent } from './listeners/auth-events.listener'
 
-function generateVerificationCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString()
+interface StoredSession {
+  userId: number
+  refreshTokenHash: string
+  isRevoked: boolean
+  expires: string
+  role: string | null
+  orgId: string | null
 }
+
+const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly redisService: RedisService) {}
+  constructor(
+    private readonly redisService: RedisService,
+    private readonly jwtService: JwtService,
+    private readonly eventEmitter: EventEmitter2
+  ) {}
 
   async register(data: RegisterDto, i18n: I18nContext) {
     try {
@@ -83,7 +112,6 @@ export class AuthService {
       })
 
       const code = generateVerificationCode()
-
       await this.redisService.setVerificationCode(email, code, 300)
 
       console.log(`[DEV] Verification code for ${email}: ${code}`)
@@ -174,14 +202,36 @@ export class AuthService {
       )
     }
 
-    const updatedUser = await updateUser(user.id, {
-      isActive: true,
-      emailVerifiedAt: new Date(),
-    })
-
-    await this.redisService.deleteVerificationCode(email)
+    const [updatedUser] = await Promise.all([
+      updateUser(user.id, {
+        isActive: true,
+        emailVerifiedAt: new Date(),
+      }),
+      this.redisService.deleteVerificationCode(email),
+      this.provisionPersonalWorkspace(user.id, user.name, user.username),
+    ])
 
     return updatedUser
+  }
+
+  private async provisionPersonalWorkspace(
+    userId: number,
+    name: string,
+    username: string
+  ) {
+    const existing = await OrganizationMembers.listByUser(userId)
+    if (existing.length > 0) return
+
+    const org = await Organizations.create({
+      name: `${name}'s Workspace`,
+      slug: generateOrgSlug(username),
+    })
+
+    await OrganizationMembers.addMember({
+      organizationId: org.id,
+      userId,
+      role: 'OWNER',
+    })
   }
 
   async resendVerification(data: ResendVerificationDto, i18n: I18nContext) {
@@ -227,7 +277,6 @@ export class AuthService {
     }
 
     const code = generateVerificationCode()
-
     await this.redisService.setVerificationCode(email, code, 300)
 
     console.log(`[DEV] New verification code for ${email}: ${code}`)
@@ -237,7 +286,12 @@ export class AuthService {
     }
   }
 
-  async login(data: LoginDto, i18n: I18nContext) {
+  async login(
+    data: LoginDto,
+    i18n: I18nContext,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
     const user = await getUserByEmail(data.email)
     if (!user) {
       throw new UnauthorizedException(i18n.t('auth.errors.invalid_credentials'))
@@ -257,14 +311,232 @@ export class AuthService {
       )
     }
 
-    throw new BadRequestException(
-      'Login not yet fully implemented. JWT and session management required.'
+    const memberships = await OrganizationMembers.listByUser(user.id)
+    const primary = pickPrimaryMembership(memberships)
+
+    const role = primary?.role ?? null
+    const orgId = primary?.organizationId ?? null
+
+    const jti = randomUUID()
+    const expires = new Date(Date.now() + REFRESH_TTL_SECONDS * 1000)
+
+    const accessPayload: AccessTokenPayload = {
+      sub: user.id,
+      email: user.email,
+      isStaff: user.isStaff,
+      role,
+      orgId,
+      jti,
+    }
+
+    const accessToken = this.jwtService.signAccessToken(accessPayload)
+    const refreshToken = this.jwtService.signRefreshToken(jti)
+    const refreshTokenHash = await argon2.hash(refreshToken)
+
+    const { hash: deviceFingerprint, geo } = generateDeviceFingerprint(
+      user.id,
+      userAgent,
+      ipAddress
     )
+
+    const existingSession = await Sessions.findByFingerprint(
+      user.id,
+      deviceFingerprint
+    )
+    if (existingSession && existingSession.jti !== jti) {
+      await this.redisService.deleteSession(existingSession.jti)
+    }
+
+    await Promise.all([
+      Sessions.upsertByFingerprint({
+        userId: user.id,
+        jti,
+        refreshTokenHash,
+        orgId,
+        role,
+        ipAddress,
+        userAgent,
+        deviceFingerprint,
+        expires,
+      }),
+      this.redisService.setSession(
+        jti,
+        {
+          userId: user.id,
+          refreshTokenHash,
+          isRevoked: false,
+          expires: expires.toISOString(),
+          role,
+          orgId,
+        },
+        REFRESH_TTL_SECONDS
+      ),
+    ])
+
+    this.eventEmitter.emit(
+      'auth.login.success',
+      new LoginSuccessEvent(user.id, ipAddress || null, userAgent || null, geo)
+    )
+
+    return {
+      accessToken,
+      refreshToken,
+      expiresIn: this.jwtService.getAccessExpiresIn(),
+    }
   }
 
-  logout() {
-    throw new BadRequestException(
-      'Logout not yet implemented. Session management required.'
+  async refreshToken(
+    data: RefreshTokenDto,
+    i18n: I18nContext,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
+    const { jti } = this.jwtService.verifyRefreshToken(data.refreshToken)
+
+    const sessionData = (await this.redisService.getSession(
+      jti
+    )) as StoredSession | null
+
+    let storedHash: string
+    let userId: number
+    let role: string | null = null
+    let orgId: string | null = null
+
+    if (sessionData) {
+      if (
+        sessionData.isRevoked ||
+        new Date(sessionData.expires) <= new Date()
+      ) {
+        throw new UnauthorizedException(
+          i18n.t('auth.errors.invalid_credentials')
+        )
+      }
+      storedHash = sessionData.refreshTokenHash
+      userId = sessionData.userId
+      role = sessionData.role
+      orgId = sessionData.orgId
+    } else {
+      const dbSession = await Sessions.findByJti(jti)
+      if (
+        !dbSession ||
+        dbSession.isRevoked ||
+        dbSession.expires <= new Date()
+      ) {
+        throw new UnauthorizedException(
+          i18n.t('auth.errors.invalid_credentials')
+        )
+      }
+      storedHash = dbSession.refreshTokenHash
+      userId = dbSession.userId
+      role = dbSession.role
+      orgId = dbSession.orgId
+    }
+
+    const isValid = await argon2.verify(storedHash, data.refreshToken)
+    if (!isValid) {
+      throw new UnauthorizedException(i18n.t('auth.errors.invalid_credentials'))
+    }
+
+    await Promise.all([
+      this.redisService.deleteSession(jti),
+      Sessions.revokeByJti(jti),
+    ])
+
+    const user = await getUserById(userId)
+    if (!user) {
+      throw new UnauthorizedException(i18n.t('auth.errors.user_not_found'))
+    }
+
+    const newJti = randomUUID()
+    const newExpires = new Date(Date.now() + REFRESH_TTL_SECONDS * 1000)
+
+    const accessPayload: AccessTokenPayload = {
+      sub: user.id,
+      email: user.email,
+      isStaff: user.isStaff,
+      role,
+      orgId,
+      jti: newJti,
+    }
+
+    const newAccessToken = this.jwtService.signAccessToken(accessPayload)
+    const newRefreshToken = this.jwtService.signRefreshToken(newJti)
+    const newRefreshTokenHash = await argon2.hash(newRefreshToken)
+
+    const { hash: deviceFingerprint } = generateDeviceFingerprint(
+      user.id,
+      userAgent,
+      ipAddress
     )
+
+    await Promise.all([
+      Sessions.upsertByFingerprint({
+        userId: user.id,
+        jti: newJti,
+        refreshTokenHash: newRefreshTokenHash,
+        orgId,
+        role,
+        ipAddress,
+        userAgent,
+        deviceFingerprint,
+        expires: newExpires,
+      }),
+      this.redisService.setSession(
+        newJti,
+        {
+          userId: user.id,
+          refreshTokenHash: newRefreshTokenHash,
+          isRevoked: false,
+          expires: newExpires.toISOString(),
+          role,
+          orgId,
+        },
+        REFRESH_TTL_SECONDS
+      ),
+    ])
+
+    return {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+      expiresIn: this.jwtService.getAccessExpiresIn(),
+    }
+  }
+
+  async logout(jti: string) {
+    await Promise.all([
+      this.redisService.deleteSession(jti),
+      Sessions.revokeByJti(jti),
+    ])
+  }
+
+  async revokeOtherSessions(
+    userId: number,
+    currentJti: string,
+    i18n: I18nContext
+  ) {
+    const activeSessions = await Sessions.findActiveByUserId(userId)
+    const otherJtis = activeSessions
+      .map(session => session.jti)
+      .filter(jti => jti !== currentJti)
+
+    if (otherJtis.length === 0) {
+      return {
+        message: i18n.t('auth.success.no_other_sessions', {
+          defaultValue: 'No other active sessions found.',
+        }),
+      }
+    }
+
+    await Promise.all(
+      otherJtis.map(jti => this.redisService.deleteSession(jti))
+    )
+
+    await Sessions.revokeAllExceptJti(userId, currentJti)
+
+    return {
+      message: i18n.t('auth.success.sessions_revoked', {
+        defaultValue: 'Successfully signed out of all other devices.',
+      }),
+    }
   }
 }

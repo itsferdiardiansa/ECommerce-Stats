@@ -24,6 +24,9 @@ export type I18nTranslations = {
         "resend": {
             "success": string;
         };
+        "refresh": {
+            "success": string;
+        };
         "login": {
             "success": string;
         };

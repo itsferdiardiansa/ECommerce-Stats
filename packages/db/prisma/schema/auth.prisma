@@ -20,12 +20,30 @@ model Account {
 }
 
 model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       Int
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String    @id @default(cuid())
+  userId           Int
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  jti              String    @unique
+  refreshTokenHash String
+
+  orgId            String?
+  role             String?
+
+  ipAddress        String?
+  userAgent        String?
+
+  deviceFingerprint String
+
+  lastUsedAt       DateTime?
+  isRevoked        Boolean   @default(false)
+  expires          DateTime
+  createdAt        DateTime  @default(now())
+
+  @@index([userId])
+  @@index([jti])
+  @@index([expires, isRevoked])
+  @@unique([userId, deviceFingerprint])
   @@schema("auth")
 }
 
@@ -80,6 +98,8 @@ model LoginHistory {
   userAgent String?
   city      String?
   country   String?
+  latitude  Float?
+  longitude Float?
   isSuccess Boolean  @default(true)
   reason    LoginReason?
   createdAt DateTime @default(now())

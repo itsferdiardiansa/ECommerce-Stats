@@ -27,6 +27,11 @@
       "type": "string"
     },
     {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "lockout_id",
       "value": "1",
       "type": "string"
@@ -174,6 +179,58 @@
                   "        pm.collectionVariables.set('access_token', response.data.accessToken);",
                   "        console.log('Access token saved');",
                   "    }",
+                  "    if (response.data && response.data.refreshToken) {",
+                  "        pm.collectionVariables.set('refresh_token', response.data.refreshToken);",
+                  "        console.log('Refresh token saved');",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Exchange a valid refresh token for a new access + refresh token pair. The used refresh token is immediately invalidated (single-use rotation). If the same refresh token is used twice, both are revoked."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.accessToken) {",
+                  "        pm.collectionVariables.set('access_token', response.data.accessToken);",
+                  "        console.log('New access token saved');",
+                  "    }",
+                  "    if (response.data && response.data.refreshToken) {",
+                  "        pm.collectionVariables.set('refresh_token', response.data.refreshToken);",
+                  "        console.log('New refresh token saved');",
+                  "    }",
                   "}"
                 ]
               }
@@ -187,7 +244,8 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{access_token}}"
+                "value": "Bearer {{access_token}}",
+                "description": "Required — valid access token"
               },
               {
                 "key": "Accept-Language",
@@ -199,9 +257,24 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "logout"]
             },
-            "description": "Logout and invalidate the current session/token."
+            "description": "Revokes the current session. Deletes the refresh token from Redis and marks the DB session as isRevoked=true. Subsequent /auth/refresh calls with the same token will return 401."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set('access_token', '');",
+                  "    pm.collectionVariables.set('refresh_token', '');",
+                  "    console.log('Tokens cleared after logout');",
+                  "}"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -666,7 +739,7 @@
           "response": []
         },
         {
-          "name": "Update User",
+          "name": "Update User (Own Profile)",
           "request": {
             "method": "PUT",
             "header": [
@@ -675,20 +748,57 @@
                 "value": "application/json"
               },
               {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "Required — must be the token of the user being updated"
+              },
+              {
                 "key": "Accept-Language",
                 "value": "en"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"John Doe Updated\",\n  \"phone\": \"+9876543210\",\n  \"isActive\": true\n}"
+              "raw": "{\n  \"name\": \"John Doe Updated\",\n  \"username\": \"johndoe_new\",\n  \"avatar\": \"https://example.com/new-avatar.jpg\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/users/{{user_id}}",
               "host": ["{{base_url}}"],
               "path": ["users", "{{user_id}}"]
             },
-            "description": "Update user information. All fields are optional."
+            "description": "Update own profile. Requires a valid access token. Only name, username, password, and avatar can be updated here. Privilege fields (isActive, isStaff, isTwoFactorEnabled) are intentionally excluded — use the admin endpoint for those."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Update User (Privilege Fields)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "Required — must be a staff (isStaff=true) access token"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": true,\n  \"isStaff\": false,\n  \"isTwoFactorEnabled\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users", "{{user_id}}"]
+            },
+            "description": "Admin-only endpoint to update privilege fields (isActive, isStaff, isTwoFactorEnabled). Requires a Bearer token from a user with isStaff=true. Returns 403 for non-staff callers."
           },
           "response": []
         },

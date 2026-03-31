@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common'
 import { I18nContext } from 'nestjs-i18n'
+import { JwtService } from '@/modules/jwt/jwt.service'
 import type { CurrentUserPayload } from '@/common/decorators/current-user.decorator'
 
 interface RequestWithUser {
@@ -16,6 +17,8 @@ interface RequestWithUser {
 
 @Injectable()
 export class ActiveUserGuard implements CanActivate {
+  constructor(private readonly jwtService: JwtService) {}
+
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<RequestWithUser>()
     const i18n = I18nContext.current(context)
@@ -27,10 +30,12 @@ export class ActiveUserGuard implements CanActivate {
       )
     }
 
+    const token = authHeader.slice(7)
+    const payload = this.jwtService.verifyAccessToken(token)
+
     request.user = {
-      id: 1,
-      email: 'test@example.com',
-      isStaff: true,
+      ...payload,
+      id: payload.sub,
       isActive: true,
     }
 

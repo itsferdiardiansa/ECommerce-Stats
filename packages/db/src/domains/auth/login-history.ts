@@ -8,7 +8,14 @@ export const LoginLogs = {
 
   async logSuccess(
     userId: number,
-    metadata?: { ip?: string; agent?: string; city?: string; country?: string }
+    metadata?: { 
+      ip?: string; 
+      agent?: string; 
+      city?: string; 
+      country?: string;
+      latitude?: number | null;
+      longitude?: number | null;
+    }
   ) {
     return db.loginHistory.create({
       data: {
@@ -19,6 +26,8 @@ export const LoginLogs = {
         userAgent: metadata?.agent,
         city: metadata?.city,
         country: metadata?.country,
+        latitude: metadata?.latitude ?? null,
+        longitude: metadata?.longitude ?? null,
       },
     })
   },
