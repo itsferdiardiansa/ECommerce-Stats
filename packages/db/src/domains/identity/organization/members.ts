@@ -1,7 +1,8 @@
 import { db } from '@/libs/prisma'
 import { Prisma, Role } from '@prisma/generated'
 
-export type CreateOrganizationMemberInput = Prisma.OrganizationMemberUncheckedCreateInput
+export type CreateOrganizationMemberInput =
+  Prisma.OrganizationMemberUncheckedCreateInput
 
 export const OrganizationMembers = {
   async addMember(data: CreateOrganizationMemberInput) {

@@ -21,7 +21,9 @@ export interface FingerprintResult {
 
 export function generateDeviceFingerprint(
   userId: number,
+  // eslint-disable-next-line @typescript-eslint/no-inferrable-types
   userAgentString: string = '',
+  // eslint-disable-next-line @typescript-eslint/no-inferrable-types
   ipAddress: string = ''
 ): FingerprintResult {
   const ua = new UAParser(userAgentString).getResult()

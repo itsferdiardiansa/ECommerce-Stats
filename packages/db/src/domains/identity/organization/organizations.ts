@@ -40,8 +40,18 @@ export const Organizations = {
     })
   },
 
-  async list(params: OrganizationFilterParams = {}): Promise<PaginatedResult<Organization>> {
-    const { page = 1, limit = 10, search, name, slug, sortBy = 'createdAt', sortOrder = 'desc' } = params
+  async list(
+    params: OrganizationFilterParams = {}
+  ): Promise<PaginatedResult<Organization>> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      name,
+      slug,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = params
 
     const safePage = Math.max(1, page)
     const safeLimit = Math.max(1, Math.min(100, limit))

@@ -23,7 +23,9 @@ async function main() {
 
   for (const user of users) {
     if (user.memberships.length > 0) {
-      console.log(`⏭  Skipping ${user.email} — already has ${user.memberships.length} org(s)`)
+      console.log(
+        `⏭  Skipping ${user.email} — already has ${user.memberships.length} org(s)`
+      )
       skipped++
       continue
     }
@@ -43,15 +45,19 @@ async function main() {
       },
     })
 
-    console.log(`✅ Created workspace "${org.name}" (${org.slug}) for ${user.email}`)
+    console.log(
+      `✅ Created workspace "${org.name}" (${org.slug}) for ${user.email}`
+    )
     created++
   }
 
-  console.log(`\nDone — ${created} workspace(s) created, ${skipped} user(s) skipped.`)
+  console.log(
+    `\nDone — ${created} workspace(s) created, ${skipped} user(s) skipped.`
+  )
 }
 
 main()
-  .catch((e) => {
+  .catch(e => {
     console.error(e)
     process.exit(1)
   })

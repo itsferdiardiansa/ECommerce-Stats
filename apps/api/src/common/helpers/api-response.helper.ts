@@ -1,11 +1,11 @@
 import { HttpStatus } from '@nestjs/common'
 
-export interface ApiResponseOptions<T = any> {
+export interface ApiResponseOptions<T> {
   message: string
   data?: T
 }
 
-export interface PaginatedApiResponseOptions<T = any> {
+export interface PaginatedApiResponseOptions<T> {
   message: string
   items: T[]
   pagination: {
@@ -16,7 +16,7 @@ export interface PaginatedApiResponseOptions<T = any> {
   }
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T> {
   status: number
   version: string
   timestamp: string
@@ -41,7 +41,7 @@ export interface ApiErrorResponse {
 
 const API_VERSION = 'v1'
 
-export function success<T = any>(
+export function success<T>(
   message: string,
   data: T = null as T,
   statusCode: HttpStatus = HttpStatus.OK
@@ -55,11 +55,11 @@ export function success<T = any>(
   }
 }
 
-export function created<T = any>(message: string, data: T): ApiResponse<T> {
+export function created<T>(message: string, data: T): ApiResponse<T> {
   return success(message, data, HttpStatus.CREATED)
 }
 
-export function paginated<T = any>(
+export function paginated<T>(
   message: string,
   items: T[],
   pagination: {

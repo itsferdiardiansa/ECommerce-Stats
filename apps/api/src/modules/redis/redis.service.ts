@@ -37,7 +37,7 @@ export class RedisService {
     return await this.redisClient.incr(key)
   }
 
-  async setNX(key: string, value: any, ttl: number): Promise<boolean> {
+  async setNX(key: string, value: string, ttl: number): Promise<boolean> {
     const serialized = typeof value === 'string' ? value : JSON.stringify(value)
     const result = await this.redisClient.set(key, serialized, 'EX', ttl, 'NX')
     return result === 'OK'

@@ -5,8 +5,7 @@ async function main() {
   console.log('Cleared all sessions.')
 }
 
-main()
-  .catch(e => {
-    console.error(e)
-    process.exit(1)
-  })
+main().catch(e => {
+  console.error(e)
+  process.exit(1)
+})

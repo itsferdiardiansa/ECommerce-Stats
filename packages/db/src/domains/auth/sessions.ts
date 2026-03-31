@@ -72,10 +72,10 @@ export const Sessions = {
 
   async revokeAllExceptJti(userId: number, jti: string): Promise<void> {
     await db.session.updateMany({
-      where: { 
-        userId, 
+      where: {
+        userId,
         isRevoked: false,
-        jti: { not: jti }
+        jti: { not: jti },
       },
       data: { isRevoked: true },
     })
@@ -100,7 +100,7 @@ export const Sessions = {
         ],
       },
     })
-    
+
     return { count: result.count }
   },
 
@@ -115,4 +115,3 @@ export const Sessions = {
     return db.session.findMany({ skip, take, cursor, where, orderBy })
   },
 }
-

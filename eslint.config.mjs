@@ -10,7 +10,8 @@ export default [
       '**/prisma',
       '**/node_modules',
       '**/.vercel',
-      '**/.next'
+      '**/.next',
+      '**/*.generated.ts'
     ],
   },
   {
