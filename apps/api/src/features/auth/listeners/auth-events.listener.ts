@@ -2,6 +2,14 @@ import { Injectable, Logger } from '@nestjs/common'
 import { OnEvent } from '@nestjs/event-emitter'
 import { LoginLogs } from '@rufieltics/db/domains/auth'
 
+export class SecurityCompromiseEvent {
+  constructor(
+    public readonly userId: number,
+    public readonly ipAddress: string | null,
+    public readonly userAgent: string | null
+  ) {}
+}
+
 export class LoginSuccessEvent {
   constructor(
     public readonly userId: number,
@@ -37,5 +45,13 @@ export class AuthEventsListener {
         `Failed to record audit log for User ${event.userId}: ${error}`
       )
     }
+  }
+
+  @OnEvent('auth.security.compromise')
+  handleSecurityCompromiseEvent(event: SecurityCompromiseEvent) {
+    this.logger.warn(
+      `[SECURITY] Refresh Token Reuse detected for User ${event.userId} via IP ${event.ipAddress || 'Unknown'}. All active sessions have been immediately revoked.`
+    )
+    // Note: Can hook email delivery service here to notify user of high-risk login activity
   }
 }

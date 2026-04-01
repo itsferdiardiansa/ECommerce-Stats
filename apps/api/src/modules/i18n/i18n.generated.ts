@@ -42,6 +42,8 @@ export type I18nTranslations = {
             "username_already_exists": string;
             "username_already_exists_deleted": string;
             "user_not_found": string;
+            "email_not_found": string;
+            "incorrect_password": string;
             "invalid_credentials": string;
             "account_not_verified": string;
             "already_verified": string;
@@ -54,7 +56,11 @@ export type I18nTranslations = {
             "verification_locked": string;
             "verification_locked_seconds": string;
             "invalid_code_last_attempt": string;
+            "reused_refresh_token": string;
             "too_many_verification_attempts": string;
+            "session_revoked": string;
+            "session_expired": string;
+            "invalid_refresh_token": string;
         };
         "validation": {
             "code_length": string;

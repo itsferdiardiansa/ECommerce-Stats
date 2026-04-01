@@ -36,7 +36,10 @@ import {
   generateOrgSlug,
   pickPrimaryMembership,
 } from '@/utils/auth'
-import { LoginSuccessEvent } from './listeners/auth-events.listener'
+import {
+  LoginSuccessEvent,
+  SecurityCompromiseEvent,
+} from './listeners/auth-events.listener'
 
 interface StoredSession {
   userId: number
@@ -294,7 +297,7 @@ export class AuthService {
   ) {
     const user = await getUserByEmail(data.email)
     if (!user) {
-      throw new UnauthorizedException(i18n.t('auth.errors.invalid_credentials'))
+      throw new UnauthorizedException(i18n.t('auth.errors.email_not_found'))
     }
 
     const isPasswordValid = await argon2.verify(
@@ -302,7 +305,7 @@ export class AuthService {
       data.password
     )
     if (!isPasswordValid) {
-      throw new UnauthorizedException(i18n.t('auth.errors.invalid_credentials'))
+      throw new UnauthorizedException(i18n.t('auth.errors.incorrect_password'))
     }
 
     if (!user.isActive) {
@@ -393,6 +396,24 @@ export class AuthService {
   ) {
     const { jti } = this.jwtService.verifyRefreshToken(data.refreshToken)
 
+    const reusedSession = await this.redisService.get<{ userId: number }>(
+      `revoked_jti:${jti}`
+    )
+    if (reusedSession) {
+      await this.revokeAllSessions(reusedSession.userId)
+      this.eventEmitter.emit(
+        'auth.security.compromise',
+        new SecurityCompromiseEvent(
+          reusedSession.userId,
+          ipAddress || null,
+          userAgent || null
+        )
+      )
+      throw new UnauthorizedException(
+        i18n.t('auth.errors.reused_refresh_token')
+      )
+    }
+
     const sessionData = (await this.redisService.getSession(
       jti
     )) as StoredSession | null
@@ -403,13 +424,20 @@ export class AuthService {
     let orgId: string | null = null
 
     if (sessionData) {
-      if (
-        sessionData.isRevoked ||
-        new Date(sessionData.expires) <= new Date()
-      ) {
-        throw new UnauthorizedException(
-          i18n.t('auth.errors.invalid_credentials')
+      if (sessionData.isRevoked) {
+        await this.revokeAllSessions(sessionData.userId)
+        this.eventEmitter.emit(
+          'auth.security.compromise',
+          new SecurityCompromiseEvent(
+            sessionData.userId,
+            ipAddress || null,
+            userAgent || null
+          )
         )
+        throw new UnauthorizedException(i18n.t('auth.errors.session_revoked'))
+      }
+      if (new Date(sessionData.expires) <= new Date()) {
+        throw new UnauthorizedException(i18n.t('auth.errors.session_expired'))
       }
       storedHash = sessionData.refreshTokenHash
       userId = sessionData.userId
@@ -417,14 +445,25 @@ export class AuthService {
       orgId = sessionData.orgId
     } else {
       const dbSession = await Sessions.findByJti(jti)
-      if (
-        !dbSession ||
-        dbSession.isRevoked ||
-        dbSession.expires <= new Date()
-      ) {
+      if (!dbSession) {
         throw new UnauthorizedException(
-          i18n.t('auth.errors.invalid_credentials')
+          i18n.t('auth.errors.invalid_refresh_token')
         )
+      }
+      if (dbSession.isRevoked) {
+        await this.revokeAllSessions(dbSession.userId)
+        this.eventEmitter.emit(
+          'auth.security.compromise',
+          new SecurityCompromiseEvent(
+            dbSession.userId,
+            ipAddress || null,
+            userAgent || null
+          )
+        )
+        throw new UnauthorizedException(i18n.t('auth.errors.session_revoked'))
+      }
+      if (dbSession.expires <= new Date()) {
+        throw new UnauthorizedException(i18n.t('auth.errors.session_expired'))
       }
       storedHash = dbSession.refreshTokenHash
       userId = dbSession.userId
@@ -434,12 +473,19 @@ export class AuthService {
 
     const isValid = await argon2.verify(storedHash, data.refreshToken)
     if (!isValid) {
-      throw new UnauthorizedException(i18n.t('auth.errors.invalid_credentials'))
+      throw new UnauthorizedException(
+        i18n.t('auth.errors.invalid_refresh_token')
+      )
     }
 
     await Promise.all([
       this.redisService.deleteSession(jti),
       Sessions.revokeByJti(jti),
+      this.redisService.set(
+        `revoked_jti:${jti}`,
+        { userId },
+        REFRESH_TTL_SECONDS
+      ),
     ])
 
     const user = await getUserById(userId)
@@ -503,9 +549,21 @@ export class AuthService {
   }
 
   async logout(jti: string) {
+    const sessionData =
+      ((await this.redisService.getSession(jti)) as StoredSession | null) ||
+      (await Sessions.findByJti(jti))
+    const userId = sessionData?.userId
+
     await Promise.all([
       this.redisService.deleteSession(jti),
       Sessions.revokeByJti(jti),
+      userId
+        ? this.redisService.set(
+            `revoked_jti:${jti}`,
+            { userId },
+            REFRESH_TTL_SECONDS
+          )
+        : Promise.resolve(),
     ])
   }
 
@@ -538,5 +596,16 @@ export class AuthService {
         defaultValue: 'Successfully signed out of all other devices.',
       }),
     }
+  }
+
+  private async revokeAllSessions(userId: number) {
+    const activeSessions = await Sessions.findActiveByUserId(userId)
+    const jtis = activeSessions.map(session => session.jti)
+
+    if (jtis.length > 0) {
+      await Promise.all(jtis.map(jti => this.redisService.deleteSession(jti)))
+    }
+
+    await Sessions.revokeAllByUserId(userId)
   }
 }
