@@ -1,5 +1,6 @@
 import { createZodDto } from 'nestjs-zod'
 import { z } from 'zod'
+import { Prisma } from '@rufieltics/db'
 
 const ListUserSchema = z.object({
   page: z.coerce.number().int().min(1).default(1).optional(),
@@ -38,7 +39,7 @@ const ListUserSchema = z.object({
     .enum(['true', 'false'])
     .transform(v => v === 'true')
     .optional(),
-  tierLevel: z.enum(['BASIC', 'PRO', 'PREMIUM']).optional(),
+  tierLevel: z.enum(Prisma.TierLevel).optional(),
   includeDeleted: z
     .enum(['true', 'false'])
     .transform(v => v === 'true')

@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/generated'
+import type { VerificationLockoutReason } from '@prisma/generated'
 import { db } from '@/libs/prisma'
 
 export const Verification = {
@@ -133,7 +134,7 @@ export const Verification = {
     limit: number
     status?: 'active' | 'cleared' | 'all'
     email?: string
-    reason?: 'TOO_MANY_ATTEMPTS' | 'SUSPICIOUS_ACTIVITY' | 'MANUAL_LOCK'
+    reason?: VerificationLockoutReason
     startDate?: Date
     endDate?: Date
     sortBy?: 'lockedAt' | 'expires' | 'email'

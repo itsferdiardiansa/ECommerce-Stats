@@ -1,5 +1,3 @@
-
-
 model Account {
   id                String  @id @default(cuid())
   userId            Int

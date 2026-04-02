@@ -2,6 +2,7 @@ import { Injectable, Inject } from '@nestjs/common'
 import Redis from 'ioredis'
 import { REDIS_CLIENT } from './redis.constants'
 import { Verification } from '@rufieltics/db/domains/auth'
+import { Prisma } from '@rufieltics/db'
 
 @Injectable()
 export class RedisService {
@@ -92,7 +93,7 @@ export class RedisService {
   async setVerificationLockout(
     email: string,
     ttl = 3600,
-    reason = 'TOO_MANY_ATTEMPTS',
+    reason: Prisma.VerificationLockoutReason = 'TOO_MANY_ATTEMPTS',
     ipAddress?: string,
     userAgent?: string
   ): Promise<void> {
@@ -114,10 +115,7 @@ export class RedisService {
       ),
       Verification.createVerificationLockout({
         email: email.toLowerCase(),
-        reason: reason as
-          | 'TOO_MANY_ATTEMPTS'
-          | 'SUSPICIOUS_ACTIVITY'
-          | 'MANUAL_LOCK',
+        reason,
         ipAddress,
         userAgent,
         lockedAt,
