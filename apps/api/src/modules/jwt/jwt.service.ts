@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { JwtService as NestJwtService } from '@nestjs/jwt'
 import { ConfigService } from '@nestjs/config'
+import { parseExpiresIn } from '@/utils/datetime'
 
 export interface AccessTokenPayload {
   sub: number
@@ -9,16 +10,6 @@ export interface AccessTokenPayload {
   role: string | null
   orgId: string | null
   jti: string
-}
-
-const REFRESH_EXPIRES_SECONDS = 7 * 24 * 3600
-
-function parseExpiresIn(raw: string): number {
-  const match = raw.match(/^(\d+)([smhd])$/)
-  if (!match) return 900
-  const value = parseInt(match[1], 10)
-  const multipliers: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86400 }
-  return value * (multipliers[match[2]] ?? 60)
 }
 
 @Injectable()
@@ -37,7 +28,12 @@ export class JwtService {
   }
 
   getAccessExpiresIn(): number {
-    const raw = this.configService.get<string>('JWT_ACCESS_EXPIRES_IN', '15m')
+    const raw = this.configService.get<string>('JWT_ACCESS_EXPIRES_IN', '5m')
+    return parseExpiresIn(raw)
+  }
+
+  getRefreshExpiresIn(): number {
+    const raw = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d')
     return parseExpiresIn(raw)
   }
 
@@ -53,7 +49,7 @@ export class JwtService {
       { jti },
       {
         secret: this.refreshSecret,
-        expiresIn: REFRESH_EXPIRES_SECONDS,
+        expiresIn: this.getRefreshExpiresIn(),
       }
     )
   }

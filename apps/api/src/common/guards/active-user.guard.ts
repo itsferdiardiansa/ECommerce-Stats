@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common'
 import { I18nContext } from 'nestjs-i18n'
 import { JwtService } from '@/modules/jwt/jwt.service'
+import { TokenDenylistService } from '@/modules/jwt/token-denylist.service'
 import type { CurrentUserPayload } from '@/common/decorators/current-user.decorator'
 
 interface RequestWithUser {
@@ -17,7 +18,10 @@ interface RequestWithUser {
 
 @Injectable()
 export class ActiveUserGuard implements CanActivate {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly tokenDenylist: TokenDenylistService
+  ) {}
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<RequestWithUser>()
@@ -32,6 +36,12 @@ export class ActiveUserGuard implements CanActivate {
 
     const token = authHeader.slice(7)
     const payload = this.jwtService.verifyAccessToken(token)
+
+    if (this.tokenDenylist.isDenied(payload.jti)) {
+      throw new UnauthorizedException(
+        i18n?.t('common.errors.unauthorized') || 'Unauthorized'
+      )
+    }
 
     request.user = {
       ...payload,

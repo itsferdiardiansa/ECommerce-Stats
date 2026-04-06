@@ -23,6 +23,7 @@ import {
 import { Sessions } from '@rufieltics/db/domains/auth'
 import { RedisService } from '@/modules/redis/redis.service'
 import { JwtService } from '@/modules/jwt/jwt.service'
+import { TokenDenylistService } from '@/modules/jwt/token-denylist.service'
 import type { AccessTokenPayload } from '@/modules/jwt/jwt.service'
 import type { RegisterDto } from './dto/register.dto'
 import type { VerifyEmailDto } from './dto/verify-email.dto'
@@ -50,14 +51,13 @@ interface StoredSession {
   orgId: string | null
 }
 
-const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60
-
 @Injectable()
 export class AuthService {
   constructor(
     private readonly redisService: RedisService,
     private readonly jwtService: JwtService,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
+    private readonly tokenDenylist: TokenDenylistService
   ) {}
 
   async register(data: RegisterDto, i18n: I18nContext) {
@@ -321,7 +321,8 @@ export class AuthService {
     const orgId = primary?.organizationId ?? null
 
     const jti = randomUUID()
-    const expires = new Date(Date.now() + REFRESH_TTL_SECONDS * 1000)
+    const refreshTtl = this.jwtService.getRefreshExpiresIn()
+    const expires = new Date(Date.now() + refreshTtl * 1000)
 
     const accessPayload: AccessTokenPayload = {
       sub: user.id,
@@ -350,6 +351,8 @@ export class AuthService {
       await this.redisService.deleteSession(existingSession.jti)
     }
 
+    await Sessions.deleteExpiredByUserId(user.id)
+
     await Promise.all([
       Sessions.upsertByFingerprint({
         userId: user.id,
@@ -372,7 +375,7 @@ export class AuthService {
           role,
           orgId,
         },
-        REFRESH_TTL_SECONDS
+        refreshTtl
       ),
     ])
 
@@ -484,7 +487,7 @@ export class AuthService {
       this.redisService.set(
         `revoked_jti:${jti}`,
         { userId },
-        REFRESH_TTL_SECONDS
+        this.jwtService.getRefreshExpiresIn()
       ),
     ])
 
@@ -494,7 +497,8 @@ export class AuthService {
     }
 
     const newJti = randomUUID()
-    const newExpires = new Date(Date.now() + REFRESH_TTL_SECONDS * 1000)
+    const refreshTtl = this.jwtService.getRefreshExpiresIn()
+    const newExpires = new Date(Date.now() + refreshTtl * 1000)
 
     const accessPayload: AccessTokenPayload = {
       sub: user.id,
@@ -537,7 +541,7 @@ export class AuthService {
           role,
           orgId,
         },
-        REFRESH_TTL_SECONDS
+        refreshTtl
       ),
     ])
 
@@ -554,6 +558,8 @@ export class AuthService {
       (await Sessions.findByJti(jti))
     const userId = sessionData?.userId
 
+    this.tokenDenylist.deny(jti, this.jwtService.getAccessExpiresIn())
+
     await Promise.all([
       this.redisService.deleteSession(jti),
       Sessions.revokeByJti(jti),
@@ -561,7 +567,7 @@ export class AuthService {
         ? this.redisService.set(
             `revoked_jti:${jti}`,
             { userId },
-            REFRESH_TTL_SECONDS
+            this.jwtService.getRefreshExpiresIn()
           )
         : Promise.resolve(),
     ])
@@ -585,6 +591,8 @@ export class AuthService {
       }
     }
 
+    this.tokenDenylist.denyMany(otherJtis, this.jwtService.getAccessExpiresIn())
+
     await Promise.all(
       otherJtis.map(jti => this.redisService.deleteSession(jti))
     )
@@ -603,6 +611,7 @@ export class AuthService {
     const jtis = activeSessions.map(session => session.jti)
 
     if (jtis.length > 0) {
+      this.tokenDenylist.denyMany(jtis, this.jwtService.getAccessExpiresIn())
       await Promise.all(jtis.map(jti => this.redisService.deleteSession(jti)))
     }
 
