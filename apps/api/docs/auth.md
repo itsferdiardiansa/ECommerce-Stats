@@ -16,14 +16,14 @@ sequenceDiagram
     Client->>Auth: POST /auth/login
     Auth->>DB: Find user by email
     DB-->>Auth: User record
-    Auth->>JWT: signAccessToken(payload) [TTL: 5m]
+    Auth->>JWT: signAccessToken(payload) [TTL: 15m]
     Auth->>JWT: signRefreshToken(jti)
     Auth->>Redis: setSession(jti, sessionData)
     Auth->>DB: upsertByFingerprint(session)
-    Auth-->>Client: { accessToken, refreshToken }
+    Auth-->>Client: { accessToken } + Set-Cookie: refreshToken (HttpOnly, Secure)
 
     Note over Client, DB: PROTECTED REQUEST (NORMAL)
-    Client->>Guard: GET /auth/my-lockout [Bearer token]
+    Client->>Guard: GET /api/v1/ [Bearer token]
     Guard->>JWT: verifyAccessToken(token)
     JWT-->>Guard: payload { sub, jti, ... }
     Guard->>Denylist: isDenied(jti)?
@@ -43,7 +43,7 @@ sequenceDiagram
     Auth-->>Client: 200 OK — Logged out
 
     Note over Client, DB: PROTECTED REQUEST (AFTER LOGOUT)
-    Client->>Guard: GET /auth/my-lockout [Same Bearer token]
+    Client->>Guard: GET /api/v1/ [Same Bearer token]
     Guard->>JWT: verifyAccessToken(token)
     JWT-->>Guard: payload { sub, jti, ... }
     Guard->>Denylist: isDenied(jti)?
@@ -63,7 +63,7 @@ sequenceDiagram
     participant Events as EventEmitter
 
     Note over Attacker, Events: Attacker uses a stolen (already-rotated) Refresh Token
-    Attacker->>Auth: POST /auth/refresh { refreshToken: OLD }
+    Attacker->>Auth: POST /auth/refresh [Cookie: refreshToken=OLD]
     Auth->>Redis: get(revoked_jti:xxx)
     Redis-->>Auth: { userId: 42 } MATCH!
 
@@ -125,12 +125,12 @@ graph TB
 
 ## Performance Characteristics
 
-| Operation | Where | Latency | Per-Request Cost |
-|-----------|-------|---------|-----------------|
-| JWT Verify | CPU (in-process) | ~0.1ms | ✅ None |
-| Denylist Check | In-memory Map | ~0.001ms | ✅ None |
-| Redis Session Lookup | Network | ~0.5-2ms | ❌ Only on `/refresh` |
-| DB Session Lookup | Network | ~2-5ms | ❌ Only on `/refresh` fallback |
+| Operation            | Where            | Latency  | Per-Request Cost               |
+| -------------------- | ---------------- | -------- | ------------------------------ |
+| JWT Verify           | CPU (in-process) | ~0.1ms   | ✅ None                        |
+| Denylist Check       | In-memory Map    | ~0.001ms | ✅ None                        |
+| Redis Session Lookup | Network          | ~0.5-2ms | ❌ Only on `/refresh`          |
+| DB Session Lookup    | Network          | ~2-5ms   | ❌ Only on `/refresh` fallback |
 
 > [!TIP]
 > The hot path (every protected request) stays **entirely in-process** — JWT signature check + Map lookup. No network I/O at all.

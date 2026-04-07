@@ -9,7 +9,11 @@ import {
   Ip,
   Headers,
   UseGuards,
+  Req,
+  Res,
+  UnauthorizedException,
 } from '@nestjs/common'
+import type { Request, Response, CookieOptions } from 'express'
 import { Throttle, SkipThrottle } from '@nestjs/throttler'
 import { I18n, I18nContext } from 'nestjs-i18n'
 import { AuthService } from './auth.service'
@@ -17,27 +21,43 @@ import { RegisterDto } from './dto/register.dto'
 import { VerifyEmailDto } from './dto/verify-email.dto'
 import { ResendVerificationDto } from './dto/resend-verification.dto'
 import { LoginDto } from './dto/login.dto'
-import { RefreshTokenDto } from './dto/refresh-token.dto'
 import { created, success } from '@/common/helpers/api-response.helper'
 import { ActiveUserGuard } from '@/common/guards/active-user.guard'
 import { CurrentUser } from '@/common/decorators/current-user.decorator'
 import type { CurrentUserPayload } from '@/common/decorators/current-user.decorator'
 import { MyLockoutResponseDto } from './dto/my-lockout-response.dto'
 import { RedisService } from '@/modules/redis/redis.service'
+import { JwtService } from '@/modules/jwt/jwt.service'
+import configuration from '@/config/configuration'
+
+const config = configuration()
 
 const getAuthThrottleConfig = () => ({
   default: {
-    limit: parseInt(process.env.THROTTLE_AUTH_LIMIT || '5', 10),
-    ttl: parseInt(process.env.THROTTLE_AUTH_TTL || '60000', 10),
+    limit: config.throttle.auth.limit,
+    ttl: config.throttle.auth.ttl,
   },
 })
 
 @Controller('auth')
 export class AuthController {
+  private readonly AUTH_COOKIE_PATH = '/api/v1/auth'
+
   constructor(
     private readonly authService: AuthService,
-    private readonly redisService: RedisService
+    private readonly redisService: RedisService,
+    private readonly jwtService: JwtService
   ) {}
+
+  private getRefreshCookieOptions(): CookieOptions {
+    return {
+      httpOnly: true,
+      secure: config.nodeEnv === 'production',
+      sameSite: 'strict',
+      path: this.AUTH_COOKIE_PATH,
+      maxAge: this.jwtService.getRefreshExpiresIn() * 1000,
+    }
+  }
 
   @Post('register')
   @Throttle(getAuthThrottleConfig())
@@ -83,26 +103,47 @@ export class AuthController {
     @Body() dto: LoginDto,
     @I18n() i18n: I18nContext,
     @Ip() ipAddress: string,
-    @Headers('user-agent') userAgent: string
+    @Headers('user-agent') userAgent: string,
+    @Res({ passthrough: true }) res: Response
   ) {
-    const result = await this.authService.login(dto, i18n, ipAddress, userAgent)
+    const { refreshToken, ...result } = await this.authService.login(
+      dto,
+      i18n,
+      ipAddress,
+      userAgent
+    )
+
+    res.cookie('refreshToken', refreshToken, this.getRefreshCookieOptions())
+
     return success(i18n.t('auth.login.success'), result)
   }
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refreshToken(
-    @Body() dto: RefreshTokenDto,
+    @Req() req: Request,
     @I18n() i18n: I18nContext,
     @Ip() ipAddress: string,
-    @Headers('user-agent') userAgent: string
+    @Headers('user-agent') userAgent: string,
+    @Res({ passthrough: true }) res: Response
   ) {
-    const result = await this.authService.refreshToken(
-      dto,
+    const token = req.cookies?.refreshToken as string | undefined
+
+    if (!token) {
+      throw new UnauthorizedException(
+        i18n.t('auth.errors.invalid_refresh_token')
+      )
+    }
+
+    const { refreshToken, ...result } = await this.authService.refreshToken(
+      { refreshToken: token },
       i18n,
       ipAddress,
       userAgent
     )
+
+    res.cookie('refreshToken', refreshToken, this.getRefreshCookieOptions())
+
     return success(i18n.t('auth.refresh.success'), result)
   }
 
@@ -112,9 +153,11 @@ export class AuthController {
   @UseGuards(ActiveUserGuard)
   async logout(
     @CurrentUser() user: CurrentUserPayload,
-    @I18n() i18n: I18nContext
+    @I18n() i18n: I18nContext,
+    @Res({ passthrough: true }) res: Response
   ) {
     await this.authService.logout(user.jti)
+    res.clearCookie('refreshToken', { path: this.AUTH_COOKIE_PATH })
     return success(i18n.t('auth.logout.success'), null)
   }
 

@@ -179,11 +179,7 @@
                   "        pm.collectionVariables.set('access_token', response.data.accessToken);",
                   "        console.log('Access token saved');",
                   "    }",
-                  "    if (response.data && response.data.refreshToken) {",
-                  "        pm.collectionVariables.set('refresh_token', response.data.refreshToken);",
-                  "        console.log('Refresh token saved');",
-                  "    }",
-                  "}"
+                  "    }"
                 ]
               }
             }
@@ -205,7 +201,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+              "raw": "{\n}"
             },
             "url": {
               "raw": "{{base_url}}/auth/refresh",
@@ -227,11 +223,7 @@
                   "        pm.collectionVariables.set('access_token', response.data.accessToken);",
                   "        console.log('New access token saved');",
                   "    }",
-                  "    if (response.data && response.data.refreshToken) {",
-                  "        pm.collectionVariables.set('refresh_token', response.data.refreshToken);",
-                  "        console.log('New refresh token saved');",
-                  "    }",
-                  "}"
+                  "    }"
                 ]
               }
             }
