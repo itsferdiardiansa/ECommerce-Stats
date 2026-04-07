@@ -7,7 +7,7 @@ import {
 import { I18nContext } from 'nestjs-i18n'
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import * as argon2 from 'argon2'
-import { randomUUID } from 'crypto'
+import { createHash, randomBytes, randomUUID } from 'crypto'
 import {
   createUser,
   getUserByEmail,
@@ -49,6 +49,7 @@ interface StoredSession {
   expires: string
   role: string | null
   orgId: string | null
+  deviceFingerprint: string
 }
 
 @Injectable()
@@ -59,6 +60,11 @@ export class AuthService {
     private readonly eventEmitter: EventEmitter2,
     private readonly tokenDenylist: TokenDenylistService
   ) {}
+
+  private readonly VERIFICATION_CODE_TTL_SECONDS = 300
+  private readonly VERIFICATION_CODE_MAX_AGE_MS = 5 * 60 * 1000
+  private readonly VERIFICATION_MAX_ATTEMPTS = 5
+  private readonly VERIFICATION_LOCKOUT_DURATION_SECONDS = 3600
 
   async register(data: RegisterDto, i18n: I18nContext) {
     try {
@@ -115,9 +121,11 @@ export class AuthService {
       })
 
       const code = generateVerificationCode()
-      await this.redisService.setVerificationCode(email, code, 300)
-
-      console.log(`[DEV] Verification code for ${email}: ${code}`)
+      await this.redisService.setVerificationCode(
+        email,
+        code,
+        this.VERIFICATION_CODE_TTL_SECONDS
+      )
 
       return user
     } catch (err) {
@@ -164,17 +172,16 @@ export class AuthService {
     }
 
     const codeAge = Date.now() - new Date(storedData.createdAt).getTime()
-    const maxAge = 5 * 60 * 1000
 
-    if (codeAge > maxAge) {
+    if (codeAge > this.VERIFICATION_CODE_MAX_AGE_MS) {
       await this.redisService.deleteVerificationCode(email)
       throw new BadRequestException(i18n.t('auth.errors.code_expired'))
     }
 
-    if (storedData.attempts >= 5) {
+    if (storedData.attempts >= this.VERIFICATION_MAX_ATTEMPTS) {
       await this.redisService.setVerificationLockout(
         email,
-        3600,
+        this.VERIFICATION_LOCKOUT_DURATION_SECONDS,
         'TOO_MANY_ATTEMPTS',
         ipAddress,
         userAgent
@@ -188,7 +195,7 @@ export class AuthService {
     if (storedData.code !== code) {
       const newAttempts =
         await this.redisService.incrementVerificationAttempts(email)
-      const remaining = 5 - newAttempts
+      const remaining = this.VERIFICATION_MAX_ATTEMPTS - newAttempts
 
       if (remaining === 0) {
         throw new BadRequestException(
@@ -237,6 +244,91 @@ export class AuthService {
     })
   }
 
+  private async initiateSession(
+    user: {
+      id: number
+      email: string
+      isStaff: boolean
+    },
+    role: string | null,
+    orgId: string | null,
+    userAgent?: string,
+    ipAddress?: string
+  ) {
+    const jti = randomUUID()
+    const refreshTtl = this.jwtService.getRefreshExpiresIn()
+    const expires = new Date(Date.now() + refreshTtl * 1000)
+    const rawDeviceSecret = randomBytes(32).toString('hex')
+    const deviceSecretHash = createHash('sha256')
+      .update(rawDeviceSecret)
+      .digest('hex')
+
+    const { hash: deviceFingerprint, geo } = generateDeviceFingerprint(
+      user.id,
+      userAgent,
+      ipAddress
+    )
+
+    const accessPayload: AccessTokenPayload = {
+      sub: user.id,
+      email: user.email,
+      isStaff: user.isStaff,
+      role,
+      orgId,
+      jti,
+      fph: deviceSecretHash,
+      env: deviceFingerprint,
+    }
+
+    const accessToken = this.jwtService.signAccessToken(accessPayload)
+    const refreshToken = this.jwtService.signRefreshToken(jti)
+    const refreshTokenHash = await argon2.hash(refreshToken)
+
+    const existingSession = await Sessions.findByFingerprint(
+      user.id,
+      deviceFingerprint
+    )
+
+    if (existingSession && existingSession.jti !== jti) {
+      await this.redisService.deleteSession(existingSession.jti)
+    }
+
+    await Promise.all([
+      Sessions.upsertByFingerprint({
+        userId: user.id,
+        jti,
+        refreshTokenHash,
+        orgId,
+        role,
+        ipAddress,
+        userAgent,
+        deviceFingerprint,
+        expires,
+      }),
+      this.redisService.setSession(
+        jti,
+        {
+          userId: user.id,
+          refreshTokenHash,
+          isRevoked: false,
+          expires: expires.toISOString(),
+          role,
+          orgId,
+          deviceFingerprint,
+        },
+        refreshTtl
+      ),
+    ])
+
+    return {
+      accessToken,
+      refreshToken,
+      rawDeviceSecret,
+      expiresIn: this.jwtService.getAccessExpiresIn(),
+      geo,
+    }
+  }
+
   async resendVerification(data: ResendVerificationDto, i18n: I18nContext) {
     const { email } = data
 
@@ -265,10 +357,9 @@ export class AuthService {
 
     if (existingCode) {
       const codeAge = Date.now() - new Date(existingCode.createdAt).getTime()
-      const maxAge = 5 * 60 * 1000
 
-      if (codeAge < maxAge) {
-        const remainingTime = maxAge - codeAge
+      if (codeAge < this.VERIFICATION_CODE_MAX_AGE_MS) {
+        const remainingTime = this.VERIFICATION_CODE_MAX_AGE_MS - codeAge
         const { minutes, seconds } = formatRemainingTime(remainingTime)
         const messageKey =
           minutes > 0
@@ -280,9 +371,11 @@ export class AuthService {
     }
 
     const code = generateVerificationCode()
-    await this.redisService.setVerificationCode(email, code, 300)
-
-    console.log(`[DEV] New verification code for ${email}: ${code}`)
+    await this.redisService.setVerificationCode(
+      email,
+      code,
+      this.VERIFICATION_CODE_TTL_SECONDS
+    )
 
     return {
       message: i18n.t('auth.resend.success'),
@@ -320,75 +413,22 @@ export class AuthService {
     const role = primary?.role ?? null
     const orgId = primary?.organizationId ?? null
 
-    const jti = randomUUID()
-    const refreshTtl = this.jwtService.getRefreshExpiresIn()
-    const expires = new Date(Date.now() + refreshTtl * 1000)
-
-    const accessPayload: AccessTokenPayload = {
-      sub: user.id,
-      email: user.email,
-      isStaff: user.isStaff,
+    const { geo, ...session } = await this.initiateSession(
+      user,
       role,
       orgId,
-      jti,
-    }
-
-    const accessToken = this.jwtService.signAccessToken(accessPayload)
-    const refreshToken = this.jwtService.signRefreshToken(jti)
-    const refreshTokenHash = await argon2.hash(refreshToken)
-
-    const { hash: deviceFingerprint, geo } = generateDeviceFingerprint(
-      user.id,
       userAgent,
       ipAddress
     )
 
-    const existingSession = await Sessions.findByFingerprint(
-      user.id,
-      deviceFingerprint
-    )
-    if (existingSession && existingSession.jti !== jti) {
-      await this.redisService.deleteSession(existingSession.jti)
-    }
-
     await Sessions.deleteExpiredByUserId(user.id)
-
-    await Promise.all([
-      Sessions.upsertByFingerprint({
-        userId: user.id,
-        jti,
-        refreshTokenHash,
-        orgId,
-        role,
-        ipAddress,
-        userAgent,
-        deviceFingerprint,
-        expires,
-      }),
-      this.redisService.setSession(
-        jti,
-        {
-          userId: user.id,
-          refreshTokenHash,
-          isRevoked: false,
-          expires: expires.toISOString(),
-          role,
-          orgId,
-        },
-        refreshTtl
-      ),
-    ])
 
     this.eventEmitter.emit(
       'auth.login.success',
       new LoginSuccessEvent(user.id, ipAddress || null, userAgent || null, geo)
     )
 
-    return {
-      accessToken,
-      refreshToken,
-      expiresIn: this.jwtService.getAccessExpiresIn(),
-    }
+    return session
   }
 
   async refreshToken(
@@ -425,6 +465,7 @@ export class AuthService {
     let userId: number
     let role: string | null = null
     let orgId: string | null = null
+    let storedFingerprint: string
 
     if (sessionData) {
       if (sessionData.isRevoked) {
@@ -446,6 +487,7 @@ export class AuthService {
       userId = sessionData.userId
       role = sessionData.role
       orgId = sessionData.orgId
+      storedFingerprint = sessionData.deviceFingerprint
     } else {
       const dbSession = await Sessions.findByJti(jti)
       if (!dbSession) {
@@ -472,6 +514,7 @@ export class AuthService {
       userId = dbSession.userId
       role = dbSession.role
       orgId = dbSession.orgId
+      storedFingerprint = dbSession.deviceFingerprint
     }
 
     const isValid = await argon2.verify(storedHash, data.refreshToken)
@@ -479,6 +522,20 @@ export class AuthService {
       throw new UnauthorizedException(
         i18n.t('auth.errors.invalid_refresh_token')
       )
+    }
+
+    const { hash: currentFingerprint } = generateDeviceFingerprint(
+      userId,
+      userAgent,
+      ipAddress
+    )
+
+    if (storedFingerprint && storedFingerprint !== currentFingerprint) {
+      await Promise.all([
+        this.redisService.deleteSession(jti),
+        Sessions.revokeByJti(jti),
+      ])
+      throw new UnauthorizedException(i18n.t('auth.errors.invalid_client'))
     }
 
     await Promise.all([
@@ -496,60 +553,15 @@ export class AuthService {
       throw new UnauthorizedException(i18n.t('auth.errors.user_not_found'))
     }
 
-    const newJti = randomUUID()
-    const refreshTtl = this.jwtService.getRefreshExpiresIn()
-    const newExpires = new Date(Date.now() + refreshTtl * 1000)
-
-    const accessPayload: AccessTokenPayload = {
-      sub: user.id,
-      email: user.email,
-      isStaff: user.isStaff,
+    const session = await this.initiateSession(
+      user,
       role,
       orgId,
-      jti: newJti,
-    }
-
-    const newAccessToken = this.jwtService.signAccessToken(accessPayload)
-    const newRefreshToken = this.jwtService.signRefreshToken(newJti)
-    const newRefreshTokenHash = await argon2.hash(newRefreshToken)
-
-    const { hash: deviceFingerprint } = generateDeviceFingerprint(
-      user.id,
       userAgent,
       ipAddress
     )
 
-    await Promise.all([
-      Sessions.upsertByFingerprint({
-        userId: user.id,
-        jti: newJti,
-        refreshTokenHash: newRefreshTokenHash,
-        orgId,
-        role,
-        ipAddress,
-        userAgent,
-        deviceFingerprint,
-        expires: newExpires,
-      }),
-      this.redisService.setSession(
-        newJti,
-        {
-          userId: user.id,
-          refreshTokenHash: newRefreshTokenHash,
-          isRevoked: false,
-          expires: newExpires.toISOString(),
-          role,
-          orgId,
-        },
-        refreshTtl
-      ),
-    ])
-
-    return {
-      accessToken: newAccessToken,
-      refreshToken: newRefreshToken,
-      expiresIn: this.jwtService.getAccessExpiresIn(),
-    }
+    return session
   }
 
   async logout(jti: string) {
@@ -583,7 +595,7 @@ export class AuthService {
       .map(session => session.jti)
       .filter(jti => jti !== currentJti)
 
-    if (otherJtis.length === 0) {
+    if (!otherJtis.length) {
       return {
         message: i18n.t('auth.success.no_other_sessions', {
           defaultValue: 'No other active sessions found.',
@@ -602,6 +614,53 @@ export class AuthService {
     return {
       message: i18n.t('auth.success.sessions_revoked', {
         defaultValue: 'Successfully signed out of all other devices.',
+      }),
+    }
+  }
+
+  async getActiveSessions(
+    userId: number,
+    currentJti: string,
+    i18n: I18nContext
+  ) {
+    const activeSessions = await Sessions.findActiveByUserId(userId)
+
+    const formattedSessions = activeSessions.map(session => ({
+      id: session.jti,
+      isCurrent: session.jti === currentJti,
+      ipAddress: session.ipAddress,
+      userAgent: session.userAgent,
+      createdAt: session.createdAt,
+      lastUsedAt: session.lastUsedAt,
+      expires: session.expires,
+    }))
+
+    return {
+      message: i18n.t('auth.success.sessions_retrieved', {
+        defaultValue: 'Active sessions retrieved successfully.',
+      }),
+      data: formattedSessions,
+    }
+  }
+
+  async revokeSessions(userId: number, jtis: string[], i18n: I18nContext) {
+    if (!jtis || jtis.length === 0) {
+      return {
+        message: i18n.t('auth.success.no_sessions_provided', {
+          defaultValue: 'No sessions provided for revocation.',
+        }),
+      }
+    }
+
+    this.tokenDenylist.denyMany(jtis, this.jwtService.getAccessExpiresIn())
+
+    await Promise.all(jtis.map(jti => this.redisService.deleteSession(jti)))
+
+    await Sessions.revokeSessionsByJtis(userId, jtis)
+
+    return {
+      message: i18n.t('auth.success.sessions_revoked', {
+        defaultValue: 'Successfully signed out of selected devices.',
       }),
     }
   }

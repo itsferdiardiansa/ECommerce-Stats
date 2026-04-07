@@ -10,6 +10,8 @@ export interface AccessTokenPayload {
   role: string | null
   orgId: string | null
   jti: string
+  fph: string
+  env: string
 }
 
 @Injectable()

@@ -21,6 +21,7 @@ import { RegisterDto } from './dto/register.dto'
 import { VerifyEmailDto } from './dto/verify-email.dto'
 import { ResendVerificationDto } from './dto/resend-verification.dto'
 import { LoginDto } from './dto/login.dto'
+import { RevokeSessionsDto } from './dto/revoke-sessions.dto'
 import { created, success } from '@/common/helpers/api-response.helper'
 import { ActiveUserGuard } from '@/common/guards/active-user.guard'
 import { CurrentUser } from '@/common/decorators/current-user.decorator'
@@ -49,7 +50,7 @@ export class AuthController {
     private readonly jwtService: JwtService
   ) {}
 
-  private getRefreshCookieOptions(): CookieOptions {
+  private getCookieOptions(): CookieOptions {
     return {
       httpOnly: true,
       secure: config.nodeEnv === 'production',
@@ -106,14 +107,11 @@ export class AuthController {
     @Headers('user-agent') userAgent: string,
     @Res({ passthrough: true }) res: Response
   ) {
-    const { refreshToken, ...result } = await this.authService.login(
-      dto,
-      i18n,
-      ipAddress,
-      userAgent
-    )
+    const { refreshToken, rawDeviceSecret, ...result } =
+      await this.authService.login(dto, i18n, ipAddress, userAgent)
 
-    res.cookie('refreshToken', refreshToken, this.getRefreshCookieOptions())
+    res.cookie('refreshToken', refreshToken, this.getCookieOptions())
+    res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
 
     return success(i18n.t('auth.login.success'), result)
   }
@@ -135,14 +133,16 @@ export class AuthController {
       )
     }
 
-    const { refreshToken, ...result } = await this.authService.refreshToken(
-      { refreshToken: token },
-      i18n,
-      ipAddress,
-      userAgent
-    )
+    const { refreshToken, rawDeviceSecret, ...result } =
+      await this.authService.refreshToken(
+        { refreshToken: token },
+        i18n,
+        ipAddress,
+        userAgent
+      )
 
-    res.cookie('refreshToken', refreshToken, this.getRefreshCookieOptions())
+    res.cookie('refreshToken', refreshToken, this.getCookieOptions())
+    res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
 
     return success(i18n.t('auth.refresh.success'), result)
   }
@@ -158,6 +158,7 @@ export class AuthController {
   ) {
     await this.authService.logout(user.jti)
     res.clearCookie('refreshToken', { path: this.AUTH_COOKIE_PATH })
+    res.clearCookie('deviceSecret', { path: this.AUTH_COOKIE_PATH })
     return success(i18n.t('auth.logout.success'), null)
   }
 
@@ -174,6 +175,45 @@ export class AuthController {
       user.jti,
       i18n
     )
+    return success(result.message, null)
+  }
+
+  @Get('sessions')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ActiveUserGuard)
+  async getSessions(
+    @CurrentUser() user: CurrentUserPayload,
+    @I18n() i18n: I18nContext
+  ) {
+    const result = await this.authService.getActiveSessions(
+      user.id,
+      user.jti,
+      i18n
+    )
+    return success(result.message, result.data)
+  }
+
+  @Delete('sessions')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(getAuthThrottleConfig())
+  @UseGuards(ActiveUserGuard)
+  async revokeSessions(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: RevokeSessionsDto,
+    @I18n() i18n: I18nContext,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const result = await this.authService.revokeSessions(
+      user.id,
+      dto.jtis,
+      i18n
+    )
+
+    if (dto.jtis.includes(user.jti)) {
+      res.clearCookie('refreshToken', { path: this.AUTH_COOKIE_PATH })
+      res.clearCookie('deviceSecret', { path: this.AUTH_COOKIE_PATH })
+    }
+
     return success(result.message, null)
   }
 

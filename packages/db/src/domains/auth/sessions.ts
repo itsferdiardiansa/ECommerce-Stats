@@ -104,6 +104,22 @@ export const Sessions = {
     return { count: result.count }
   },
 
+  async revokeSessionsByJtis(
+    userId: number,
+    jtis: string[]
+  ): Promise<{ count: number }> {
+    const result = await db.session.updateMany({
+      where: {
+        userId,
+        jti: { in: jtis },
+        isRevoked: false,
+      },
+      data: { isRevoked: true },
+    })
+
+    return { count: result.count }
+  },
+
   async deleteExpiredByUserId(userId: number): Promise<void> {
     await db.session.deleteMany({
       where: {

@@ -267,6 +267,72 @@
               }
             }
           ]
+        },
+        {
+          "name": "Revoke Other Sessions",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/sessions/others",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sessions", "others"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Revoke Sessions",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jtis\": [\n    \"ENTER-UUID-HERE\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/sessions",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sessions"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Sessions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/sessions",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sessions"]
+            }
+          },
+          "response": []
         }
       ]
     },

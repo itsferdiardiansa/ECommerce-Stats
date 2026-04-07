@@ -36,6 +36,12 @@ export type I18nTranslations = {
         "my_lockout": {
             "success": string;
         };
+        "success": {
+            "no_other_sessions": string;
+            "sessions_retrieved": string;
+            "sessions_revoked": string;
+            "no_sessions_provided": string;
+        };
         "errors": {
             "email_already_exists": string;
             "email_already_exists_deleted": string;
@@ -61,6 +67,7 @@ export type I18nTranslations = {
             "session_revoked": string;
             "session_expired": string;
             "invalid_refresh_token": string;
+            "invalid_client": string;
         };
         "validation": {
             "code_length": string;
