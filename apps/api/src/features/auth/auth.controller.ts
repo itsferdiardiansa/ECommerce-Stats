@@ -17,6 +17,7 @@ import type { Request, Response, CookieOptions } from 'express'
 import { Throttle, SkipThrottle } from '@nestjs/throttler'
 import { I18n, I18nContext } from 'nestjs-i18n'
 import { AuthService } from './auth.service'
+import { SessionService } from './session.service'
 import { RegisterDto } from './dto/register.dto'
 import { VerifyEmailDto } from './dto/verify-email.dto'
 import { ResendVerificationDto } from './dto/resend-verification.dto'
@@ -46,6 +47,7 @@ export class AuthController {
 
   constructor(
     private readonly authService: AuthService,
+    private readonly sessionService: SessionService,
     private readonly redisService: RedisService,
     private readonly jwtService: JwtService
   ) {}
@@ -156,7 +158,7 @@ export class AuthController {
     @I18n() i18n: I18nContext,
     @Res({ passthrough: true }) res: Response
   ) {
-    await this.authService.logout(user.jti)
+    await this.sessionService.logout(user.jti)
     res.clearCookie('refreshToken', { path: this.AUTH_COOKIE_PATH })
     res.clearCookie('deviceSecret', { path: this.AUTH_COOKIE_PATH })
     return success(i18n.t('auth.logout.success'), null)
@@ -170,7 +172,7 @@ export class AuthController {
     @CurrentUser() user: CurrentUserPayload,
     @I18n() i18n: I18nContext
   ) {
-    const result = await this.authService.revokeOtherSessions(
+    const result = await this.sessionService.revokeOtherSessions(
       user.id,
       user.jti,
       i18n
@@ -185,7 +187,7 @@ export class AuthController {
     @CurrentUser() user: CurrentUserPayload,
     @I18n() i18n: I18nContext
   ) {
-    const result = await this.authService.getActiveSessions(
+    const result = await this.sessionService.getActiveSessions(
       user.id,
       user.jti,
       i18n
@@ -203,7 +205,7 @@ export class AuthController {
     @I18n() i18n: I18nContext,
     @Res({ passthrough: true }) res: Response
   ) {
-    const result = await this.authService.revokeSessions(
+    const result = await this.sessionService.revokeSessions(
       user.id,
       dto.jtis,
       i18n
@@ -224,7 +226,7 @@ export class AuthController {
     @CurrentUser() user: CurrentUserPayload,
     @I18n() i18n: I18nContext
   ) {
-    const lockout = await this.redisService.getVerificationLockout(user.email)
+    const lockout = await this.authService.getVerificationLockout(user.email)
 
     const response: MyLockoutResponseDto = {
       isLocked: lockout !== null,
