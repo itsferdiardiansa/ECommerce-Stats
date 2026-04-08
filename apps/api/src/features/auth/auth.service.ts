@@ -262,11 +262,10 @@ export class AuthService {
     userAgent?: string
   ) {
     const lockout = await this.verificationService.getLoginLockout(data.email)
-    console.log('lockout', lockout)
+
     if (lockout) {
       const remainingTime = lockout.ttl * 1000
       const { minutes, seconds } = formatRemainingTime(remainingTime)
-      console.log('lockout - 2', remainingTime, minutes, seconds)
       const messageKey =
         minutes > 0
           ? 'auth.errors.account_locked'
@@ -277,7 +276,7 @@ export class AuthService {
 
     const user = await getUserByEmail(data.email)
     if (!user) {
-      throw new UnauthorizedException(i18n.t('auth.errors.email_not_found'))
+      throw new UnauthorizedException(i18n.t('auth.errors.invalid_credentials'))
     }
 
     const isPasswordValid = await argon2.verify(
@@ -300,7 +299,7 @@ export class AuthService {
         )
       }
 
-      throw new UnauthorizedException(i18n.t('auth.errors.incorrect_password'))
+      throw new UnauthorizedException(i18n.t('auth.errors.invalid_credentials'))
     }
 
     await Promise.all([

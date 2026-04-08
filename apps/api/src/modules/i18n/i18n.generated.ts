@@ -48,8 +48,6 @@ export type I18nTranslations = {
             "username_already_exists": string;
             "username_already_exists_deleted": string;
             "user_not_found": string;
-            "email_not_found": string;
-            "incorrect_password": string;
             "invalid_credentials": string;
             "account_not_verified": string;
             "already_verified": string;
