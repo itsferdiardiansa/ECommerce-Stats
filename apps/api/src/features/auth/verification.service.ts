@@ -27,40 +27,68 @@ export class VerificationService {
     return throttleLimit * 2
   }
 
+  private codeKey(email: string) {
+    return `verification:email:${email.toLowerCase()}`
+  }
+
+  private attemptsKey(email: string) {
+    return `verification:email:${email.toLowerCase()}:attempts`
+  }
+
   async setVerificationCode(
     email: string,
     code: string,
     ttl = 300
   ): Promise<void> {
-    const key = `verification:email:${email.toLowerCase()}`
-    await this.redisService.set(
-      key,
-      { code, attempts: 0, createdAt: new Date().toISOString() },
-      ttl
-    )
+    // Store code and metadata separately from the attempt counter so the
+    // counter can be incremented atomically without touching the code object.
+    await Promise.all([
+      this.redisService.set(
+        this.codeKey(email),
+        { code, createdAt: new Date().toISOString() },
+        ttl
+      ),
+      this.redisService.del(this.attemptsKey(email)),
+    ])
   }
 
   async getVerificationCode(
     email: string
   ): Promise<{ code: string; attempts: number; createdAt: string } | null> {
-    return this.redisService.get(`verification:email:${email.toLowerCase()}`)
+    const data = await this.redisService.get<{
+      code: string
+      createdAt: string
+    }>(this.codeKey(email))
+
+    if (!data) return null
+
+    const attempts =
+      (await this.redisService.get<number>(this.attemptsKey(email))) ?? 0
+
+    return { ...data, attempts }
   }
 
   async incrementVerificationAttempts(email: string): Promise<number> {
-    const key = `verification:email:${email.toLowerCase()}`
-    const data = await this.getVerificationCode(email)
-    if (!data) return 0
+    const key = this.attemptsKey(email)
+    const count = await this.redisService.incr(key)
 
-    data.attempts += 1
+    if (count === 1) {
+      // Sync TTL with the code key so both expire together.
+      const codeTtl = await this.redisService.ttl(this.codeKey(email))
+      await this.redisService.expire(
+        key,
+        codeTtl > 0 ? codeTtl : this.VERIFICATION_CODE_TTL_SECONDS
+      )
+    }
 
-    const ttl = await this.redisService.ttl(key)
-    await this.redisService.set(key, data, ttl > 0 ? ttl : 300)
-
-    return data.attempts
+    return count
   }
 
   async deleteVerificationCode(email: string): Promise<void> {
-    await this.redisService.del(`verification:email:${email.toLowerCase()}`)
+    await Promise.all([
+      this.redisService.del(this.codeKey(email)),
+      this.redisService.del(this.attemptsKey(email)),
+    ])
   }
 
   async setVerificationLockout(
