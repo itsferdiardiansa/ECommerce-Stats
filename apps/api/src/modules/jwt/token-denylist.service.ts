@@ -1,53 +1,26 @@
 import { Injectable, Logger } from '@nestjs/common'
+import { RedisService } from '@/modules/redis/redis.service'
 
 @Injectable()
 export class TokenDenylistService {
   private readonly logger = new Logger(TokenDenylistService.name)
-  private readonly denied = new Map<string, number>()
-  private readonly cleanupInterval: ReturnType<typeof setInterval>
+  private readonly KEY_PREFIX = 'denylist:'
 
-  constructor() {
-    this.cleanupInterval = setInterval(() => this.cleanup(), 60_000)
+  constructor(private readonly redisService: RedisService) {}
+
+  async deny(jti: string, ttlSeconds: number): Promise<void> {
+    await this.redisService.set(`${this.KEY_PREFIX}${jti}`, '1', ttlSeconds)
   }
 
-  deny(jti: string, ttlSeconds: number): void {
-    const expiresAt = Date.now() + ttlSeconds * 1000
-    this.denied.set(jti, expiresAt)
+  async denyMany(jtis: string[], ttlSeconds: number): Promise<void> {
+    await Promise.all(
+      jtis.map(jti =>
+        this.redisService.set(`${this.KEY_PREFIX}${jti}`, '1', ttlSeconds)
+      )
+    )
   }
 
-  denyMany(jtis: string[], ttlSeconds: number): void {
-    const expiresAt = Date.now() + ttlSeconds * 1000
-    for (const jti of jtis) {
-      this.denied.set(jti, expiresAt)
-    }
-  }
-
-  isDenied(jti: string): boolean {
-    const expiresAt = this.denied.get(jti)
-    if (expiresAt === undefined) return false
-
-    if (Date.now() >= expiresAt) {
-      this.denied.delete(jti)
-      return false
-    }
-    return true
-  }
-
-  private cleanup(): void {
-    const now = Date.now()
-    let purged = 0
-    for (const [jti, expiresAt] of this.denied) {
-      if (now >= expiresAt) {
-        this.denied.delete(jti)
-        purged++
-      }
-    }
-    if (purged > 0) {
-      this.logger.debug(`Purged ${purged} expired denylist entries`)
-    }
-  }
-
-  onModuleDestroy() {
-    clearInterval(this.cleanupInterval)
+  async isDenied(jti: string): Promise<boolean> {
+    return this.redisService.exists(`${this.KEY_PREFIX}${jti}`)
   }
 }

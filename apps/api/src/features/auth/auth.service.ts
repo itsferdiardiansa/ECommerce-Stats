@@ -570,7 +570,7 @@ export class AuthService {
       (await Sessions.findByJti(jti))
     const userId = sessionData?.userId
 
-    this.tokenDenylist.deny(jti, this.jwtService.getAccessExpiresIn())
+    await this.tokenDenylist.deny(jti, this.jwtService.getAccessExpiresIn())
 
     await Promise.all([
       this.redisService.deleteSession(jti),
@@ -603,7 +603,10 @@ export class AuthService {
       }
     }
 
-    this.tokenDenylist.denyMany(otherJtis, this.jwtService.getAccessExpiresIn())
+    await this.tokenDenylist.denyMany(
+      otherJtis,
+      this.jwtService.getAccessExpiresIn()
+    )
 
     await Promise.all(
       otherJtis.map(jti => this.redisService.deleteSession(jti))
@@ -652,7 +655,10 @@ export class AuthService {
       }
     }
 
-    this.tokenDenylist.denyMany(jtis, this.jwtService.getAccessExpiresIn())
+    await this.tokenDenylist.denyMany(
+      jtis,
+      this.jwtService.getAccessExpiresIn()
+    )
 
     await Promise.all(jtis.map(jti => this.redisService.deleteSession(jti)))
 
@@ -670,7 +676,10 @@ export class AuthService {
     const jtis = activeSessions.map(session => session.jti)
 
     if (jtis.length > 0) {
-      this.tokenDenylist.denyMany(jtis, this.jwtService.getAccessExpiresIn())
+      await this.tokenDenylist.denyMany(
+        jtis,
+        this.jwtService.getAccessExpiresIn()
+      )
       await Promise.all(jtis.map(jti => this.redisService.deleteSession(jti)))
     }
 

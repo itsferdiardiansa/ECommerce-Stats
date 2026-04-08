@@ -29,7 +29,7 @@ export class ActiveUserGuard implements CanActivate {
     private readonly tokenDenylist: TokenDenylistService
   ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestWithUser>()
     const i18n = I18nContext.current(context)
     const authHeader = request.headers.authorization
@@ -42,8 +42,9 @@ export class ActiveUserGuard implements CanActivate {
 
     const token = authHeader.slice(7)
     const payload = this.jwtService.verifyAccessToken(token)
+    const isDenied = await this.tokenDenylist.isDenied(payload.jti)
 
-    if (this.tokenDenylist.isDenied(payload.jti)) {
+    if (isDenied) {
       throw new UnauthorizedException(
         i18n?.t('common.errors.unauthorized') || 'Unauthorized'
       )

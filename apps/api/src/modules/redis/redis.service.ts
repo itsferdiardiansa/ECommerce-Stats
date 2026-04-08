@@ -34,6 +34,11 @@ export class RedisService {
     await this.redisClient.del(key)
   }
 
+  async exists(key: string): Promise<boolean> {
+    const result = await this.redisClient.exists(key)
+    return result === 1
+  }
+
   async incr(key: string): Promise<number> {
     return await this.redisClient.incr(key)
   }
