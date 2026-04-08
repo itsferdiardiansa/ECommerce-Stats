@@ -1,6 +1,7 @@
 export * from './accounts'
 export * from './authenticators'
 export * from './login-history'
+export * from './login-lockout'
 export * from './password-history'
 export * from './sessions'
 export * from './verification'

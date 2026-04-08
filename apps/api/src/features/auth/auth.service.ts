@@ -261,6 +261,20 @@ export class AuthService {
     ipAddress?: string,
     userAgent?: string
   ) {
+    const lockout = await this.verificationService.getLoginLockout(data.email)
+    console.log('lockout', lockout)
+    if (lockout) {
+      const remainingTime = lockout.ttl * 1000
+      const { minutes, seconds } = formatRemainingTime(remainingTime)
+      console.log('lockout - 2', remainingTime, minutes, seconds)
+      const messageKey =
+        minutes > 0
+          ? 'auth.errors.account_locked'
+          : 'auth.errors.account_locked_seconds'
+      const args = minutes > 0 ? { minutes, seconds } : { seconds }
+      throw new UnauthorizedException(i18n.t(messageKey, { args }))
+    }
+
     const user = await getUserByEmail(data.email)
     if (!user) {
       throw new UnauthorizedException(i18n.t('auth.errors.email_not_found'))
@@ -271,8 +285,28 @@ export class AuthService {
       data.password
     )
     if (!isPasswordValid) {
+      const attempts = await this.verificationService.incrementLoginAttempts(
+        data.email
+      )
+
+      if (attempts >= this.verificationService.LOGIN_MAX_ATTEMPTS) {
+        await this.verificationService.setLoginLockout(
+          data.email,
+          ipAddress,
+          userAgent
+        )
+        throw new UnauthorizedException(
+          i18n.t('auth.errors.too_many_login_attempts')
+        )
+      }
+
       throw new UnauthorizedException(i18n.t('auth.errors.incorrect_password'))
     }
+
+    await Promise.all([
+      this.verificationService.resetLoginAttempts(data.email),
+      this.verificationService.clearLoginLockoutHistory(data.email),
+    ])
 
     if (!user.isActive) {
       throw new UnauthorizedException(

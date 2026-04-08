@@ -68,6 +68,11 @@ export type I18nTranslations = {
             "session_expired": string;
             "invalid_refresh_token": string;
             "invalid_client": string;
+            "missing_device_secret": string;
+            "login_locked": string;
+            "login_locked_seconds": string;
+            "too_many_login_attempts": string;
+            "incorrect_password_last_attempt": string;
         };
         "validation": {
             "code_length": string;

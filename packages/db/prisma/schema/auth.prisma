@@ -162,3 +162,29 @@ enum VerificationLockoutReason {
 
   @@schema("auth")
 }
+
+model LoginLockout {
+  id        Int               @id @default(autoincrement())
+  email     String
+  reason    LoginLockoutReason @default(TOO_MANY_ATTEMPTS)
+  ipAddress String?
+  userAgent String?
+  lockedAt  DateTime          @default(now())
+  expires   DateTime
+  clearedAt DateTime?
+  clearedBy Int?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([email])
+  @@index([expires])
+  @@schema("auth")
+}
+
+enum LoginLockoutReason {
+  TOO_MANY_ATTEMPTS
+  SUSPICIOUS_ACTIVITY
+  MANUAL_LOCK
+
+  @@schema("auth")
+}

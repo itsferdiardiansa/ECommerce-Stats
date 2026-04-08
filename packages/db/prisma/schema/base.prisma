@@ -6,11 +6,6 @@ generator client {
   previewFeatures = []
 }
 
-// generator zod {
-//   provider = "prisma-zod-generator"
-//   output   = "../../src/dtos"
-// }
-
 datasource db {
   provider = "postgresql"
   schemas  = ["public", "auth", "user", "analytics", "billing"]

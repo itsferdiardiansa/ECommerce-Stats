@@ -1,16 +1,31 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { Prisma } from '@rufieltics/db'
-import { Verification } from '@rufieltics/db/domains/auth'
+import { Verification, LoginLockouts } from '@rufieltics/db/domains/auth'
 import { RedisService } from '@/modules/redis/redis.service'
 
 @Injectable()
 export class VerificationService {
-  constructor(private readonly redisService: RedisService) {}
+  constructor(
+    private readonly redisService: RedisService,
+    private readonly configService: ConfigService
+  ) {}
 
   readonly VERIFICATION_CODE_TTL_SECONDS = 300
   readonly VERIFICATION_CODE_MAX_AGE_MS = 5 * 60 * 1000
   readonly VERIFICATION_MAX_ATTEMPTS = 5
   readonly VERIFICATION_LOCKOUT_DURATION_SECONDS = 3600
+  private readonly LOGIN_LOCKOUT_STEPS = [1800, 7200, 43200, 86400]
+  private readonly LOGIN_ATTEMPTS_TTL_SECONDS = 900
+
+  get LOGIN_MAX_ATTEMPTS(): number {
+    const throttleLimit = this.configService.get<number>(
+      'throttle.auth.limit',
+      5
+    )
+    return throttleLimit * 2
+  }
 
   async setVerificationCode(
     email: string,
@@ -94,6 +109,97 @@ export class VerificationService {
 
     if (!data) {
       const dbLockout = await Verification.findActiveVerificationLockout(email)
+      if (!dbLockout) return null
+
+      const ttlSeconds = Math.floor(
+        (dbLockout.expires.getTime() - Date.now()) / 1000
+      )
+      if (ttlSeconds <= 0) return null
+
+      data = {
+        lockedAt: dbLockout.lockedAt.toISOString(),
+        expires: dbLockout.expires.toISOString(),
+      }
+
+      await this.redisService.set(key, data, ttlSeconds)
+      return { ...data, ttl: ttlSeconds }
+    }
+
+    const ttl = await this.redisService.ttl(key)
+    return { ...data, ttl }
+  }
+
+  async incrementLoginAttempts(email: string): Promise<number> {
+    const key = `login:attempts:${email.toLowerCase()}`
+    const count = await this.redisService.incr(key)
+    if (count === 1) {
+      await this.redisService.expire(key, this.LOGIN_ATTEMPTS_TTL_SECONDS)
+    }
+    return count
+  }
+
+  async resetLoginAttempts(email: string): Promise<void> {
+    await this.redisService.del(`login:attempts:${email.toLowerCase()}`)
+  }
+
+  async setLoginLockout(
+    email: string,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<void> {
+    const key = `login:lockout:${email.toLowerCase()}`
+    const lockedAt = new Date()
+
+    const [existingLockout, priorCount] = await Promise.all([
+      LoginLockouts.findActive(email),
+      LoginLockouts.countAllForEmail(email),
+    ])
+
+    if (existingLockout) {
+      await LoginLockouts.clear(existingLockout.id)
+    }
+
+    const ttl =
+      this.LOGIN_LOCKOUT_STEPS[
+        Math.min(priorCount, this.LOGIN_LOCKOUT_STEPS.length - 1)
+      ]
+    const expires = new Date(Date.now() + ttl * 1000)
+
+    await Promise.all([
+      this.redisService.set(
+        key,
+        { lockedAt: lockedAt.toISOString(), expires: expires.toISOString() },
+        ttl
+      ),
+      LoginLockouts.create({
+        email: email.toLowerCase(),
+        ipAddress,
+        userAgent,
+        lockedAt,
+        expires,
+      }),
+    ])
+  }
+
+  async clearLoginLockoutHistory(email: string): Promise<void> {
+    await Promise.all([
+      this.redisService.del(`login:lockout:${email.toLowerCase()}`),
+      LoginLockouts.clearAllForEmail(email),
+    ])
+  }
+
+  async getLoginLockout(
+    email: string
+  ): Promise<{ lockedAt: string; expires: string; ttl: number } | null> {
+    const key = `login:lockout:${email.toLowerCase()}`
+
+    let data = await this.redisService.get<{
+      lockedAt: string
+      expires: string
+    }>(key)
+
+    if (!data) {
+      const dbLockout = await LoginLockouts.findActive(email)
       if (!dbLockout) return null
 
       const ttlSeconds = Math.floor(
