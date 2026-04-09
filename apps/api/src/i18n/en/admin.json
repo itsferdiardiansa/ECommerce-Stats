@@ -5,5 +5,13 @@
     "cleared_success": "Lockout cleared successfully. User can now attempt verification again.",
     "not_found": "Lockout not found",
     "already_cleared": "This lockout has already been cleared"
+  },
+  "login_lockouts": {
+    "created_success": "Login lockout applied successfully",
+    "list_success": "Login lockouts retrieved successfully",
+    "get_success": "Login lockout details retrieved successfully",
+    "cleared_success": "Login lockout cleared successfully. User can now attempt login again.",
+    "not_found": "Login lockout not found",
+    "already_cleared": "This login lockout has already been cleared"
   }
 }

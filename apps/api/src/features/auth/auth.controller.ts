@@ -28,7 +28,6 @@ import { ActiveUserGuard } from '@/common/guards/active-user.guard'
 import { CurrentUser } from '@/common/decorators/current-user.decorator'
 import type { CurrentUserPayload } from '@/common/decorators/current-user.decorator'
 import { MyLockoutResponseDto } from './dto/my-lockout-response.dto'
-import { RedisService } from '@/modules/redis/redis.service'
 import { JwtService } from '@/modules/jwt/jwt.service'
 import configuration from '@/config/configuration'
 
@@ -44,20 +43,30 @@ const getAuthThrottleConfig = () => ({
 @Controller('auth')
 export class AuthController {
   private readonly AUTH_COOKIE_PATH = '/api/v1/auth'
+  private readonly API_COOKIE_PATH = '/api/v1'
 
   constructor(
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
-    private readonly redisService: RedisService,
     private readonly jwtService: JwtService
   ) {}
 
   private getCookieOptions(): CookieOptions {
     return {
       httpOnly: true,
-      secure: config.nodeEnv === 'production',
+      secure: config.isProduction,
       sameSite: 'strict',
       path: this.AUTH_COOKIE_PATH,
+      maxAge: this.jwtService.getRefreshExpiresIn() * 1000,
+    }
+  }
+
+  private getDeviceSecretCookieOptions(): CookieOptions {
+    return {
+      httpOnly: true,
+      secure: config.isProduction,
+      sameSite: 'strict',
+      path: this.API_COOKIE_PATH,
       maxAge: this.jwtService.getRefreshExpiresIn() * 1000,
     }
   }
@@ -113,7 +122,11 @@ export class AuthController {
       await this.authService.login(dto, i18n, ipAddress, userAgent)
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
-    res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
+    res.cookie(
+      'deviceSecret',
+      rawDeviceSecret,
+      this.getDeviceSecretCookieOptions()
+    )
 
     return success(i18n.t('auth.login.success'), result)
   }
@@ -128,6 +141,9 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response
   ) {
     const token = req.cookies?.refreshToken as string | undefined
+    const existingDeviceSecret =
+      (req.cookies?.deviceSecret as string | undefined) ||
+      (req.headers['x-device-secret'] as string | undefined)
 
     if (!token) {
       throw new UnauthorizedException(
@@ -140,11 +156,16 @@ export class AuthController {
         { refreshToken: token },
         i18n,
         ipAddress,
-        userAgent
+        userAgent,
+        existingDeviceSecret
       )
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
-    res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
+    res.cookie(
+      'deviceSecret',
+      rawDeviceSecret,
+      this.getDeviceSecretCookieOptions()
+    )
 
     return success(i18n.t('auth.refresh.success'), result)
   }
@@ -160,7 +181,7 @@ export class AuthController {
   ) {
     await this.sessionService.logout(user.jti)
     res.clearCookie('refreshToken', { path: this.AUTH_COOKIE_PATH })
-    res.clearCookie('deviceSecret', { path: this.AUTH_COOKIE_PATH })
+    res.clearCookie('deviceSecret', { path: this.API_COOKIE_PATH })
     return success(i18n.t('auth.logout.success'), null)
   }
 
@@ -213,7 +234,7 @@ export class AuthController {
 
     if (dto.jtis.includes(user.jti)) {
       res.clearCookie('refreshToken', { path: this.AUTH_COOKIE_PATH })
-      res.clearCookie('deviceSecret', { path: this.AUTH_COOKIE_PATH })
+      res.clearCookie('deviceSecret', { path: this.API_COOKIE_PATH })
     }
 
     return success(result.message, null)

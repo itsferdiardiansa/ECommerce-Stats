@@ -5,5 +5,13 @@
     "cleared_success": "Lockout berhasil dihapus. Pengguna sekarang dapat mencoba verifikasi lagi.",
     "not_found": "Lockout tidak ditemukan",
     "already_cleared": "Lockout ini sudah dihapus sebelumnya"
+  },
+  "login_lockouts": {
+    "created_success": "Login lockout berhasil diterapkan",
+    "list_success": "Login lockout berhasil diambil",
+    "get_success": "Detail login lockout berhasil diambil",
+    "cleared_success": "Login lockout berhasil dihapus. Pengguna sekarang dapat mencoba login lagi.",
+    "not_found": "Login lockout tidak ditemukan",
+    "already_cleared": "Login lockout ini sudah dihapus sebelumnya"
   }
 }

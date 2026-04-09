@@ -71,8 +71,14 @@ export class ActiveUserGuard implements CanActivate {
       )
     }
 
-    const userAgent = request.headers['user-agent'] || ''
+    const userAgent = request.headers['user-agent']
     const ipAddress = request.ip || ''
+
+    if (!userAgent) {
+      throw new UnauthorizedException(
+        i18n?.t('auth.errors.invalid_client') || 'Invalid client'
+      )
+    }
 
     const { hash: currentEnvHash } = generateDeviceFingerprint(
       payload.sub,

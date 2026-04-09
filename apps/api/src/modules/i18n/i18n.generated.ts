@@ -13,6 +13,14 @@ export type I18nTranslations = {
             "not_found": string;
             "already_cleared": string;
         };
+        "login_lockouts": {
+            "created_success": string;
+            "list_success": string;
+            "get_success": string;
+            "cleared_success": string;
+            "not_found": string;
+            "already_cleared": string;
+        };
     };
     "auth": {
         "register": {
@@ -71,6 +79,7 @@ export type I18nTranslations = {
             "login_locked_seconds": string;
             "too_many_login_attempts": string;
             "incorrect_password_last_attempt": string;
+            "token_binding_failed": string;
         };
         "validation": {
             "code_length": string;

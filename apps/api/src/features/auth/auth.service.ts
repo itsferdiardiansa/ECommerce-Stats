@@ -341,7 +341,8 @@ export class AuthService {
     data: RefreshTokenDto,
     i18n: I18nContext,
     ipAddress?: string,
-    userAgent?: string
+    userAgent?: string,
+    existingDeviceSecret?: string
   ) {
     const { jti } = this.jwtService.verifyRefreshToken(data.refreshToken)
 
@@ -453,13 +454,16 @@ export class AuthService {
       throw new UnauthorizedException(i18n.t('auth.errors.user_not_found'))
     }
 
-    return this.sessionService.initiateSession(
+    const { geo: _, ...session } = await this.sessionService.initiateSession(
       user,
       role,
       orgId,
       userAgent,
-      ipAddress
+      ipAddress,
+      existingDeviceSecret
     )
+
+    return session
   }
 
   getVerificationLockout(email: string) {

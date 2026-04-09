@@ -11,6 +11,7 @@ export const RegisterSchema = z.object({
   password: z
     .string({ error: 'common.validation.required' })
     .min(8, { message: 'common.validation.minLength' })
+    .max(16, { message: 'common.validation.maxLength' })
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
       message: 'common.validation.password_pattern',
     }),

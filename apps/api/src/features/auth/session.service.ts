@@ -32,12 +32,14 @@ export class SessionService {
     role: string | null,
     orgId: string | null,
     userAgent?: string,
-    ipAddress?: string
+    ipAddress?: string,
+    existingDeviceSecret?: string
   ) {
     const jti = randomUUID()
     const refreshTtl = this.jwtService.getRefreshExpiresIn()
     const expires = new Date(Date.now() + refreshTtl * 1000)
-    const rawDeviceSecret = randomBytes(32).toString('hex')
+    const rawDeviceSecret =
+      existingDeviceSecret ?? randomBytes(32).toString('hex')
     const deviceSecretHash = createHash('sha256')
       .update(rawDeviceSecret)
       .digest('hex')

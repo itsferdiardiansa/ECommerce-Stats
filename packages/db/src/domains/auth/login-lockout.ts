@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/generated'
 import { db } from '@/libs/prisma'
 
 export const LoginLockouts = {
@@ -7,6 +8,7 @@ export const LoginLockouts = {
     userAgent?: string
     lockedAt: Date
     expires: Date
+    reason?: 'TOO_MANY_ATTEMPTS' | 'SUSPICIOUS_ACTIVITY' | 'MANUAL_LOCK'
   }) {
     return db.loginLockout.create({ data })
   },
@@ -40,11 +42,66 @@ export const LoginLockouts = {
     })
   },
 
-  /**
-   * Count all lockout records for an email, including expired and cleared ones.
-   * Used to determine how many times this account has been locked, which drives
-   * progressive lockout durations.
-   */
+  async findById(id: number) {
+    return db.loginLockout.findUnique({ where: { id } })
+  },
+
+  async list(params: {
+    page: number
+    limit: number
+    status?: 'active' | 'cleared' | 'all'
+    email?: string
+    startDate?: Date
+    endDate?: Date
+    sortOrder?: 'asc' | 'desc'
+  }) {
+    const {
+      page,
+      limit,
+      status = 'active',
+      email,
+      startDate,
+      endDate,
+      sortOrder = 'desc',
+    } = params
+
+    const where: Prisma.LoginLockoutWhereInput = {}
+
+    if (status === 'active') {
+      where.expires = { gt: new Date() }
+      where.clearedAt = null
+    } else if (status === 'cleared') {
+      where.clearedAt = { not: null }
+    }
+
+    if (email) where.email = email.toLowerCase()
+
+    if (startDate || endDate) {
+      where.lockedAt = {}
+      if (startDate) where.lockedAt.gte = startDate
+      if (endDate) where.lockedAt.lte = endDate
+    }
+
+    const [lockouts, total] = await Promise.all([
+      db.loginLockout.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { lockedAt: sortOrder },
+      }),
+      db.loginLockout.count({ where }),
+    ])
+
+    const meta = {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    }
+
+    return { data: lockouts, meta }
+  },
+
   async countAllForEmail(email: string) {
     return db.loginLockout.count({
       where: { email: email.toLowerCase() },

@@ -173,7 +173,12 @@ export class VerificationService {
   async setLoginLockout(
     email: string,
     ipAddress?: string,
-    userAgent?: string
+    userAgent?: string,
+    reason:
+      | 'TOO_MANY_ATTEMPTS'
+      | 'SUSPICIOUS_ACTIVITY'
+      | 'MANUAL_LOCK' = 'TOO_MANY_ATTEMPTS',
+    ttlOverride?: number
   ): Promise<void> {
     const key = `login:lockout:${email.toLowerCase()}`
     const lockedAt = new Date()
@@ -187,10 +192,18 @@ export class VerificationService {
       await LoginLockouts.clear(existingLockout.id)
     }
 
-    const ttl =
-      this.LOGIN_LOCKOUT_STEPS[
-        Math.min(priorCount, this.LOGIN_LOCKOUT_STEPS.length - 1)
-      ]
+    let ttl: number
+    if (ttlOverride !== undefined) {
+      ttl = ttlOverride
+    } else if (reason === 'SUSPICIOUS_ACTIVITY') {
+      ttl = this.LOGIN_LOCKOUT_STEPS[this.LOGIN_LOCKOUT_STEPS.length - 1]
+    } else {
+      ttl =
+        this.LOGIN_LOCKOUT_STEPS[
+          Math.min(priorCount, this.LOGIN_LOCKOUT_STEPS.length - 1)
+        ]
+    }
+
     const expires = new Date(Date.now() + ttl * 1000)
 
     await Promise.all([
@@ -205,6 +218,7 @@ export class VerificationService {
         userAgent,
         lockedAt,
         expires,
+        reason,
       }),
     ])
   }

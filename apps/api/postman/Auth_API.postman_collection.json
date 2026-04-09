@@ -35,6 +35,11 @@
       "key": "lockout_id",
       "value": "1",
       "type": "string"
+    },
+    {
+      "key": "login_lockout_id",
+      "value": "1",
+      "type": "string"
     }
   ],
   "item": [
@@ -544,6 +549,258 @@
               "path": ["auth", "my-lockout"]
             },
             "description": "Check your own verification lockout status. Returns whether you're locked, the reason, expiry time, and remaining seconds/minutes. Authenticated users only."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin - Login Lockout Management",
+      "description": "Admin-only endpoints for managing login lockouts (TOO_MANY_ATTEMPTS, SUSPICIOUS_ACTIVITY, MANUAL_LOCK)",
+      "item": [
+        {
+          "name": "Create Login Lockout (Manual Lock)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "Admin access token required"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"ttlSeconds\": 3600\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/login-lockouts",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "login-lockouts"]
+            },
+            "description": "Manually lock a user's login with reason MANUAL_LOCK. Optional ttlSeconds sets the lockout duration (max 604800 = 7 days). Defaults to progressive TTL based on prior lockout history if omitted."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('Manual login lockout created for: ' + response.data.email);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Login Lockouts (Active)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "Admin access token required"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/login-lockouts?page=1&limit=10&status=active",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "login-lockouts"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page (max: 100, default: 10)"
+                },
+                {
+                  "key": "status",
+                  "value": "active",
+                  "description": "Filter by status: active, cleared, or all (default: active)"
+                },
+                {
+                  "key": "email",
+                  "value": "",
+                  "description": "Filter by exact email address",
+                  "disabled": true
+                },
+                {
+                  "key": "startDate",
+                  "value": "",
+                  "description": "Filter lockouts created on or after this date (ISO 8601)",
+                  "disabled": true
+                },
+                {
+                  "key": "endDate",
+                  "value": "",
+                  "description": "Filter lockouts created on or before this date (ISO 8601)",
+                  "disabled": true
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc",
+                  "description": "Sort order: asc or desc (default: desc)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List all login lockouts with pagination and filters. Returns reason (TOO_MANY_ATTEMPTS / SUSPICIOUS_ACTIVITY / MANUAL_LOCK), IP address, user agent, timestamps, and remaining seconds for active lockouts."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.data && response.data.data.length > 0) {",
+                  "        pm.collectionVariables.set('login_lockout_id', response.data.data[0].id);",
+                  "        console.log('First login lockout ID saved: ' + response.data.data[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Login Lockouts (By Email)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/login-lockouts?email=john.doe@example.com&status=all",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "login-lockouts"],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "john.doe@example.com",
+                  "description": "Search lockouts for specific email"
+                },
+                {
+                  "key": "status",
+                  "value": "all",
+                  "description": "Include both active and cleared"
+                }
+              ]
+            },
+            "description": "Find all login lockouts (active and cleared) for a specific email address. Useful for reviewing the lockout history and understanding progressive escalation."
+          },
+          "response": []
+        },
+        {
+          "name": "List Login Lockouts (Cleared Only)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/login-lockouts?status=cleared&page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "login-lockouts"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "cleared"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "List only cleared login lockouts with clearedAt and clearedBy information."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Login Lockout by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/login-lockouts/{{login_lockout_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "login-lockouts", "{{login_lockout_id}}"]
+            },
+            "description": "Get detailed information about a specific login lockout by ID, including reason, remaining time, and who cleared it (if cleared)."
+          },
+          "response": []
+        },
+        {
+          "name": "Clear Login Lockout (Manual Unlock)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/login-lockouts/{{login_lockout_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "login-lockouts", "{{login_lockout_id}}"]
+            },
+            "description": "Manually clear a login lockout so the user can attempt login again. Clears all active login lockouts for that email and removes the Redis key. Records the admin ID who performed the clear."
           },
           "response": []
         }
