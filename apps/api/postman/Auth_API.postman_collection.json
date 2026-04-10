@@ -32,6 +32,11 @@
       "type": "string"
     },
     {
+      "key": "csrf_token",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "lockout_id",
       "value": "1",
       "type": "string"
@@ -40,6 +45,20 @@
       "key": "login_lockout_id",
       "value": "1",
       "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// No User-Agent override — Postman sends its own UA automatically.",
+          "// The device fingerprint is locked at login time to whatever UA is",
+          "// used for the login request. Changing the UA on subsequent requests",
+          "// will trigger a 401 (device binding mismatch), as expected."
+        ]
+      }
     }
   ],
   "item": [
@@ -174,6 +193,19 @@
           "response": [],
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Clear stale cookies so the fresh ones from login take effect.",
+                  "// The httpOnly deviceSecret cookie is managed entirely by the",
+                  "// cookie jar — Postman sends it automatically on matching paths.",
+                  "const jar = pm.cookies.jar();",
+                  "jar.clear(pm.request.url, function() {});"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
@@ -181,10 +213,15 @@
                   "if (pm.response.code === 200) {",
                   "    const response = pm.response.json();",
                   "    if (response.data && response.data.accessToken) {",
-                  "        pm.collectionVariables.set('access_token', response.data.accessToken);",
-                  "        console.log('Access token saved');",
+                  "        pm.collectionVariables.set(\"access_token\", response.data.accessToken);",
+                  "        console.log(\"Access token saved\");",
                   "    }",
-                  "    }"
+                  "    const csrf = pm.cookies.get(\"csrf_token\");",
+                  "    if (csrf) {",
+                  "        pm.collectionVariables.set(\"csrf_token\", csrf);",
+                  "        console.log(\"CSRF token saved\");",
+                  "    }",
+                  "}"
                 ]
               }
             }
@@ -225,10 +262,14 @@
                   "if (pm.response.code === 200) {",
                   "    const response = pm.response.json();",
                   "    if (response.data && response.data.accessToken) {",
-                  "        pm.collectionVariables.set('access_token', response.data.accessToken);",
-                  "        console.log('New access token saved');",
+                  "        pm.collectionVariables.set(\"access_token\", response.data.accessToken);",
+                  "        console.log(\"New access token saved\");",
                   "    }",
-                  "    }"
+                  "    const csrf = pm.cookies.get(\"csrf_token\");",
+                  "    if (csrf) {",
+                  "        pm.collectionVariables.set(\"csrf_token\", csrf);",
+                  "    }",
+                  "}"
                 ]
               }
             }
@@ -243,6 +284,11 @@
                 "key": "Authorization",
                 "value": "Bearer {{access_token}}",
                 "description": "Required — valid access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}",
+                "description": "Required — CSRF token received at login (double-submit cookie pattern)"
               },
               {
                 "key": "Accept-Language",
@@ -266,6 +312,7 @@
                   "if (pm.response.code === 200) {",
                   "    pm.collectionVariables.set('access_token', '');",
                   "    pm.collectionVariables.set('refresh_token', '');",
+                  "    pm.collectionVariables.set('csrf_token', '');",
                   "    console.log('Tokens cleared after logout');",
                   "}"
                 ]
@@ -282,6 +329,12 @@
                 "key": "Authorization",
                 "value": "Bearer {{access_token}}",
                 "type": "text"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}",
+                "type": "text",
+                "description": "Required — CSRF token"
               }
             ],
             "url": {
@@ -306,6 +359,12 @@
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}",
+                "type": "text",
+                "description": "Required — CSRF token"
               }
             ],
             "body": {
@@ -336,6 +395,30 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "sessions"]
             }
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Lockout Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "User's own access token"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/my-lockout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "my-lockout"]
+            },
+            "description": "Check your own verification lockout status. Returns whether you're locked, the reason, expiry time, and remaining seconds/minutes. Authenticated users only."
           },
           "response": []
         }
@@ -515,6 +598,10 @@
                 "value": "Bearer {{access_token}}"
               },
               {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
+              },
+              {
                 "key": "Accept-Language",
                 "value": "en"
               }
@@ -525,30 +612,6 @@
               "path": ["admin", "lockouts", "1"]
             },
             "description": "Manually clear a lockout to allow the user to attempt verification again. Admin privileges required. Records the admin ID who cleared the lockout and removes it from both database and Redis."
-          },
-          "response": []
-        },
-        {
-          "name": "Get My Lockout Status (User)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}",
-                "description": "User's own access token"
-              },
-              {
-                "key": "Accept-Language",
-                "value": "en"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/auth/my-lockout",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "my-lockout"]
-            },
-            "description": "Check your own verification lockout status. Returns whether you're locked, the reason, expiry time, and remaining seconds/minutes. Authenticated users only."
           },
           "response": []
         }
@@ -567,6 +630,10 @@
                 "key": "Authorization",
                 "value": "Bearer {{access_token}}",
                 "description": "Admin access token required"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
               },
               {
                 "key": "Content-Type",
@@ -789,6 +856,10 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
               },
               {
                 "key": "Accept-Language",
@@ -1068,6 +1139,10 @@
                 "description": "Required — must be the token of the user being updated"
               },
               {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
+              },
+              {
                 "key": "Accept-Language",
                 "value": "en"
               }
@@ -1098,6 +1173,10 @@
                 "key": "Authorization",
                 "value": "Bearer {{access_token}}",
                 "description": "Required — must be a staff (isStaff=true) access token"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
               },
               {
                 "key": "Accept-Language",

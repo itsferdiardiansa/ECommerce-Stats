@@ -259,6 +259,14 @@ export class SessionService {
     await this.redisService.del(`session:${sessionId}`)
   }
 
+  async acquireRefreshLock(jti: string): Promise<boolean> {
+    return this.redisService.setNX(`refresh_lock:${jti}`, '1', 10)
+  }
+
+  async releaseRefreshLock(jti: string): Promise<void> {
+    await this.redisService.del(`refresh_lock:${jti}`)
+  }
+
   async validateRefreshSession(jti: string): Promise<{
     revokedData: { userId: number } | null
     sessionData: StoredSession | null

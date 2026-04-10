@@ -83,6 +83,7 @@ export type I18nTranslations = {
             "too_many_login_attempts": string;
             "incorrect_password_last_attempt": string;
             "token_binding_failed": string;
+            "invalid_csrf_token": string;
         };
         "validation": {
             "code_length": string;

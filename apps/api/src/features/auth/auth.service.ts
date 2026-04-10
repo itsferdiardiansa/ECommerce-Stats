@@ -3,6 +3,7 @@ import {
   BadRequestException,
   UnauthorizedException,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common'
 import { I18nContext } from 'nestjs-i18n'
 import { EventEmitter2 } from '@nestjs/event-emitter'
@@ -41,13 +42,21 @@ import {
 } from './listeners/auth-events.listener'
 
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
+  private dummyHash!: string
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly eventEmitter: EventEmitter2,
     private readonly verificationService: VerificationService,
     private readonly sessionService: SessionService
   ) {}
+
+  async onModuleInit() {
+    // Pre-compute dummy hash at startup to equalize login timing when user
+    // does not exist, preventing email enumeration via response time.
+    this.dummyHash = await argon2.hash('__dummy__placeholder__password__')
+  }
 
   async register(data: RegisterDto, i18n: I18nContext) {
     try {
@@ -275,6 +284,8 @@ export class AuthService {
 
     const user = await getUserByEmail(data.email)
     if (!user) {
+      // Always run verify to prevent timing-based email enumeration
+      await argon2.verify(this.dummyHash, data.password)
       throw new UnauthorizedException(i18n.t('auth.errors.invalid_credentials'))
     }
 
@@ -343,6 +354,35 @@ export class AuthService {
   ) {
     const { jti } = this.jwtService.verifyRefreshToken(data.refreshToken)
 
+    const lockAcquired = await this.sessionService.acquireRefreshLock(jti)
+    if (!lockAcquired) {
+      throw new UnauthorizedException(
+        i18n.t('auth.errors.invalid_refresh_token')
+      )
+    }
+
+    try {
+      return await this._doRefreshToken(
+        jti,
+        data,
+        i18n,
+        ipAddress,
+        userAgent,
+        existingDeviceSecret
+      )
+    } finally {
+      await this.sessionService.releaseRefreshLock(jti)
+    }
+  }
+
+  private async _doRefreshToken(
+    jti: string,
+    data: RefreshTokenDto,
+    i18n: I18nContext,
+    ipAddress?: string,
+    userAgent?: string,
+    existingDeviceSecret?: string
+  ) {
     const { revokedData, sessionData } =
       await this.sessionService.validateRefreshSession(jti)
 

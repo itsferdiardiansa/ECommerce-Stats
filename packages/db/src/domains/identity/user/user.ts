@@ -70,7 +70,7 @@ export async function getUserByEmail(email: string) {
   return db.user.findFirst({
     where: {
       email,
-      deletedAt: null, // Exclude soft-deleted users
+      deletedAt: null,
     },
     select: {
       id: true,

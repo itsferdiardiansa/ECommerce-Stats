@@ -16,6 +16,7 @@ import {
 import type { Request, Response, CookieOptions } from 'express'
 import { Throttle, SkipThrottle } from '@nestjs/throttler'
 import { I18n, I18nContext } from 'nestjs-i18n'
+import { randomBytes } from 'crypto'
 import { AuthService } from './auth.service'
 import { SessionService } from './session.service'
 import { RegisterDto } from './dto/register.dto'
@@ -25,6 +26,8 @@ import { LoginDto } from './dto/login.dto'
 import { RevokeSessionsDto } from './dto/revoke-sessions.dto'
 import { created, success } from '@/common/helpers/api-response.helper'
 import { ActiveUserGuard } from '@/common/guards/active-user.guard'
+import { CsrfGuard } from '@/common/guards/csrf.guard'
+import { SkipCsrf } from '@/common/decorators/skip-csrf.decorator'
 import { CurrentUser } from '@/common/decorators/current-user.decorator'
 import type { CurrentUserPayload } from '@/common/decorators/current-user.decorator'
 import { MyLockoutResponseDto } from './dto/my-lockout-response.dto'
@@ -41,6 +44,7 @@ const getAuthThrottleConfig = () => ({
 })
 
 @Controller('auth')
+@UseGuards(CsrfGuard)
 export class AuthController {
   private readonly AUTH_COOKIE_PATH = '/api/v1/auth'
   private readonly API_COOKIE_PATH = '/api/v1'
@@ -71,7 +75,20 @@ export class AuthController {
     }
   }
 
+  private getCsrfCookieOptions(): CookieOptions {
+    return {
+      // NOT httpOnly — must be readable by JS so the client can echo it back
+      // in the x-csrf-token header (double-submit cookie pattern)
+      httpOnly: false,
+      secure: config.isProduction,
+      sameSite: 'strict',
+      path: this.API_COOKIE_PATH,
+      maxAge: this.jwtService.getRefreshExpiresIn() * 1000,
+    }
+  }
+
   @Post('register')
+  @SkipCsrf()
   @Throttle(getAuthThrottleConfig())
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() dto: RegisterDto, @I18n() i18n: I18nContext) {
@@ -80,6 +97,7 @@ export class AuthController {
   }
 
   @Post('verify-email')
+  @SkipCsrf()
   @Throttle(getAuthThrottleConfig())
   @HttpCode(HttpStatus.OK)
   async verifyEmail(
@@ -98,6 +116,7 @@ export class AuthController {
   }
 
   @Post('resend-verification')
+  @SkipCsrf()
   @Throttle(getAuthThrottleConfig())
   @HttpCode(HttpStatus.OK)
   async resendVerification(
@@ -109,6 +128,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @SkipCsrf()
   @Throttle(getAuthThrottleConfig())
   @HttpCode(HttpStatus.OK)
   async login(
@@ -121,17 +141,20 @@ export class AuthController {
     const { refreshToken, rawDeviceSecret, ...result } =
       await this.authService.login(dto, i18n, ipAddress, userAgent)
 
+    const csrfToken = randomBytes(32).toString('hex')
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
     res.cookie(
       'deviceSecret',
       rawDeviceSecret,
       this.getDeviceSecretCookieOptions()
     )
+    res.cookie('csrf_token', csrfToken, this.getCsrfCookieOptions())
 
     return success(i18n.t('auth.login.success'), result)
   }
 
   @Post('refresh')
+  @SkipCsrf()
   @HttpCode(HttpStatus.OK)
   async refreshToken(
     @Req() req: Request,
@@ -160,12 +183,14 @@ export class AuthController {
         existingDeviceSecret
       )
 
+    const csrfToken = randomBytes(32).toString('hex')
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
     res.cookie(
       'deviceSecret',
       rawDeviceSecret,
       this.getDeviceSecretCookieOptions()
     )
+    res.cookie('csrf_token', csrfToken, this.getCsrfCookieOptions())
 
     return success(i18n.t('auth.refresh.success'), result)
   }
@@ -182,6 +207,7 @@ export class AuthController {
     await this.sessionService.logout(user.jti)
     res.clearCookie('refreshToken', { path: this.AUTH_COOKIE_PATH })
     res.clearCookie('deviceSecret', { path: this.API_COOKIE_PATH })
+    res.clearCookie('csrf_token', { path: this.API_COOKIE_PATH })
     return success(i18n.t('auth.logout.success'), null)
   }
 
@@ -235,6 +261,7 @@ export class AuthController {
     if (dto.jtis.includes(user.jti)) {
       res.clearCookie('refreshToken', { path: this.AUTH_COOKIE_PATH })
       res.clearCookie('deviceSecret', { path: this.API_COOKIE_PATH })
+      res.clearCookie('csrf_token', { path: this.API_COOKIE_PATH })
     }
 
     return success(result.message, null)
