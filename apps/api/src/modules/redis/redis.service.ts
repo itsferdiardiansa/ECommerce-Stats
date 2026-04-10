@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common'
-import Redis from 'ioredis'
+import Redis, { type ChainableCommander } from 'ioredis'
 import { REDIS_CLIENT } from './redis.constants'
 
 @Injectable()
@@ -54,5 +54,14 @@ export class RedisService {
     const serialized = typeof value === 'string' ? value : JSON.stringify(value)
     const result = await this.redisClient.set(key, serialized, 'EX', ttl, 'NX')
     return result === 'OK'
+  }
+
+  async execPipeline<T>(
+    build: (pipe: ChainableCommander) => void
+  ): Promise<Array<[Error | null, T]>> {
+    const pipe = this.redisClient.pipeline()
+    build(pipe)
+    const results = await pipe.exec()
+    return (results ?? []) as Array<[Error | null, T]>
   }
 }

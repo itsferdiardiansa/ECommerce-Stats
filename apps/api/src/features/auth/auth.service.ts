@@ -10,7 +10,7 @@ import * as argon2 from 'argon2'
 import {
   createUser,
   getUserByEmail,
-  getUserById,
+  getUserForSession,
   updateUser,
   getUserByEmailIncludingDeleted,
   getUserByUsernameIncludingDeleted,
@@ -23,7 +23,6 @@ import { Sessions } from '@rufieltics/db/domains/auth'
 import { JwtService } from '@/modules/jwt/jwt.service'
 import { VerificationService } from './verification.service'
 import { SessionService } from './session.service'
-import type { StoredSession } from './session.service'
 import type { RegisterDto } from './dto/register.dto'
 import type { VerifyEmailDto } from './dto/verify-email.dto'
 import type { ResendVerificationDto } from './dto/resend-verification.dto'
@@ -327,8 +326,6 @@ export class AuthService {
       ipAddress
     )
 
-    await Sessions.deleteExpiredByUserId(user.id)
-
     this.eventEmitter.emit(
       'auth.login.success',
       new LoginSuccessEvent(user.id, ipAddress || null, userAgent || null, geo)
@@ -346,13 +343,15 @@ export class AuthService {
   ) {
     const { jti } = this.jwtService.verifyRefreshToken(data.refreshToken)
 
-    const reusedSession = await this.sessionService.getJtiRevocation(jti)
-    if (reusedSession) {
-      await this.sessionService.revokeAllSessions(reusedSession.userId)
+    const { revokedData, sessionData } =
+      await this.sessionService.validateRefreshSession(jti)
+
+    if (revokedData) {
+      await this.sessionService.revokeAllSessions(revokedData.userId)
       this.eventEmitter.emit(
         'auth.security.compromise',
         new SecurityCompromiseEvent(
-          reusedSession.userId,
+          revokedData.userId,
           ipAddress || null,
           userAgent || null
         )
@@ -362,12 +361,10 @@ export class AuthService {
       )
     }
 
-    const sessionData = (await this.sessionService.getSessionCache(
-      jti
-    )) as StoredSession | null
-
     let storedHash: string
     let userId: number
+    let email: string
+    let isStaff: boolean
     let role: string | null = null
     let orgId: string | null = null
     let storedFingerprint: string
@@ -393,6 +390,18 @@ export class AuthService {
       role = sessionData.role
       orgId = sessionData.orgId
       storedFingerprint = sessionData.deviceFingerprint
+
+      if (sessionData.email !== undefined) {
+        email = sessionData.email
+        isStaff = sessionData.isStaff
+      } else {
+        const user = await getUserForSession(userId)
+        if (!user) {
+          throw new UnauthorizedException(i18n.t('auth.errors.user_not_found'))
+        }
+        email = user.email
+        isStaff = user.isStaff
+      }
     } else {
       const dbSession = await Sessions.findByJti(jti)
       if (!dbSession) {
@@ -420,6 +429,13 @@ export class AuthService {
       role = dbSession.role
       orgId = dbSession.orgId
       storedFingerprint = dbSession.deviceFingerprint
+
+      const user = await getUserForSession(userId)
+      if (!user) {
+        throw new UnauthorizedException(i18n.t('auth.errors.user_not_found'))
+      }
+      email = user.email
+      isStaff = user.isStaff
     }
 
     const isValid = await argon2.verify(storedHash, data.refreshToken)
@@ -443,24 +459,14 @@ export class AuthService {
       throw new UnauthorizedException(i18n.t('auth.errors.invalid_client'))
     }
 
-    await Promise.all([
-      this.sessionService.deleteSessionCache(jti),
-      Sessions.revokeByJti(jti),
-      this.sessionService.markJtiRevoked(jti, userId),
-    ])
-
-    const user = await getUserById(userId)
-    if (!user) {
-      throw new UnauthorizedException(i18n.t('auth.errors.user_not_found'))
-    }
-
     const { geo: _, ...session } = await this.sessionService.initiateSession(
-      user,
+      { id: userId, email, isStaff },
       role,
       orgId,
       userAgent,
       ipAddress,
-      existingDeviceSecret
+      existingDeviceSecret,
+      jti
     )
 
     return session

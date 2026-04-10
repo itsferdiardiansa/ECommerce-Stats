@@ -40,8 +40,6 @@ export class VerificationService {
     code: string,
     ttl = 300
   ): Promise<void> {
-    // Store code and metadata separately from the attempt counter so the
-    // counter can be incremented atomically without touching the code object.
     await Promise.all([
       this.redisService.set(
         this.codeKey(email),
@@ -73,7 +71,6 @@ export class VerificationService {
     const count = await this.redisService.incr(key)
 
     if (count === 1) {
-      // Sync TTL with the code key so both expire together.
       const codeTtl = await this.redisService.ttl(this.codeKey(email))
       await this.redisService.expire(
         key,

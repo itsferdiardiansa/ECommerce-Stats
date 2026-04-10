@@ -44,6 +44,9 @@ export type I18nTranslations = {
         "my_lockout": {
             "success": string;
         };
+        "security": {
+            "compremise": string;
+        };
         "success": {
             "no_other_sessions": string;
             "sessions_retrieved": string;

@@ -11,6 +11,8 @@ import { generateDeviceFingerprint } from '@/utils/fingerprint'
 
 export interface StoredSession {
   userId: number
+  email: string
+  isStaff: boolean
   refreshTokenHash: string
   isRevoked: boolean
   expires: string
@@ -33,7 +35,8 @@ export class SessionService {
     orgId: string | null,
     userAgent?: string,
     ipAddress?: string,
-    existingDeviceSecret?: string
+    existingDeviceSecret?: string,
+    previousJti?: string
   ) {
     const jti = randomUUID()
     const refreshTtl = this.jwtService.getRefreshExpiresIn()
@@ -65,40 +68,55 @@ export class SessionService {
     const refreshToken = this.jwtService.signRefreshToken(jti)
     const refreshTokenHash = await argon2.hash(refreshToken)
 
-    const existingSession = await Sessions.findByFingerprint(
-      user.id,
-      deviceFingerprint
-    )
-    if (existingSession && existingSession.jti !== jti) {
-      await this.deleteSessionCache(existingSession.jti)
+    const sessionCacheData: StoredSession = {
+      userId: user.id,
+      email: user.email,
+      isStaff: user.isStaff,
+      refreshTokenHash,
+      isRevoked: false,
+      expires: expires.toISOString(),
+      role,
+      orgId,
+      deviceFingerprint,
     }
 
-    await Promise.all([
-      Sessions.upsertByFingerprint({
-        userId: user.id,
-        jti,
-        refreshTokenHash,
-        orgId,
-        role,
-        ipAddress,
-        userAgent,
-        deviceFingerprint,
-        expires,
-      }),
-      this.setSessionCache(
-        jti,
-        {
+    if (previousJti) {
+      await Promise.all([
+        Sessions.upsertByFingerprint({
           userId: user.id,
+          jti,
           refreshTokenHash,
-          isRevoked: false,
-          expires: expires.toISOString(),
-          role,
           orgId,
+          role,
+          ipAddress,
+          userAgent,
           deviceFingerprint,
-        },
-        refreshTtl
-      ),
-    ])
+          expires,
+        }),
+        this.commitRefreshRotation(
+          previousJti,
+          jti,
+          user.id,
+          sessionCacheData,
+          refreshTtl
+        ),
+      ])
+    } else {
+      await Promise.all([
+        Sessions.upsertByFingerprint({
+          userId: user.id,
+          jti,
+          refreshTokenHash,
+          orgId,
+          role,
+          ipAddress,
+          userAgent,
+          deviceFingerprint,
+          expires,
+        }),
+        this.setSessionCache(jti, sessionCacheData, refreshTtl),
+      ])
+    }
 
     return {
       accessToken,
@@ -241,9 +259,54 @@ export class SessionService {
     await this.redisService.del(`session:${sessionId}`)
   }
 
+  async validateRefreshSession(jti: string): Promise<{
+    revokedData: { userId: number } | null
+    sessionData: StoredSession | null
+  }> {
+    const revokedKey = `revoked_jti:${jti}`
+    const sessionKey = `session:${jti}`
+
+    const results = await this.redisService.execPipeline<string | null>(
+      pipe => {
+        pipe.get(revokedKey)
+        pipe.get(sessionKey)
+      }
+    )
+
+    const revokedRaw = results[0]?.[1]
+    const sessionRaw = results[1]?.[1]
+
+    const revokedData = revokedRaw
+      ? (JSON.parse(revokedRaw) as { userId: number })
+      : null
+
+    const sessionData = sessionRaw
+      ? (JSON.parse(sessionRaw) as StoredSession)
+      : null
+
+    return { revokedData, sessionData }
+  }
+
+  async commitRefreshRotation(
+    oldJti: string,
+    newJti: string,
+    userId: number,
+    sessionData: StoredSession,
+    refreshTtl: number
+  ): Promise<void> {
+    const serializedRevoked = JSON.stringify({ userId })
+    const serializedSession = JSON.stringify(sessionData)
+
+    await this.redisService.execPipeline(pipe => {
+      pipe.del(`session:${oldJti}`)
+      pipe.setex(`revoked_jti:${oldJti}`, refreshTtl, serializedRevoked)
+      pipe.setex(`session:${newJti}`, refreshTtl, serializedSession)
+    })
+  }
+
   private async setSessionCache(
     sessionId: string,
-    data: Record<string, unknown>,
+    data: StoredSession,
     ttl = 604800
   ): Promise<void> {
     await this.redisService.set(`session:${sessionId}`, data, ttl)

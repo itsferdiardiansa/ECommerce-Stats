@@ -59,6 +59,13 @@ export async function getUserById(id: number) {
   })
 }
 
+export async function getUserForSession(id: number) {
+  return db.user.findFirst({
+    where: { id, deletedAt: null },
+    select: { id: true, email: true, isStaff: true },
+  })
+}
+
 export async function getUserByEmail(email: string) {
   return db.user.findFirst({
     where: {
