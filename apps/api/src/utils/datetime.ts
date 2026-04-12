@@ -1,12 +1,45 @@
-export function formatRemainingTime(milliseconds: number): {
-  minutes: number
-  seconds: number
-} {
+export type RemainingTime =
+  | { range: 'seconds'; seconds: number }
+  | { range: 'minutes'; minutes: number; seconds: number }
+  | { range: 'hours'; hours: number; minutes: number; seconds: number }
+  | { range: 'days'; days: number; hours: number; minutes: number }
+  | { range: 'weeks'; weeks: number; days: number; hours: number }
+
+/**
+ * Break a remaining duration into named time components.
+ *
+ * Rules:
+ *  - < 60 s   → { range: 'seconds', seconds }
+ *  - < 1 h    → { range: 'minutes', minutes, seconds }
+ *  - < 24 h   → { range: 'hours',   hours, minutes, seconds }
+ *  - < 7 d    → { range: 'days',    days, hours, minutes }
+ *  - >= 7 d   → { range: 'weeks',   weeks, days, hours }
+ *
+ * Callers pass the result as i18n args so each locale composes the string
+ * with its own words (e.g. "jam", "menit" in Indonesian).
+ */
+export function formatRemainingTime(milliseconds: number): RemainingTime {
   const totalSeconds = Math.ceil(milliseconds / 1000)
-  const minutes = Math.floor(totalSeconds / 60)
+
+  const weeks = Math.floor(totalSeconds / (7 * 24 * 3600))
+  const days = Math.floor((totalSeconds % (7 * 24 * 3600)) / (24 * 3600))
+  const hours = Math.floor((totalSeconds % (24 * 3600)) / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
   const seconds = totalSeconds % 60
 
-  return { minutes, seconds }
+  if (totalSeconds < 60) {
+    return { range: 'seconds', seconds }
+  }
+  if (totalSeconds < 3600) {
+    return { range: 'minutes', minutes, seconds }
+  }
+  if (totalSeconds < 86400) {
+    return { range: 'hours', hours, minutes, seconds }
+  }
+  if (totalSeconds < 7 * 86400) {
+    return { range: 'days', days, hours, minutes }
+  }
+  return { range: 'weeks', weeks, days, hours }
 }
 
 /**

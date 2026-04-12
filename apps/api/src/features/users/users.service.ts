@@ -12,10 +12,13 @@ import {
   listUsers,
   updateUser,
 } from '@rufieltics/db/domains/identity/user'
+import { PasswordSecurity } from '@rufieltics/db/domains/auth'
 import type { UserFilterParams } from '@rufieltics/db/domains/identity/user'
 import type { UpdateUserDto } from './dto/update-user.dto'
 import type { AdminUpdateUserDto } from './dto/admin-update-user.dto'
 import type { ListUserDto } from './dto/list-user.dto'
+
+const PASSWORD_HISTORY_LIMIT = 5
 
 @Injectable()
 export class UsersService {
@@ -56,8 +59,22 @@ export class UsersService {
     const payload: Record<string, unknown> = { ...rest }
 
     if (password) {
-      payload.passwordHash = await argon2.hash(password)
+      const recentHashes = await PasswordSecurity.getRecentPasswords(
+        id,
+        PASSWORD_HISTORY_LIMIT
+      )
+      for (const { password: hash } of recentHashes) {
+        if (await argon2.verify(hash, password)) {
+          throw new BadRequestException(
+            i18n.t('users.errors.password_recently_used')
+          )
+        }
+      }
+
+      const newHash = await argon2.hash(password)
+      payload.passwordHash = newHash
       payload.passwordChangedAt = new Date()
+      await PasswordSecurity.archivePassword(id, newHash)
     }
 
     try {

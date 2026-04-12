@@ -12,6 +12,7 @@
   "errors": {
     "user_not_found": "User not found",
     "user_already_deleted": "User has already been deleted",
-    "cannot_update_deleted_user": "Cannot update a deleted user. Please restore the user first."
+    "cannot_update_deleted_user": "Cannot update a deleted user. Please restore the user first.",
+    "password_recently_used": "This password was used recently. Please choose a different password."
   }
 }

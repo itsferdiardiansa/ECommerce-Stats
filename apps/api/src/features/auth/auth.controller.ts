@@ -77,7 +77,7 @@ export class AuthController {
 
   private getCsrfCookieOptions(): CookieOptions {
     return {
-      // NOT httpOnly — must be readable by JS so the client can echo it back
+      // NOT httpOnly - must be readable by JS so the client can echo it back
       // in the x-csrf-token header (double-submit cookie pattern)
       httpOnly: false,
       secure: config.isProduction,

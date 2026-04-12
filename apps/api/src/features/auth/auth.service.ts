@@ -20,7 +20,7 @@ import {
   Organizations,
   OrganizationMembers,
 } from '@rufieltics/db/domains/identity/organization'
-import { Sessions } from '@rufieltics/db/domains/auth'
+import { Sessions, PasswordSecurity } from '@rufieltics/db/domains/auth'
 import { JwtService } from '@/modules/jwt/jwt.service'
 import { VerificationService } from './verification.service'
 import { SessionService } from './session.service'
@@ -63,45 +63,30 @@ export class AuthService implements OnModuleInit {
       const { password, ...rest } = data
       const { email, username } = data
 
-      const existingUserByEmail = await getUserByEmailIncludingDeleted(email)
-      if (existingUserByEmail) {
-        if (existingUserByEmail.deletedAt) {
-          throw new BadRequestException(
-            i18n.t('auth.errors.email_already_exists_deleted')
-          )
-        }
+      const [existingUserByEmail, existingUserByUsername] = await Promise.all([
+        getUserByEmailIncludingDeleted(email),
+        getUserByUsernameIncludingDeleted(username),
+      ])
 
+      // Check lockout for unverified accounts before the generic conflict error
+      // so the user knows they must wait - they already know their own email.
+      if (existingUserByEmail && !existingUserByEmail.deletedAt) {
         const fullUser = await getUserByEmail(email)
         if (fullUser && !fullUser.isActive && !fullUser.emailVerifiedAt) {
           const lockout =
             await this.verificationService.getVerificationLockout(email)
           if (lockout) {
-            const remainingTime = lockout.ttl * 1000
-            const { minutes, seconds } = formatRemainingTime(remainingTime)
-            const messageKey =
-              minutes > 0
-                ? 'auth.errors.account_locked'
-                : 'auth.errors.account_locked_seconds'
-            const args = minutes > 0 ? { minutes, seconds } : { seconds }
-            throw new BadRequestException(i18n.t(messageKey, { args }))
+            const duration = this.formatDuration(lockout.ttl * 1000, i18n)
+            throw new BadRequestException(
+              i18n.t('auth.errors.account_locked', { args: { duration } })
+            )
           }
         }
-
-        throw new BadRequestException(
-          i18n.t('auth.errors.email_already_exists')
-        )
       }
 
-      const existingUserByUsername =
-        await getUserByUsernameIncludingDeleted(username)
-      if (existingUserByUsername) {
-        if (existingUserByUsername.deletedAt) {
-          throw new BadRequestException(
-            i18n.t('auth.errors.username_already_exists_deleted')
-          )
-        }
+      if (existingUserByEmail || existingUserByUsername) {
         throw new BadRequestException(
-          i18n.t('auth.errors.username_already_exists')
+          i18n.t('auth.errors.account_already_exists')
         )
       }
 
@@ -109,11 +94,14 @@ export class AuthService implements OnModuleInit {
       const user = await createUser({ ...rest, passwordHash, isActive: false })
 
       const code = generateVerificationCode()
-      await this.verificationService.setVerificationCode(
-        email,
-        code,
-        this.verificationService.VERIFICATION_CODE_TTL_SECONDS
-      )
+      await Promise.all([
+        this.verificationService.setVerificationCode(
+          email,
+          code,
+          this.verificationService.VERIFICATION_CODE_TTL_SECONDS
+        ),
+        PasswordSecurity.archivePassword(user.id, passwordHash),
+      ])
 
       return user
     } catch (err) {
@@ -141,14 +129,10 @@ export class AuthService implements OnModuleInit {
 
     const lockout = await this.verificationService.getVerificationLockout(email)
     if (lockout) {
-      const remainingTime = lockout.ttl * 1000
-      const { minutes, seconds } = formatRemainingTime(remainingTime)
-      const messageKey =
-        minutes > 0
-          ? 'auth.errors.verification_locked'
-          : 'auth.errors.verification_locked_seconds'
-      const args = minutes > 0 ? { minutes, seconds } : { seconds }
-      throw new BadRequestException(i18n.t(messageKey, { args }))
+      const duration = this.formatDuration(lockout.ttl * 1000, i18n)
+      throw new BadRequestException(
+        i18n.t('auth.errors.verification_locked', { args: { duration } })
+      )
     }
 
     const storedData = await this.verificationService.getVerificationCode(email)
@@ -224,14 +208,10 @@ export class AuthService implements OnModuleInit {
 
     const lockout = await this.verificationService.getVerificationLockout(email)
     if (lockout) {
-      const remainingTime = lockout.ttl * 1000
-      const { minutes, seconds } = formatRemainingTime(remainingTime)
-      const messageKey =
-        minutes > 0
-          ? 'auth.errors.account_locked'
-          : 'auth.errors.account_locked_seconds'
-      const args = minutes > 0 ? { minutes, seconds } : { seconds }
-      throw new BadRequestException(i18n.t(messageKey, { args }))
+      const duration = this.formatDuration(lockout.ttl * 1000, i18n)
+      throw new BadRequestException(
+        i18n.t('auth.errors.account_locked', { args: { duration } })
+      )
     }
 
     const existingCode =
@@ -241,15 +221,13 @@ export class AuthService implements OnModuleInit {
       const codeAge = Date.now() - new Date(existingCode.createdAt).getTime()
 
       if (codeAge < this.verificationService.VERIFICATION_CODE_MAX_AGE_MS) {
-        const remainingTime =
-          this.verificationService.VERIFICATION_CODE_MAX_AGE_MS - codeAge
-        const { minutes, seconds } = formatRemainingTime(remainingTime)
-        const messageKey =
-          minutes > 0
-            ? 'auth.errors.code_still_valid'
-            : 'auth.errors.code_still_valid_seconds'
-        const args = minutes > 0 ? { minutes, seconds } : { seconds }
-        throw new BadRequestException(i18n.t(messageKey, { args }))
+        const duration = this.formatDuration(
+          this.verificationService.VERIFICATION_CODE_MAX_AGE_MS - codeAge,
+          i18n
+        )
+        throw new BadRequestException(
+          i18n.t('auth.errors.code_still_valid', { args: { duration } })
+        )
       }
     }
 
@@ -272,14 +250,10 @@ export class AuthService implements OnModuleInit {
     const lockout = await this.verificationService.getLoginLockout(data.email)
 
     if (lockout) {
-      const remainingTime = lockout.ttl * 1000
-      const { minutes, seconds } = formatRemainingTime(remainingTime)
-      const messageKey =
-        minutes > 0
-          ? 'auth.errors.account_locked'
-          : 'auth.errors.account_locked_seconds'
-      const args = minutes > 0 ? { minutes, seconds } : { seconds }
-      throw new UnauthorizedException(i18n.t(messageKey, { args }))
+      const duration = this.formatDuration(lockout.ttl * 1000, i18n)
+      throw new UnauthorizedException(
+        i18n.t('auth.errors.login_locked', { args: { duration } })
+      )
     }
 
     const user = await getUserByEmail(data.email)
@@ -514,6 +488,11 @@ export class AuthService implements OnModuleInit {
 
   getVerificationLockout(email: string) {
     return this.verificationService.getVerificationLockout(email)
+  }
+
+  private formatDuration(ttlMs: number, i18n: I18nContext): string {
+    const remaining = formatRemainingTime(ttlMs)
+    return i18n.t(`auth.duration.${remaining.range}`, { args: remaining })
   }
 
   private async provisionPersonalWorkspace(

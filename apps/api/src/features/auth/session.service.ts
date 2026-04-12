@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, ServiceUnavailableException } from '@nestjs/common'
 import { I18nContext } from 'nestjs-i18n'
 import * as argon2 from 'argon2'
 import { createHash, randomBytes, randomUUID } from 'crypto'
@@ -274,15 +274,22 @@ export class SessionService {
     const revokedKey = `revoked_jti:${jti}`
     const sessionKey = `session:${jti}`
 
-    const results = await this.redisService.execPipeline<string | null>(
-      pipe => {
+    let results: Array<[Error | null, string | null]>
+    try {
+      results = await this.redisService.execPipeline<string | null>(pipe => {
         pipe.get(revokedKey)
         pipe.get(sessionKey)
-      }
-    )
+      })
+    } catch {
+      throw new ServiceUnavailableException('Session store unavailable')
+    }
 
-    const revokedRaw = results[0]?.[1]
-    const sessionRaw = results[1]?.[1]
+    const [revokedErr, revokedRaw] = results[0] ?? [null, null]
+    const [sessionErr, sessionRaw] = results[1] ?? [null, null]
+
+    if (revokedErr || sessionErr) {
+      throw new ServiceUnavailableException('Session store unavailable')
+    }
 
     const revokedData = revokedRaw
       ? (JSON.parse(revokedRaw) as { userId: number })

@@ -1,31 +1,22 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import { Prisma } from '@rufieltics/db'
 import { Verification, LoginLockouts } from '@rufieltics/db/domains/auth'
 import { RedisService } from '@/modules/redis/redis.service'
 
 @Injectable()
 export class VerificationService {
-  constructor(
-    private readonly redisService: RedisService,
-    private readonly configService: ConfigService
-  ) {}
+  constructor(private readonly redisService: RedisService) {}
 
   readonly VERIFICATION_CODE_TTL_SECONDS = 300
   readonly VERIFICATION_CODE_MAX_AGE_MS = 5 * 60 * 1000
-  readonly VERIFICATION_MAX_ATTEMPTS = 5
-  readonly VERIFICATION_LOCKOUT_DURATION_SECONDS = 3600
-  private readonly LOGIN_LOCKOUT_STEPS = [1800, 7200, 43200, 86400]
+  readonly VERIFICATION_MAX_ATTEMPTS = 3
+  readonly VERIFICATION_LOCKOUT_DURATION_SECONDS = 86400 // 24 hours
+  private readonly LOGIN_LOCKOUT_STEPS = [3600, 7200, 43200, 86400] // min 1h
   private readonly LOGIN_ATTEMPTS_TTL_SECONDS = 900
 
-  get LOGIN_MAX_ATTEMPTS(): number {
-    const throttleLimit = this.configService.get<number>(
-      'throttle.auth.limit',
-      5
-    )
-    return throttleLimit * 2
-  }
+  // 5 attempts per 15-minute window before lockout triggers.
+  readonly LOGIN_MAX_ATTEMPTS = 5
 
   private codeKey(email: string) {
     return `verification:email:${email.toLowerCase()}`

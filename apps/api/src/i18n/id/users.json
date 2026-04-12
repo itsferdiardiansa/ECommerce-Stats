@@ -12,6 +12,7 @@
   "errors": {
     "user_not_found": "Pengguna tidak ditemukan",
     "user_already_deleted": "Pengguna sudah dihapus",
-    "cannot_update_deleted_user": "Tidak dapat memperbarui pengguna yang sudah dihapus. Mohon pulihkan pengguna terlebih dahulu."
+    "cannot_update_deleted_user": "Tidak dapat memperbarui pengguna yang sudah dihapus. Mohon pulihkan pengguna terlebih dahulu.",
+    "password_recently_used": "Kata sandi ini baru-baru ini digunakan. Silakan pilih kata sandi yang berbeda."
   }
 }

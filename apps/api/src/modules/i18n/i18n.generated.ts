@@ -53,7 +53,15 @@ export type I18nTranslations = {
             "sessions_revoked": string;
             "no_sessions_provided": string;
         };
+        "duration": {
+            "seconds": string;
+            "minutes": string;
+            "hours": string;
+            "days": string;
+            "weeks": string;
+        };
         "errors": {
+            "account_already_exists": string;
             "email_already_exists": string;
             "email_already_exists_deleted": string;
             "username_already_exists": string;
@@ -65,11 +73,9 @@ export type I18nTranslations = {
             "invalid_code": string;
             "code_expired": string;
             "code_still_valid": string;
-            "code_still_valid_seconds": string;
             "account_locked": string;
-            "account_locked_seconds": string;
             "verification_locked": string;
-            "verification_locked_seconds": string;
+            "login_locked": string;
             "invalid_code_last_attempt": string;
             "reused_refresh_token": string;
             "too_many_verification_attempts": string;
@@ -78,8 +84,6 @@ export type I18nTranslations = {
             "invalid_refresh_token": string;
             "invalid_client": string;
             "missing_device_secret": string;
-            "login_locked": string;
-            "login_locked_seconds": string;
             "too_many_login_attempts": string;
             "incorrect_password_last_attempt": string;
             "token_binding_failed": string;
@@ -147,6 +151,7 @@ export type I18nTranslations = {
             "user_not_found": string;
             "user_already_deleted": string;
             "cannot_update_deleted_user": string;
+            "password_recently_used": string;
         };
     };
 };
