@@ -45,6 +45,11 @@
       "key": "login_lockout_id",
       "value": "1",
       "type": "string"
+    },
+    {
+      "key": "phone_otp_code",
+      "value": "123456",
+      "type": "string"
     }
   ],
   "event": [
@@ -53,7 +58,7 @@
       "script": {
         "type": "text/javascript",
         "exec": [
-          "// No User-Agent override — Postman sends its own UA automatically.",
+          "// No User-Agent override \u2014 Postman sends its own UA automatically.",
           "// The device fingerprint is locked at login time to whatever UA is",
           "// used for the login request. Changing the UA on subsequent requests",
           "// will trigger a 401 (device binding mismatch), as expected."
@@ -199,7 +204,7 @@
                 "exec": [
                   "// Clear stale cookies so the fresh ones from login take effect.",
                   "// The httpOnly deviceSecret cookie is managed entirely by the",
-                  "// cookie jar — Postman sends it automatically on matching paths.",
+                  "// cookie jar \u2014 Postman sends it automatically on matching paths.",
                   "const jar = pm.cookies.jar();",
                   "jar.clear(pm.request.url, function() {});"
                 ]
@@ -283,12 +288,12 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{access_token}}",
-                "description": "Required — valid access token"
+                "description": "Required \u2014 valid access token"
               },
               {
                 "key": "x-csrf-token",
                 "value": "{{csrf_token}}",
-                "description": "Required — CSRF token received at login (double-submit cookie pattern)"
+                "description": "Required \u2014 CSRF token received at login (double-submit cookie pattern)"
               },
               {
                 "key": "Accept-Language",
@@ -334,7 +339,7 @@
                 "key": "x-csrf-token",
                 "value": "{{csrf_token}}",
                 "type": "text",
-                "description": "Required — CSRF token"
+                "description": "Required \u2014 CSRF token"
               }
             ],
             "url": {
@@ -364,7 +369,7 @@
                 "key": "x-csrf-token",
                 "value": "{{csrf_token}}",
                 "type": "text",
-                "description": "Required — CSRF token"
+                "description": "Required \u2014 CSRF token"
               }
             ],
             "body": {
@@ -421,6 +426,697 @@
             "description": "Check your own verification lockout status. Returns whether you're locked, the reason, expiry time, and remaining seconds/minutes. Authenticated users only."
           },
           "response": []
+        }
+      ]
+    },
+    {
+      "name": "Phone Verification",
+      "item": [
+        {
+          "name": "Send Phone OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+628123456789\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/phone/send",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "phone", "send"]
+            },
+            "description": "Send a 6-digit OTP to the given phone number. Requires an active session (Bearer token). A new OTP cannot be requested while a valid one is still alive (10-minute cooldown). Console logs the code in local dev."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('OTP sent successfully', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.message).to.include('OTP sent');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Phone OTP - Cooldown Active (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+628123456789\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/phone/send",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "phone", "send"]
+            },
+            "description": "Sending a second OTP before the first expires. Expects 400 with phone_otp_still_valid error and remaining cooldown duration."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Rejected while OTP still valid', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error.message).to.include('already sent');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Phone OTP - Success",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+628123456789\",\n  \"code\": \"{{phone_otp_code}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/phone/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "phone", "verify"]
+            },
+            "description": "Submit the OTP received via SMS (or from console log in dev). On success the user's phoneVerifiedAt field is set and the updated user is returned."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Phone verified successfully', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.message).to.include('verified');",
+                  "    pm.expect(body.data.phoneVerifiedAt).to.not.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Phone OTP - Wrong Code (Remaining Attempts)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+628123456789\",\n  \"code\": \"000000\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/phone/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "phone", "verify"]
+            },
+            "description": "Submit an intentionally wrong OTP. Expects 400 with remaining attempt count. After 3 failed attempts the phone is locked for 24 hours."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Wrong OTP returns remaining attempts', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error.message).to.match(/attempt/i);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Phone OTP - Expired OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+628123456789\",\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/phone/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "phone", "verify"]
+            },
+            "description": "Attempt to verify after the OTP has expired (10-minute TTL). Expects 400 with phone_otp_expired error."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Expired OTP is rejected', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error.message).to.include('expired');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Phone OTP - Locked Phone (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+628123456789\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/phone/send",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "phone", "send"]
+            },
+            "description": "Attempt to send an OTP to a phone that is currently locked (after 3 failed verifications). Expects 400 with phone_locked error and remaining lockout duration."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Locked phone is blocked', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error.message).to.match(/locked|blocked/i);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Phone OTP - Suspicious Activity Block",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+628123456789\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/phone/send",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "phone", "send"]
+            },
+            "description": "Simulates a phone blocked with SUSPICIOUS_ACTIVITY reason (set manually in DB or triggered by security events). Expects 400 with phone_locked_suspicious error mentioning 'suspicious activity' and a support contact hint."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Suspicious activity block returns specific error', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error.message).to.match(/suspicious/i);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Phone OTP - Indonesian Language",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "id"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+628123456789\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/phone/send",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "phone", "send"]
+            },
+            "description": "Same as Send Phone OTP but with Accept-Language: id \u2014 response messages should be in Indonesian."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Phone OTP - Number Taken By Another Account (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+628123456789\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/phone/send",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "phone", "send"]
+            },
+            "description": "The phone number on this account matches another account that has already verified the same number. Expects 400 phone_taken. Note: only a *verified* holder of the same number triggers this \u2014 an unverified collision does not block."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Number already used by another account', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error.message).to.include('already used by another');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Phone OTP - Number Taken By Another Account (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+628123456789\",\n  \"code\": \"{{phone_otp_code}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/phone/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "phone", "verify"]
+            },
+            "description": "Another account has already verified this same number between send and verify. Expects 400 phone_taken \u2014 prevents a race where two accounts race to verify the same number."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Number taken at verify time', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error.message).to.include('already used by another');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Phone OTP - Phone Not On Account (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+6299999999999\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/phone/send",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "phone", "send"]
+            },
+            "description": "Pass a phone number that does not match the phone stored on the account (or no phone on account). Expects 400 phone_not_recognized \u2014 not expired/lockout messages, because the number isn't associated with this user at all."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unrecognized phone returns distinct error', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error.message).to.include('not associated');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Phone OTP - Phone Not On Account (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+6299999999999\",\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/phone/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "phone", "verify"]
+            },
+            "description": "Pass a phone number that does not match the phone stored on the account. Expects 400 phone_not_recognized \u2014 not expired/lockout/invalid-code messages."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unrecognized phone returns distinct error on verify', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error.message).to.include('not associated');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Phone OTP - Already Verified (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+628123456789\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/phone/send",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "phone", "send"]
+            },
+            "description": "Attempt to send an OTP to a phone that is already verified on the account. Expects 400 with phone_already_verified \u2014 a distinct message that does not mention lockouts, expirations, or attempt counts."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Already-verified phone returns distinct error', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error.message).to.include('already verified');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Phone OTP - Already Verified (Should Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "x-csrf-token",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+628123456789\",\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/phone/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "phone", "verify"]
+            },
+            "description": "Attempt to verify a phone that is already verified. Expects 400 with phone_already_verified \u2014 not expired/invalid-code messages."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Already-verified phone returns distinct error on verify', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.error.message).to.include('already verified');",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -1136,7 +1832,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{access_token}}",
-                "description": "Required — must be the token of the user being updated"
+                "description": "Required \u2014 must be the token of the user being updated"
               },
               {
                 "key": "x-csrf-token",
@@ -1156,7 +1852,7 @@
               "host": ["{{base_url}}"],
               "path": ["users", "{{user_id}}"]
             },
-            "description": "Update own profile. Requires a valid access token. Only name, username, password, and avatar can be updated here. Privilege fields (isActive, isStaff, isTwoFactorEnabled) are intentionally excluded — use the admin endpoint for those."
+            "description": "Update own profile. Requires a valid access token. Only name, username, password, and avatar can be updated here. Privilege fields (isActive, isStaff, isTwoFactorEnabled) are intentionally excluded \u2014 use the admin endpoint for those."
           },
           "response": []
         },
@@ -1172,7 +1868,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{access_token}}",
-                "description": "Required — must be a staff (isStaff=true) access token"
+                "description": "Required \u2014 must be a staff (isStaff=true) access token"
               },
               {
                 "key": "x-csrf-token",

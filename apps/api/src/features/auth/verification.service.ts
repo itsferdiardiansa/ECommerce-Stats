@@ -1,7 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable } from '@nestjs/common'
 import { Prisma } from '@rufieltics/db'
-import { Verification, LoginLockouts } from '@rufieltics/db/domains/auth'
+import {
+  Verification,
+  LoginLockouts,
+  PhoneVerification,
+} from '@rufieltics/db/domains/auth'
 import { RedisService } from '@/modules/redis/redis.service'
 
 @Injectable()
@@ -248,5 +252,163 @@ export class VerificationService {
 
     const ttl = await this.redisService.ttl(key)
     return { ...data, ttl }
+  }
+
+  // ─── Phone verification ───────────────────────────────────────────────────
+
+  // 6-digit OTP, valid 10 minutes, max 3 wrong attempts before 24 h lockout.
+  // Sending is rate-gated: a new OTP cannot be requested until the current one
+  // expires (cost protection — each SMS costs money).
+  readonly PHONE_OTP_TTL_SECONDS = 600 // 10 minutes
+  readonly PHONE_OTP_MAX_AGE_MS = 10 * 60 * 1000
+  readonly PHONE_OTP_MAX_ATTEMPTS = 3
+  readonly PHONE_LOCKOUT_DURATION_SECONDS = 86400 // 24 hours
+
+  private phoneOtpKey(phone: string) {
+    return `phone:otp:${phone}`
+  }
+
+  private phoneAttemptsKey(phone: string) {
+    return `phone:otp:${phone}:attempts`
+  }
+
+  private phoneLockoutKey(phone: string) {
+    return `phone:lockout:${phone}`
+  }
+
+  async setPhoneOtp(
+    phone: string,
+    code: string,
+    userId: number
+  ): Promise<void> {
+    await Promise.all([
+      this.redisService.set(
+        this.phoneOtpKey(phone),
+        { code, userId, createdAt: new Date().toISOString() },
+        this.PHONE_OTP_TTL_SECONDS
+      ),
+      this.redisService.del(this.phoneAttemptsKey(phone)),
+    ])
+  }
+
+  async getPhoneOtp(phone: string): Promise<{
+    code: string
+    userId: number
+    attempts: number
+    createdAt: string
+  } | null> {
+    const data = await this.redisService.get<{
+      code: string
+      userId: number
+      createdAt: string
+    }>(this.phoneOtpKey(phone))
+
+    if (!data) return null
+
+    const attempts =
+      (await this.redisService.get<number>(this.phoneAttemptsKey(phone))) ?? 0
+
+    return { ...data, attempts }
+  }
+
+  async incrementPhoneOtpAttempts(phone: string): Promise<number> {
+    const key = this.phoneAttemptsKey(phone)
+    const count = await this.redisService.incr(key)
+
+    if (count === 1) {
+      const otpTtl = await this.redisService.ttl(this.phoneOtpKey(phone))
+      await this.redisService.expire(
+        key,
+        otpTtl > 0 ? otpTtl : this.PHONE_OTP_TTL_SECONDS
+      )
+    }
+
+    return count
+  }
+
+  async deletePhoneOtp(phone: string): Promise<void> {
+    await Promise.all([
+      this.redisService.del(this.phoneOtpKey(phone)),
+      this.redisService.del(this.phoneAttemptsKey(phone)),
+    ])
+  }
+
+  async setPhoneLockout(
+    phone: string,
+    reason:
+      | 'TOO_MANY_ATTEMPTS'
+      | 'SUSPICIOUS_ACTIVITY'
+      | 'MANUAL_LOCK' = 'TOO_MANY_ATTEMPTS',
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<void> {
+    const key = this.phoneLockoutKey(phone)
+    const lockedAt = new Date()
+    const expires = new Date(
+      Date.now() + this.PHONE_LOCKOUT_DURATION_SECONDS * 1000
+    )
+
+    await Promise.all([
+      this.redisService.set(
+        key,
+        {
+          lockedAt: lockedAt.toISOString(),
+          expires: expires.toISOString(),
+          reason,
+        },
+        this.PHONE_LOCKOUT_DURATION_SECONDS
+      ),
+      PhoneVerification.createLockout({
+        phone,
+        reason,
+        ipAddress,
+        userAgent,
+        expires,
+      }),
+    ])
+  }
+
+  async getPhoneLockout(phone: string): Promise<{
+    lockedAt: string
+    expires: string
+    ttl: number
+    reason: string
+  } | null> {
+    const key = this.phoneLockoutKey(phone)
+
+    let data = await this.redisService.get<{
+      lockedAt: string
+      expires: string
+      reason: string
+    }>(key)
+
+    if (!data) {
+      const dbLockout = await PhoneVerification.findActiveLockout(phone)
+      if (!dbLockout) return null
+
+      const ttlSeconds = Math.floor(
+        (dbLockout.expires.getTime() - Date.now()) / 1000
+      )
+      if (ttlSeconds <= 0) return null
+
+      data = {
+        lockedAt: dbLockout.lockedAt.toISOString(),
+        expires: dbLockout.expires.toISOString(),
+        reason: dbLockout.reason,
+      }
+
+      await this.redisService.set(key, data, ttlSeconds)
+      return { ...data, ttl: ttlSeconds }
+    }
+
+    const ttl = await this.redisService.ttl(key)
+    return { ...data, ttl }
+  }
+
+  async clearPhoneLockout(phone: string): Promise<void> {
+    await Promise.all([
+      this.redisService.del(this.phoneLockoutKey(phone)),
+      PhoneVerification.clearActiveLockout(phone),
+    ])
   }
 }

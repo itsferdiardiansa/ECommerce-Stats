@@ -24,6 +24,8 @@ import { VerifyEmailDto } from './dto/verify-email.dto'
 import { ResendVerificationDto } from './dto/resend-verification.dto'
 import { LoginDto } from './dto/login.dto'
 import { RevokeSessionsDto } from './dto/revoke-sessions.dto'
+import { SendPhoneVerificationDto } from './dto/send-phone-verification.dto'
+import { VerifyPhoneDto } from './dto/verify-phone.dto'
 import { created, success } from '@/common/helpers/api-response.helper'
 import { ActiveUserGuard } from '@/common/guards/active-user.guard'
 import { CsrfGuard } from '@/common/guards/csrf.guard'
@@ -286,5 +288,56 @@ export class AuthController {
     }
 
     return success(i18n.t('auth.my_lockout.success'), response)
+  }
+
+  /**
+   * POST /auth/phone/send
+   * Send an OTP to the authenticated user's phone number.
+   * Requires an active session — the phone is tied to the requesting user.
+   */
+  @Post('phone/send')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(getAuthThrottleConfig())
+  @UseGuards(ActiveUserGuard)
+  async sendPhoneVerification(
+    @Body() dto: SendPhoneVerificationDto,
+    @CurrentUser() user: CurrentUserPayload,
+    @I18n() i18n: I18nContext,
+    @Ip() ipAddress: string,
+    @Headers('user-agent') userAgent: string
+  ) {
+    const result = await this.authService.sendPhoneVerification(
+      user.id,
+      dto,
+      i18n,
+      ipAddress,
+      userAgent
+    )
+    return success(result.message, null)
+  }
+
+  /**
+   * POST /auth/phone/verify
+   * Submit the OTP received by SMS to mark the phone as verified.
+   */
+  @Post('phone/verify')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(getAuthThrottleConfig())
+  @UseGuards(ActiveUserGuard)
+  async verifyPhone(
+    @Body() dto: VerifyPhoneDto,
+    @CurrentUser() user: CurrentUserPayload,
+    @I18n() i18n: I18nContext,
+    @Ip() ipAddress: string,
+    @Headers('user-agent') userAgent: string
+  ) {
+    const result = await this.authService.verifyPhone(
+      user.id,
+      dto,
+      i18n,
+      ipAddress,
+      userAgent
+    )
+    return success(i18n.t('auth.phone.verified'), result)
   }
 }

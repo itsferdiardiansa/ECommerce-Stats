@@ -10,7 +10,9 @@ import { EventEmitter2 } from '@nestjs/event-emitter'
 import * as argon2 from 'argon2'
 import {
   createUser,
+  getUserById,
   getUserByEmail,
+  getUserByVerifiedPhone,
   getUserForSession,
   updateUser,
   getUserByEmailIncludingDeleted,
@@ -22,6 +24,7 @@ import {
 } from '@rufieltics/db/domains/identity/organization'
 import { Sessions, PasswordSecurity } from '@rufieltics/db/domains/auth'
 import { JwtService } from '@/modules/jwt/jwt.service'
+import { SmsProvider } from '@/modules/sms/sms.provider'
 import { VerificationService } from './verification.service'
 import { SessionService } from './session.service'
 import type { RegisterDto } from './dto/register.dto'
@@ -29,6 +32,8 @@ import type { VerifyEmailDto } from './dto/verify-email.dto'
 import type { ResendVerificationDto } from './dto/resend-verification.dto'
 import type { LoginDto } from './dto/login.dto'
 import type { RefreshTokenDto } from './dto/refresh-token.dto'
+import type { SendPhoneVerificationDto } from './dto/send-phone-verification.dto'
+import type { VerifyPhoneDto } from './dto/verify-phone.dto'
 import { formatRemainingTime } from '@/utils/datetime'
 import { generateDeviceFingerprint } from '@/utils/fingerprint'
 import {
@@ -49,12 +54,11 @@ export class AuthService implements OnModuleInit {
     private readonly jwtService: JwtService,
     private readonly eventEmitter: EventEmitter2,
     private readonly verificationService: VerificationService,
-    private readonly sessionService: SessionService
+    private readonly sessionService: SessionService,
+    private readonly smsProvider: SmsProvider
   ) {}
 
   async onModuleInit() {
-    // Pre-compute dummy hash at startup to equalize login timing when user
-    // does not exist, preventing email enumeration via response time.
     this.dummyHash = await argon2.hash('__dummy__placeholder__password__')
   }
 
@@ -68,8 +72,6 @@ export class AuthService implements OnModuleInit {
         getUserByUsernameIncludingDeleted(username),
       ])
 
-      // Check lockout for unverified accounts before the generic conflict error
-      // so the user knows they must wait - they already know their own email.
       if (existingUserByEmail && !existingUserByEmail.deletedAt) {
         const fullUser = await getUserByEmail(email)
         if (fullUser && !fullUser.isActive && !fullUser.emailVerifiedAt) {
@@ -258,7 +260,6 @@ export class AuthService implements OnModuleInit {
 
     const user = await getUserByEmail(data.email)
     if (!user) {
-      // Always run verify to prevent timing-based email enumeration
       await argon2.verify(this.dummyHash, data.password)
       throw new UnauthorizedException(i18n.t('auth.errors.invalid_credentials'))
     }
@@ -484,6 +485,148 @@ export class AuthService implements OnModuleInit {
     )
 
     return session
+  }
+
+  async sendPhoneVerification(
+    userId: number,
+    data: SendPhoneVerificationDto,
+    i18n: I18nContext,
+    _ipAddress?: string,
+    _userAgent?: string
+  ) {
+    const { phone } = data
+
+    const takenBy = await getUserByVerifiedPhone(phone)
+    if (takenBy && takenBy.id !== userId) {
+      throw new BadRequestException(i18n.t('auth.errors.phone_taken'))
+    }
+
+    const user = await getUserById(userId)
+
+    if (user?.phone === phone && user.phoneVerifiedAt) {
+      throw new BadRequestException(
+        i18n.t('auth.errors.phone_already_verified')
+      )
+    }
+
+    const lockout = await this.verificationService.getPhoneLockout(phone)
+    if (lockout) {
+      const duration = this.formatDuration(lockout.ttl * 1000, i18n)
+      const key =
+        lockout.reason === 'SUSPICIOUS_ACTIVITY'
+          ? 'auth.errors.phone_locked_suspicious'
+          : 'auth.errors.phone_locked'
+      throw new BadRequestException(i18n.t(key, { args: { duration } }))
+    }
+
+    const existing = await this.verificationService.getPhoneOtp(phone)
+    if (existing && existing.userId === userId) {
+      const age = Date.now() - new Date(existing.createdAt).getTime()
+      if (age < this.verificationService.PHONE_OTP_MAX_AGE_MS) {
+        const duration = this.formatDuration(
+          this.verificationService.PHONE_OTP_MAX_AGE_MS - age,
+          i18n
+        )
+        throw new BadRequestException(
+          i18n.t('auth.errors.phone_otp_still_valid', { args: { duration } })
+        )
+      }
+    }
+
+    const code = generateVerificationCode()
+    await this.verificationService.setPhoneOtp(phone, code, userId)
+
+    await this.smsProvider.sendOtp(phone, code)
+
+    return { message: i18n.t('auth.phone.sent') }
+  }
+
+  async verifyPhone(
+    userId: number,
+    data: VerifyPhoneDto,
+    i18n: I18nContext,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
+    const { phone, code } = data
+    const storedOtp = await this.verificationService.getPhoneOtp(phone)
+
+    if (!storedOtp) {
+      throw new BadRequestException(i18n.t('auth.errors.phone_otp_expired'))
+    }
+
+    if (storedOtp.userId !== userId) {
+      throw new BadRequestException(i18n.t('auth.errors.phone_not_recognized'))
+    }
+
+    const takenBy = await getUserByVerifiedPhone(phone)
+    if (takenBy && takenBy.id !== userId) {
+      throw new BadRequestException(i18n.t('auth.errors.phone_taken'))
+    }
+
+    const lockout = await this.verificationService.getPhoneLockout(phone)
+    if (lockout) {
+      const duration = this.formatDuration(lockout.ttl * 1000, i18n)
+      const key =
+        lockout.reason === 'SUSPICIOUS_ACTIVITY'
+          ? 'auth.errors.phone_locked_suspicious'
+          : 'auth.errors.phone_locked'
+      throw new BadRequestException(i18n.t(key, { args: { duration } }))
+    }
+
+    const age = Date.now() - new Date(storedOtp.createdAt).getTime()
+    if (age > this.verificationService.PHONE_OTP_MAX_AGE_MS) {
+      await this.verificationService.deletePhoneOtp(phone)
+      throw new BadRequestException(i18n.t('auth.errors.phone_otp_expired'))
+    }
+
+    if (storedOtp.attempts >= this.verificationService.PHONE_OTP_MAX_ATTEMPTS) {
+      await this.verificationService.setPhoneLockout(
+        phone,
+        'TOO_MANY_ATTEMPTS',
+        ipAddress,
+        userAgent
+      )
+      await this.verificationService.deletePhoneOtp(phone)
+      throw new BadRequestException(
+        i18n.t('auth.errors.phone_too_many_attempts')
+      )
+    }
+
+    if (storedOtp.code !== code) {
+      const newAttempts =
+        await this.verificationService.incrementPhoneOtpAttempts(phone)
+      const remaining =
+        this.verificationService.PHONE_OTP_MAX_ATTEMPTS - newAttempts
+
+      if (remaining === 0) {
+        await this.verificationService.setPhoneLockout(
+          phone,
+          'TOO_MANY_ATTEMPTS',
+          ipAddress,
+          userAgent
+        )
+        await this.verificationService.deletePhoneOtp(phone)
+        throw new BadRequestException(
+          i18n.t('auth.errors.phone_too_many_attempts')
+        )
+      }
+
+      const msgKey =
+        remaining === 1
+          ? 'auth.errors.phone_invalid_code_last_attempt'
+          : 'auth.errors.phone_invalid_code'
+      throw new BadRequestException(
+        i18n.t(msgKey, { args: { attempts: remaining } })
+      )
+    }
+
+    const [updatedUser] = await Promise.all([
+      updateUser(userId, { phone, phoneVerifiedAt: new Date() }),
+      this.verificationService.deletePhoneOtp(phone),
+    ])
+
+    return updatedUser
   }
 
   getVerificationLockout(email: string) {

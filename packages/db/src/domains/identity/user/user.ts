@@ -148,6 +148,22 @@ export async function getUserByUsernameIncludingDeleted(username: string) {
   })
 }
 
+/**
+ * Find an active (non-deleted) user who owns the given phone number AND has
+ * already verified it. Used to detect phone number conflicts before sending
+ * or verifying an OTP — only a verified holder blocks the number.
+ */
+export async function getUserByVerifiedPhone(phone: string) {
+  return db.user.findFirst({
+    where: {
+      phone,
+      phoneVerifiedAt: { not: null },
+      deletedAt: null,
+    },
+    select: { id: true },
+  })
+}
+
 export async function updateUser(id: number, data: UpdateUserInput) {
   return db.user.update({
     where: { id },

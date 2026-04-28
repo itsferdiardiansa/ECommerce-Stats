@@ -188,3 +188,28 @@ enum LoginLockoutReason {
 
   @@schema("auth")
 }
+
+model PhoneLockout {
+  id        Int               @id @default(autoincrement())
+  phone     String
+  reason    PhoneLockoutReason @default(TOO_MANY_ATTEMPTS)
+  ipAddress String?
+  userAgent String?
+  lockedAt  DateTime          @default(now())
+  expires   DateTime
+  clearedAt DateTime?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([phone])
+  @@index([expires])
+  @@schema("auth")
+}
+
+enum PhoneLockoutReason {
+  TOO_MANY_ATTEMPTS
+  SUSPICIOUS_ACTIVITY
+  MANUAL_LOCK
+
+  @@schema("auth")
+}

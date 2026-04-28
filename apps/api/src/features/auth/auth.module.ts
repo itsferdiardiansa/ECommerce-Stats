@@ -6,11 +6,12 @@ import { AuthService } from './auth.service'
 import { VerificationService } from './verification.service'
 import { SessionService } from './session.service'
 import { RedisModule } from '@/modules/redis/redis.module'
+import { SmsModule } from '@/modules/sms/sms.module'
 import { SessionCleanupService } from './scheduler/session-cleanup.service'
 import { AuthEventsListener } from './listeners/auth-events.listener'
 
 @Module({
-  imports: [RedisModule, ScheduleModule.forRoot()],
+  imports: [RedisModule, SmsModule, ScheduleModule.forRoot()],
   controllers: [AuthController, AuthAdminController],
   providers: [
     AuthService,

@@ -88,6 +88,20 @@ export type I18nTranslations = {
             "incorrect_password_last_attempt": string;
             "token_binding_failed": string;
             "invalid_csrf_token": string;
+            "phone_not_recognized": string;
+            "phone_taken": string;
+            "phone_already_verified": string;
+            "phone_locked": string;
+            "phone_locked_suspicious": string;
+            "phone_otp_still_valid": string;
+            "phone_otp_expired": string;
+            "phone_too_many_attempts": string;
+            "phone_invalid_code": string;
+            "phone_invalid_code_last_attempt": string;
+        };
+        "phone": {
+            "sent": string;
+            "verified": string;
         };
         "validation": {
             "code_length": string;
