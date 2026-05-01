@@ -509,7 +509,10 @@ export class AuthService implements OnModuleInit {
       )
     }
 
-    const lockout = await this.verificationService.getPhoneLockout(phone)
+    const lockout = await this.verificationService.getPhoneLockout(
+      phone,
+      userId
+    )
     if (lockout) {
       const duration = this.formatDuration(lockout.ttl * 1000, i18n)
       const key =
@@ -564,7 +567,10 @@ export class AuthService implements OnModuleInit {
       throw new BadRequestException(i18n.t('auth.errors.phone_taken'))
     }
 
-    const lockout = await this.verificationService.getPhoneLockout(phone)
+    const lockout = await this.verificationService.getPhoneLockout(
+      phone,
+      userId
+    )
     if (lockout) {
       const duration = this.formatDuration(lockout.ttl * 1000, i18n)
       const key =
@@ -576,18 +582,19 @@ export class AuthService implements OnModuleInit {
 
     const age = Date.now() - new Date(storedOtp.createdAt).getTime()
     if (age > this.verificationService.PHONE_OTP_MAX_AGE_MS) {
-      await this.verificationService.deletePhoneOtp(phone)
+      await this.verificationService.deletePhoneOtp(phone, userId)
       throw new BadRequestException(i18n.t('auth.errors.phone_otp_expired'))
     }
 
     if (storedOtp.attempts >= this.verificationService.PHONE_OTP_MAX_ATTEMPTS) {
       await this.verificationService.setPhoneLockout(
         phone,
+        userId,
         'TOO_MANY_ATTEMPTS',
         ipAddress,
         userAgent
       )
-      await this.verificationService.deletePhoneOtp(phone)
+      await this.verificationService.deletePhoneOtp(phone, userId)
       throw new BadRequestException(
         i18n.t('auth.errors.phone_too_many_attempts')
       )
@@ -595,18 +602,19 @@ export class AuthService implements OnModuleInit {
 
     if (storedOtp.code !== code) {
       const newAttempts =
-        await this.verificationService.incrementPhoneOtpAttempts(phone)
+        await this.verificationService.incrementPhoneOtpAttempts(phone, userId)
       const remaining =
         this.verificationService.PHONE_OTP_MAX_ATTEMPTS - newAttempts
 
       if (remaining === 0) {
         await this.verificationService.setPhoneLockout(
           phone,
+          userId,
           'TOO_MANY_ATTEMPTS',
           ipAddress,
           userAgent
         )
-        await this.verificationService.deletePhoneOtp(phone)
+        await this.verificationService.deletePhoneOtp(phone, userId)
         throw new BadRequestException(
           i18n.t('auth.errors.phone_too_many_attempts')
         )
@@ -623,7 +631,7 @@ export class AuthService implements OnModuleInit {
 
     const [updatedUser] = await Promise.all([
       updateUser(userId, { phone, phoneVerifiedAt: new Date() }),
-      this.verificationService.deletePhoneOtp(phone),
+      this.verificationService.deletePhoneOtp(phone, userId),
     ])
 
     return updatedUser

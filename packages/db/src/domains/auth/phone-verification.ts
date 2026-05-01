@@ -1,10 +1,11 @@
 import { db } from '@/libs/prisma'
 
 export const PhoneVerification = {
-  async findActiveLockout(phone: string) {
+  async findActiveLockout(phone: string, userId: number) {
     return db.phoneLockout.findFirst({
       where: {
         phone,
+        userId,
         expires: { gt: new Date() },
         clearedAt: null,
       },
@@ -14,6 +15,7 @@ export const PhoneVerification = {
 
   async createLockout(data: {
     phone: string
+    userId: number
     reason?: 'TOO_MANY_ATTEMPTS' | 'SUSPICIOUS_ACTIVITY' | 'MANUAL_LOCK'
     ipAddress?: string
     userAgent?: string
@@ -22,6 +24,7 @@ export const PhoneVerification = {
     return db.phoneLockout.create({
       data: {
         phone: data.phone,
+        userId: data.userId,
         reason: data.reason ?? 'TOO_MANY_ATTEMPTS',
         ipAddress: data.ipAddress,
         userAgent: data.userAgent,
@@ -31,10 +34,11 @@ export const PhoneVerification = {
     })
   },
 
-  async clearActiveLockout(phone: string) {
+  async clearActiveLockout(phone: string, userId: number) {
     return db.phoneLockout.updateMany({
       where: {
         phone,
+        userId,
         clearedAt: null,
         expires: { gt: new Date() },
       },

@@ -268,12 +268,12 @@ export class VerificationService {
     return `phone:otp:${phone}`
   }
 
-  private phoneAttemptsKey(phone: string) {
-    return `phone:otp:${phone}:attempts`
+  private phoneAttemptsKey(phone: string, userId: number) {
+    return `phone:otp:${phone}:${userId}:attempts`
   }
 
-  private phoneLockoutKey(phone: string) {
-    return `phone:lockout:${phone}`
+  private phoneLockoutKey(phone: string, userId: number) {
+    return `phone:lockout:${phone}:${userId}`
   }
 
   async setPhoneOtp(
@@ -287,7 +287,7 @@ export class VerificationService {
         { code, userId, createdAt: new Date().toISOString() },
         this.PHONE_OTP_TTL_SECONDS
       ),
-      this.redisService.del(this.phoneAttemptsKey(phone)),
+      this.redisService.del(this.phoneAttemptsKey(phone, userId)),
     ])
   }
 
@@ -306,13 +306,18 @@ export class VerificationService {
     if (!data) return null
 
     const attempts =
-      (await this.redisService.get<number>(this.phoneAttemptsKey(phone))) ?? 0
+      (await this.redisService.get<number>(
+        this.phoneAttemptsKey(phone, data.userId)
+      )) ?? 0
 
     return { ...data, attempts }
   }
 
-  async incrementPhoneOtpAttempts(phone: string): Promise<number> {
-    const key = this.phoneAttemptsKey(phone)
+  async incrementPhoneOtpAttempts(
+    phone: string,
+    userId: number
+  ): Promise<number> {
+    const key = this.phoneAttemptsKey(phone, userId)
     const count = await this.redisService.incr(key)
 
     if (count === 1) {
@@ -326,15 +331,16 @@ export class VerificationService {
     return count
   }
 
-  async deletePhoneOtp(phone: string): Promise<void> {
+  async deletePhoneOtp(phone: string, userId: number): Promise<void> {
     await Promise.all([
       this.redisService.del(this.phoneOtpKey(phone)),
-      this.redisService.del(this.phoneAttemptsKey(phone)),
+      this.redisService.del(this.phoneAttemptsKey(phone, userId)),
     ])
   }
 
   async setPhoneLockout(
     phone: string,
+    userId: number,
     reason:
       | 'TOO_MANY_ATTEMPTS'
       | 'SUSPICIOUS_ACTIVITY'
@@ -342,7 +348,7 @@ export class VerificationService {
     ipAddress?: string,
     userAgent?: string
   ): Promise<void> {
-    const key = this.phoneLockoutKey(phone)
+    const key = this.phoneLockoutKey(phone, userId)
     const lockedAt = new Date()
     const expires = new Date(
       Date.now() + this.PHONE_LOCKOUT_DURATION_SECONDS * 1000
@@ -360,6 +366,7 @@ export class VerificationService {
       ),
       PhoneVerification.createLockout({
         phone,
+        userId,
         reason,
         ipAddress,
         userAgent,
@@ -368,13 +375,16 @@ export class VerificationService {
     ])
   }
 
-  async getPhoneLockout(phone: string): Promise<{
+  async getPhoneLockout(
+    phone: string,
+    userId: number
+  ): Promise<{
     lockedAt: string
     expires: string
     ttl: number
     reason: string
   } | null> {
-    const key = this.phoneLockoutKey(phone)
+    const key = this.phoneLockoutKey(phone, userId)
 
     let data = await this.redisService.get<{
       lockedAt: string
@@ -383,7 +393,7 @@ export class VerificationService {
     }>(key)
 
     if (!data) {
-      const dbLockout = await PhoneVerification.findActiveLockout(phone)
+      const dbLockout = await PhoneVerification.findActiveLockout(phone, userId)
       if (!dbLockout) return null
 
       const ttlSeconds = Math.floor(
@@ -405,10 +415,10 @@ export class VerificationService {
     return { ...data, ttl }
   }
 
-  async clearPhoneLockout(phone: string): Promise<void> {
+  async clearPhoneLockout(phone: string, userId: number): Promise<void> {
     await Promise.all([
-      this.redisService.del(this.phoneLockoutKey(phone)),
-      PhoneVerification.clearActiveLockout(phone),
+      this.redisService.del(this.phoneLockoutKey(phone, userId)),
+      PhoneVerification.clearActiveLockout(phone, userId),
     ])
   }
 }

@@ -1,0 +1,26 @@
+{
+  "name": "@rufieltics/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared configs and utilities (Jest presets, etc.) for Rufieltics apps.",
+  "files": [
+    "jest",
+    "package.json",
+    "README.md"
+  ],
+  "exports": {
+    "./jest/node": {
+      "default": "./jest/node.cjs"
+    },
+    "./jest/next": {
+      "default": "./jest/next.cjs"
+    }
+  },
+  "scripts": {
+    "build": "echo '@rufieltics/core: no compile step (cjs presets are shipped as-is)'"
+  },
+  "peerDependencies": {
+    "jest": ">=29",
+    "ts-jest": ">=29"
+  }
+}

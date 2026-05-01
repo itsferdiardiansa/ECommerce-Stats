@@ -29,8 +29,9 @@
     "migrate:deploy": "prisma migrate deploy --schema=prisma/schema",
     "studio": "prisma studio --schema=prisma/schema",
     "build": "tsx scripts/build.ts",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage --watch false",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "postinstall": "pnpm generate && pnpm build"
   },
   "dependencies": {

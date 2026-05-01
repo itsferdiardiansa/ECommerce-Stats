@@ -192,6 +192,7 @@ enum LoginLockoutReason {
 model PhoneLockout {
   id        Int               @id @default(autoincrement())
   phone     String
+  userId    Int?
   reason    PhoneLockoutReason @default(TOO_MANY_ATTEMPTS)
   ipAddress String?
   userAgent String?
@@ -202,6 +203,7 @@ model PhoneLockout {
   updatedAt DateTime          @updatedAt
 
   @@index([phone])
+  @@index([phone, userId])
   @@index([expires])
   @@schema("auth")
 }

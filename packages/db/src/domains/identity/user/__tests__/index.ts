@@ -6,6 +6,7 @@ vi.mock('@/libs/prisma', () => ({
   db: {
     user: {
       create: vi.fn(),
+      findFirst: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -34,7 +35,12 @@ describe('User Domain', () => {
       }
       const result = await createUser(input)
 
-      expect(db.user.create).toHaveBeenCalledWith({ data: input })
+      expect(db.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: input,
+          select: expect.objectContaining({ id: true, email: true }),
+        })
+      )
       expect(result).toEqual(mockUser)
     })
 
@@ -52,20 +58,24 @@ describe('User Domain', () => {
   })
 
   describe('getUserById', () => {
-    it('should return user with relations', async () => {
+    it('should return active user with relations', async () => {
       const mockUser = { id: 1, email: 'test@example.com' }
       // @ts-expect-error - Mock implementation
-      db.user.findUnique.mockResolvedValue(mockUser)
+      db.user.findFirst.mockResolvedValue(mockUser)
 
       const result = await getUserById(1)
 
-      expect(db.user.findUnique).toHaveBeenCalledWith({
-        where: { id: 1 },
-        include: {
-          addresses: true,
-          orders: { take: 5, orderBy: { createdAt: 'desc' } },
-        },
-      })
+      expect(db.user.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 1, deletedAt: null },
+          select: expect.objectContaining({
+            id: true,
+            email: true,
+            addresses: true,
+            orders: { take: 5, orderBy: { createdAt: 'desc' } },
+          }),
+        })
+      )
       expect(result).toEqual(mockUser)
     })
   })
@@ -78,22 +88,57 @@ describe('User Domain', () => {
 
       const result = await updateUser(10, { name: 'Updated' })
 
-      expect(db.user.update).toHaveBeenCalledWith({
-        where: { id: 10 },
-        data: { name: 'Updated' },
-      })
+      expect(db.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 10 },
+          data: { name: 'Updated' },
+          select: expect.objectContaining({ id: true, email: true }),
+        })
+      )
       expect(result).toEqual(mockUser)
     })
 
-    it('should delete a user', async () => {
-      const mockUser = { id: 11 }
+    it('should soft-delete a user (sets deletedAt and isActive=false)', async () => {
+      const existing = { id: 11, deletedAt: null }
+      const softDeleted = { id: 11, deletedAt: new Date(), isActive: false }
       // @ts-expect-error - Mock implementation
-      db.user.delete.mockResolvedValue(mockUser)
+      db.user.findUnique.mockResolvedValue(existing)
+      // @ts-expect-error - Mock implementation
+      db.user.update.mockResolvedValue(softDeleted)
 
       const result = await deleteUser(11)
 
-      expect(db.user.delete).toHaveBeenCalledWith({ where: { id: 11 } })
-      expect(result).toEqual(mockUser)
+      expect(db.user.delete).not.toHaveBeenCalled()
+
+      expect(db.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 11 },
+          data: expect.objectContaining({
+            isActive: false,
+            deletedAt: expect.any(Date),
+          }),
+        })
+      )
+      expect(result).toEqual(softDeleted)
+    })
+
+    it('should be idempotent on already-deleted users', async () => {
+      const alreadyDeleted = { id: 12, deletedAt: new Date('2026-01-01') }
+      // @ts-expect-error - Mock implementation
+      db.user.findUnique.mockResolvedValue(alreadyDeleted)
+
+      const result = await deleteUser(12)
+
+      expect(db.user.update).not.toHaveBeenCalled()
+      expect(result).toEqual(alreadyDeleted)
+    })
+
+    it('should throw when user does not exist', async () => {
+      // @ts-expect-error - Mock implementation
+      db.user.findUnique.mockResolvedValue(null)
+
+      await expect(deleteUser(99)).rejects.toThrow('User not found')
+      expect(db.user.update).not.toHaveBeenCalled()
     })
   })
 
