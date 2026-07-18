@@ -59,11 +59,8 @@ export type I18nTranslations = {
             "code_still_valid_seconds": string;
             "account_locked": string;
             "account_locked_seconds": string;
-            "verification_locked": string;
-            "verification_locked_seconds": string;
             "invalid_code_last_attempt": string;
             "reused_refresh_token": string;
-            "too_many_verification_attempts": string;
             "session_revoked": string;
             "session_expired": string;
             "invalid_refresh_token": string;

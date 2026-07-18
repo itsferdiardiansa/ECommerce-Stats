@@ -66,6 +66,58 @@ export class AuthService {
   private readonly VERIFICATION_MAX_ATTEMPTS = 5
   private readonly VERIFICATION_LOCKOUT_DURATION_SECONDS = 3600
 
+  /**
+   * Single source of truth for the "account is locked out" message so that
+   * every endpoint (register, verify-email, resend-verification, …) reports an
+   * identical, consistent response for a lockout.
+   */
+  private lockoutException(
+    ttlSeconds: number,
+    i18n: I18nContext
+  ): BadRequestException {
+    const { minutes, seconds } = formatRemainingTime(ttlSeconds * 1000)
+    const messageKey =
+      minutes > 0
+        ? 'auth.errors.account_locked'
+        : 'auth.errors.account_locked_seconds'
+    const args = minutes > 0 ? { minutes, seconds } : { seconds }
+    return new BadRequestException(i18n.t(messageKey, { args }))
+  }
+
+  /** Throws the consistent lockout response when a lockout is active. */
+  private assertNotLockedOut(
+    lockout: { ttl: number } | null,
+    i18n: I18nContext
+  ): void {
+    if (!lockout) return
+    throw this.lockoutException(lockout.ttl, i18n)
+  }
+
+  /**
+   * Arms a verification lockout (persisting it + clearing the active code) and
+   * throws the same lockout response every other endpoint returns, so the
+   * moment of lockout and every subsequent call read identically.
+   */
+  private async triggerVerificationLockout(
+    email: string,
+    i18n: I18nContext,
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<never> {
+    await this.redisService.setVerificationLockout(
+      email,
+      this.VERIFICATION_LOCKOUT_DURATION_SECONDS,
+      'TOO_MANY_ATTEMPTS',
+      ipAddress,
+      userAgent
+    )
+    await this.redisService.deleteVerificationCode(email)
+    throw this.lockoutException(
+      this.VERIFICATION_LOCKOUT_DURATION_SECONDS,
+      i18n
+    )
+  }
+
   async register(data: RegisterDto, i18n: I18nContext) {
     try {
       const { password, ...rest } = data
@@ -82,16 +134,7 @@ export class AuthService {
         const fullUser = await getUserByEmail(email)
         if (fullUser && !fullUser.isActive && !fullUser.emailVerifiedAt) {
           const lockout = await this.redisService.getVerificationLockout(email)
-          if (lockout) {
-            const remainingTime = lockout.ttl * 1000
-            const { minutes, seconds } = formatRemainingTime(remainingTime)
-            const messageKey =
-              minutes > 0
-                ? 'auth.errors.account_locked'
-                : 'auth.errors.account_locked_seconds'
-            const args = minutes > 0 ? { minutes, seconds } : { seconds }
-            throw new BadRequestException(i18n.t(messageKey, { args }))
-          }
+          this.assertNotLockedOut(lockout, i18n)
         }
 
         throw new BadRequestException(
@@ -154,16 +197,7 @@ export class AuthService {
     }
 
     const lockout = await this.redisService.getVerificationLockout(email)
-    if (lockout) {
-      const remainingTime = lockout.ttl * 1000
-      const { minutes, seconds } = formatRemainingTime(remainingTime)
-      const messageKey =
-        minutes > 0
-          ? 'auth.errors.verification_locked'
-          : 'auth.errors.verification_locked_seconds'
-      const args = minutes > 0 ? { minutes, seconds } : { seconds }
-      throw new BadRequestException(i18n.t(messageKey, { args }))
-    }
+    this.assertNotLockedOut(lockout, i18n)
 
     const storedData = await this.redisService.getVerificationCode(email)
 
@@ -179,17 +213,7 @@ export class AuthService {
     }
 
     if (storedData.attempts >= this.VERIFICATION_MAX_ATTEMPTS) {
-      await this.redisService.setVerificationLockout(
-        email,
-        this.VERIFICATION_LOCKOUT_DURATION_SECONDS,
-        'TOO_MANY_ATTEMPTS',
-        ipAddress,
-        userAgent
-      )
-      await this.redisService.deleteVerificationCode(email)
-      throw new BadRequestException(
-        i18n.t('auth.errors.too_many_verification_attempts')
-      )
+      await this.triggerVerificationLockout(email, i18n, ipAddress, userAgent)
     }
 
     if (storedData.code !== code) {
@@ -197,10 +221,8 @@ export class AuthService {
         await this.redisService.incrementVerificationAttempts(email)
       const remaining = this.VERIFICATION_MAX_ATTEMPTS - newAttempts
 
-      if (remaining === 0) {
-        throw new BadRequestException(
-          i18n.t('auth.errors.too_many_verification_attempts')
-        )
+      if (remaining <= 0) {
+        await this.triggerVerificationLockout(email, i18n, ipAddress, userAgent)
       }
 
       const messageKey =
@@ -342,16 +364,7 @@ export class AuthService {
     }
 
     const lockout = await this.redisService.getVerificationLockout(email)
-    if (lockout) {
-      const remainingTime = lockout.ttl * 1000
-      const { minutes, seconds } = formatRemainingTime(remainingTime)
-      const messageKey =
-        minutes > 0
-          ? 'auth.errors.account_locked'
-          : 'auth.errors.account_locked_seconds'
-      const args = minutes > 0 ? { minutes, seconds } : { seconds }
-      throw new BadRequestException(i18n.t(messageKey, { args }))
-    }
+    this.assertNotLockedOut(lockout, i18n)
 
     const existingCode = await this.redisService.getVerificationCode(email)
 
@@ -570,7 +583,7 @@ export class AuthService {
       (await Sessions.findByJti(jti))
     const userId = sessionData?.userId
 
-    this.tokenDenylist.deny(jti, this.jwtService.getAccessExpiresIn())
+    await this.tokenDenylist.deny(jti, this.jwtService.getAccessExpiresIn())
 
     await Promise.all([
       this.redisService.deleteSession(jti),
@@ -603,7 +616,10 @@ export class AuthService {
       }
     }
 
-    this.tokenDenylist.denyMany(otherJtis, this.jwtService.getAccessExpiresIn())
+    await this.tokenDenylist.denyMany(
+      otherJtis,
+      this.jwtService.getAccessExpiresIn()
+    )
 
     await Promise.all(
       otherJtis.map(jti => this.redisService.deleteSession(jti))
@@ -652,7 +668,10 @@ export class AuthService {
       }
     }
 
-    this.tokenDenylist.denyMany(jtis, this.jwtService.getAccessExpiresIn())
+    await this.tokenDenylist.denyMany(
+      jtis,
+      this.jwtService.getAccessExpiresIn()
+    )
 
     await Promise.all(jtis.map(jti => this.redisService.deleteSession(jti)))
 
@@ -670,7 +689,10 @@ export class AuthService {
     const jtis = activeSessions.map(session => session.jti)
 
     if (jtis.length > 0) {
-      this.tokenDenylist.denyMany(jtis, this.jwtService.getAccessExpiresIn())
+      await this.tokenDenylist.denyMany(
+        jtis,
+        this.jwtService.getAccessExpiresIn()
+      )
       await Promise.all(jtis.map(jti => this.redisService.deleteSession(jti)))
     }
 

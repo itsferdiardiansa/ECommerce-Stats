@@ -1,53 +1,40 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Inject } from '@nestjs/common'
+import Redis from 'ioredis'
+import { REDIS_CLIENT } from '@/modules/redis/redis.constants'
 
+/**
+ * Tracks revoked access tokens (by jti) in Redis so that logout and
+ * session revocation are honored across every API instance and survive
+ * process restarts. Entries expire automatically via Redis TTL, matching
+ * the access token lifetime.
+ */
 @Injectable()
 export class TokenDenylistService {
-  private readonly logger = new Logger(TokenDenylistService.name)
-  private readonly denied = new Map<string, number>()
-  private readonly cleanupInterval: ReturnType<typeof setInterval>
+  private readonly KEY_PREFIX = 'denylist:jti:'
 
-  constructor() {
-    this.cleanupInterval = setInterval(() => this.cleanup(), 60_000)
+  constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
+
+  private key(jti: string): string {
+    return `${this.KEY_PREFIX}${jti}`
   }
 
-  deny(jti: string, ttlSeconds: number): void {
-    const expiresAt = Date.now() + ttlSeconds * 1000
-    this.denied.set(jti, expiresAt)
+  async deny(jti: string, ttlSeconds: number): Promise<void> {
+    if (ttlSeconds <= 0) return
+    await this.redis.set(this.key(jti), '1', 'EX', ttlSeconds)
   }
 
-  denyMany(jtis: string[], ttlSeconds: number): void {
-    const expiresAt = Date.now() + ttlSeconds * 1000
+  async denyMany(jtis: string[], ttlSeconds: number): Promise<void> {
+    if (ttlSeconds <= 0 || jtis.length === 0) return
+
+    const pipeline = this.redis.pipeline()
     for (const jti of jtis) {
-      this.denied.set(jti, expiresAt)
+      pipeline.set(this.key(jti), '1', 'EX', ttlSeconds)
     }
+    await pipeline.exec()
   }
 
-  isDenied(jti: string): boolean {
-    const expiresAt = this.denied.get(jti)
-    if (expiresAt === undefined) return false
-
-    if (Date.now() >= expiresAt) {
-      this.denied.delete(jti)
-      return false
-    }
-    return true
-  }
-
-  private cleanup(): void {
-    const now = Date.now()
-    let purged = 0
-    for (const [jti, expiresAt] of this.denied) {
-      if (now >= expiresAt) {
-        this.denied.delete(jti)
-        purged++
-      }
-    }
-    if (purged > 0) {
-      this.logger.debug(`Purged ${purged} expired denylist entries`)
-    }
-  }
-
-  onModuleDestroy() {
-    clearInterval(this.cleanupInterval)
+  async isDenied(jti: string): Promise<boolean> {
+    const exists = await this.redis.exists(this.key(jti))
+    return exists === 1
   }
 }
