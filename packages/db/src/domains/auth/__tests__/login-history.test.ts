@@ -29,7 +29,8 @@ describe('LoginLogs', () => {
     // @ts-expect-error mocked
     db.loginHistory.create.mockResolvedValue({ id: 'l2', isSuccess: false })
 
-    const res = await LoginLogs.logFailure(1, LoginReason.INVALID_PASSWORD, {
+    const res = await LoginLogs.logFailure(LoginReason.INVALID_PASSWORD, {
+      userId: 1,
       ip: '1.2.3.4',
     })
     expect(db.loginHistory.create).toHaveBeenCalled()

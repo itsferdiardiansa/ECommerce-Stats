@@ -90,8 +90,12 @@ model Authenticator {
 
 model LoginHistory {
   id        Int      @id @default(autoincrement())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Nullable so failed attempts for a non-existent email can still be recorded
+  // (needed for IP-based brute-force detection) without leaking existence.
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attemptedEmail    String?
+  deviceFingerprint String?
   ipAddress String?
   userAgent String?
   city      String?
@@ -104,6 +108,8 @@ model LoginHistory {
 
   @@index([userId])
   @@index([createdAt])
+  @@index([userId, deviceFingerprint])
+  @@index([ipAddress, createdAt])
   @@schema("auth")
 }
 

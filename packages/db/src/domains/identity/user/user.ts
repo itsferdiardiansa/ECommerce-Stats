@@ -59,6 +59,30 @@ export async function getUserById(id: number) {
   })
 }
 
+/**
+ * Minimal target for security notifications: the recipient address and whether
+ * they've opted into email alerts. `alertsEmail` defaults to true when the user
+ * has no settings row yet.
+ */
+export async function getSecurityNotificationTarget(userId: number) {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      email: true,
+      name: true,
+      settings: { select: { alertsEmail: true } },
+    },
+  })
+
+  if (!user) return null
+
+  return {
+    email: user.email,
+    name: user.name,
+    alertsEmail: user.settings?.alertsEmail ?? true,
+  }
+}
+
 export async function getUserByEmail(email: string) {
   return db.user.findFirst({
     where: {
