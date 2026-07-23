@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { I18nContext } from 'nestjs-i18n'
+import { ConfigService } from '@nestjs/config'
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import * as argon2 from 'argon2'
 import { createHash, randomBytes, randomUUID } from 'crypto'
@@ -24,6 +25,10 @@ import { Sessions } from '@rufieltics/db/domains/auth'
 import { RedisService } from '@/modules/redis/redis.service'
 import { JwtService } from '@/modules/jwt/jwt.service'
 import { TokenDenylistService } from '@/modules/jwt/token-denylist.service'
+import { MailQueueService } from '@/modules/mail/mail-queue.service'
+import { MailPriority } from '@/modules/mail/mail.constants'
+import { renderEmail } from '@rufieltics/emails'
+import { LoginAnomalyService } from './services/login-anomaly.service'
 import type { AccessTokenPayload } from '@/modules/jwt/jwt.service'
 import type { RegisterDto } from './dto/register.dto'
 import type { VerifyEmailDto } from './dto/verify-email.dto'
@@ -37,10 +42,15 @@ import {
   generateOrgSlug,
   pickPrimaryMembership,
 } from '@/utils/auth'
+import { Prisma } from '@rufieltics/db'
 import {
+  AUTH_EVENTS,
   LoginSuccessEvent,
+  LoginFailedEvent,
   SecurityCompromiseEvent,
-} from './listeners/auth-events.listener'
+  StepUpVerifiedEvent,
+  StepUpBlockedEvent,
+} from './events'
 
 interface StoredSession {
   userId: number
@@ -52,19 +62,66 @@ interface StoredSession {
   deviceFingerprint: string
 }
 
+interface StepUpChallenge {
+  userId: number
+  email: string
+  isStaff: boolean
+  role: string | null
+  orgId: string | null
+  code: string
+  // The device that initiated (and was risk-assessed at) login. The session is
+  // issued for THIS device on success, so passing the OTP trusts exactly the
+  // device that was challenged — not whichever client submitted the code.
+  userAgent: string | null
+  ipAddress: string | null
+}
+
 @Injectable()
 export class AuthService {
+  private readonly VERIFICATION_CODE_TTL_SECONDS: number
+  private readonly VERIFICATION_CODE_MAX_AGE_MS: number
+  private readonly VERIFICATION_MAX_ATTEMPTS: number
+  private readonly VERIFICATION_LOCKOUT_DURATION_SECONDS: number
+  private readonly STEP_UP_CODE_TTL_SECONDS: number
+  private readonly STEP_UP_MAX_ATTEMPTS: number
+  private readonly STEP_UP_CHALLENGE_TTL_SECONDS: number
+
   constructor(
     private readonly redisService: RedisService,
     private readonly jwtService: JwtService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly tokenDenylist: TokenDenylistService
-  ) {}
-
-  private readonly VERIFICATION_CODE_TTL_SECONDS = 300
-  private readonly VERIFICATION_CODE_MAX_AGE_MS = 5 * 60 * 1000
-  private readonly VERIFICATION_MAX_ATTEMPTS = 5
-  private readonly VERIFICATION_LOCKOUT_DURATION_SECONDS = 3600
+    private readonly tokenDenylist: TokenDenylistService,
+    private readonly anomaly: LoginAnomalyService,
+    private readonly mailQueue: MailQueueService,
+    config: ConfigService
+  ) {
+    this.VERIFICATION_CODE_TTL_SECONDS = config.get<number>(
+      'security.verification.codeTtlSeconds',
+      300
+    )
+    this.VERIFICATION_CODE_MAX_AGE_MS =
+      this.VERIFICATION_CODE_TTL_SECONDS * 1000
+    this.VERIFICATION_MAX_ATTEMPTS = config.get<number>(
+      'security.verification.maxAttempts',
+      5
+    )
+    this.VERIFICATION_LOCKOUT_DURATION_SECONDS = config.get<number>(
+      'security.verification.lockoutSeconds',
+      3600
+    )
+    this.STEP_UP_CODE_TTL_SECONDS = config.get<number>(
+      'security.stepUp.codeTtlSeconds',
+      300
+    )
+    this.STEP_UP_MAX_ATTEMPTS = config.get<number>(
+      'security.stepUp.maxAttempts',
+      5
+    )
+    this.STEP_UP_CHALLENGE_TTL_SECONDS = config.get<number>(
+      'security.stepUp.challengeTtlSeconds',
+      600
+    )
+  }
 
   private dummyPasswordHash: string | null = null
 
@@ -135,6 +192,24 @@ export class AuthService {
     )
   }
 
+  /** Renders and queues the email-verification code (register + resend). */
+  private async sendVerificationEmail(
+    to: string,
+    name: string,
+    code: string,
+    i18n: I18nContext
+  ): Promise<void> {
+    const message = await renderEmail('verification-code', i18n.lang, {
+      name,
+      code,
+      minutes: Math.round(this.VERIFICATION_CODE_TTL_SECONDS / 60),
+    })
+    await this.mailQueue.enqueue(
+      { to, ...message },
+      { priority: MailPriority.HIGH }
+    )
+  }
+
   async register(data: RegisterDto, i18n: I18nContext) {
     try {
       const { password, ...rest } = data
@@ -186,6 +261,8 @@ export class AuthService {
         code,
         this.VERIFICATION_CODE_TTL_SECONDS
       )
+
+      await this.sendVerificationEmail(email, user.name, code, i18n)
 
       return user
     } catch (err) {
@@ -368,6 +445,7 @@ export class AuthService {
       refreshToken,
       rawDeviceSecret,
       expiresIn: this.jwtService.getAccessExpiresIn(),
+      deviceFingerprint,
       geo,
     }
   }
@@ -411,6 +489,8 @@ export class AuthService {
       this.VERIFICATION_CODE_TTL_SECONDS
     )
 
+    await this.sendVerificationEmail(email, user.name, code, i18n)
+
     return {
       message: i18n.t('auth.resend.success'),
     }
@@ -432,10 +512,32 @@ export class AuthService {
     const isPasswordValid = await argon2.verify(passwordHash, data.password)
 
     if (!user || !isPasswordValid) {
+      this.eventEmitter.emit(
+        AUTH_EVENTS.LOGIN_FAILED,
+        new LoginFailedEvent(
+          user
+            ? Prisma.LoginReason.INVALID_PASSWORD
+            : Prisma.LoginReason.USER_NOT_FOUND,
+          data.email,
+          ipAddress || null,
+          userAgent || null,
+          user?.id ?? null
+        )
+      )
       throw new UnauthorizedException(i18n.t('auth.errors.invalid_credentials'))
     }
 
     if (!user.isActive) {
+      this.eventEmitter.emit(
+        AUTH_EVENTS.LOGIN_FAILED,
+        new LoginFailedEvent(
+          Prisma.LoginReason.EMAIL_NOT_VERIFIED,
+          data.email,
+          ipAddress || null,
+          userAgent || null,
+          user.id
+        )
+      )
       throw new UnauthorizedException(
         i18n.t('auth.errors.account_not_verified')
       )
@@ -447,7 +549,32 @@ export class AuthService {
     const role = primary?.role ?? null
     const orgId = primary?.organizationId ?? null
 
-    const { geo, ...session } = await this.initiateSession(
+    // Risk-based step-up: the password is correct, but if the sign-in looks
+    // risky (new device / new location / impossible travel) we challenge with
+    // an email OTP before issuing a session, protecting accounts even when the
+    // user hasn't enabled 2FA. Read-only preview so it doesn't self-suppress.
+    const { hash: previewFingerprint, geo: previewGeo } =
+      generateDeviceFingerprint(user.id, userAgent, ipAddress)
+    const risk = await this.anomaly.previewSuccessRisk({
+      userId: user.id,
+      deviceFingerprint: previewFingerprint,
+      country: previewGeo.country,
+      latitude: previewGeo.latitude,
+      longitude: previewGeo.longitude,
+    })
+
+    if (risk.length > 0) {
+      return this.initiateStepUp(
+        user,
+        role,
+        orgId,
+        i18n.lang,
+        userAgent,
+        ipAddress
+      )
+    }
+
+    const { geo, deviceFingerprint, ...session } = await this.initiateSession(
       user,
       role,
       orgId,
@@ -458,8 +585,208 @@ export class AuthService {
     await Sessions.deleteExpiredByUserId(user.id)
 
     this.eventEmitter.emit(
-      'auth.login.success',
-      new LoginSuccessEvent(user.id, ipAddress || null, userAgent || null, geo)
+      AUTH_EVENTS.LOGIN_SUCCESS,
+      new LoginSuccessEvent(
+        user.id,
+        ipAddress || null,
+        userAgent || null,
+        deviceFingerprint,
+        geo
+      )
+    )
+
+    return session
+  }
+
+  /**
+   * Starts an email-OTP step-up: generates a code, stashes the pending login
+   * context in Redis, and emails the code. No session is issued until the code
+   * is verified via {@link verifyStepUp}.
+   */
+  private stepUpUserKey(userId: number): string {
+    return `stepup:user:${userId}`
+  }
+
+  private async voidStepUpChallenge(
+    challengeId: string,
+    userId: number
+  ): Promise<void> {
+    await Promise.all([
+      this.redisService.deleteStepUpChallenge(challengeId),
+      this.redisService.del(this.stepUpUserKey(userId)),
+    ])
+  }
+
+  /**
+   * Voids a challenge whose OTP attempts were exhausted, notifies the account
+   * owner that a password-correct sign-in was blocked, and throws. Someone had
+   * the password but couldn't pass the second factor.
+   */
+  private async failStepUp(
+    challengeId: string,
+    challenge: StepUpChallenge,
+    i18n: I18nContext
+  ): Promise<never> {
+    await this.voidStepUpChallenge(challengeId, challenge.userId)
+
+    const { geo } = generateDeviceFingerprint(
+      challenge.userId,
+      challenge.userAgent ?? undefined,
+      challenge.ipAddress ?? undefined
+    )
+    this.eventEmitter.emit(
+      AUTH_EVENTS.STEP_UP_BLOCKED,
+      new StepUpBlockedEvent(challenge.userId, challenge.ipAddress, geo.country)
+    )
+
+    throw new UnauthorizedException(
+      i18n.t('auth.errors.step_up_too_many_attempts')
+    )
+  }
+
+  private async initiateStepUp(
+    user: { id: number; email: string; name: string; isStaff: boolean },
+    role: string | null,
+    orgId: string | null,
+    locale: string,
+    userAgent?: string,
+    ipAddress?: string
+  ) {
+    // Reuse an already-pending challenge instead of emailing a fresh OTP on
+    // every risky login. Without this, repeatedly signing in (e.g. varying the
+    // User-Agent, which changes the device fingerprint) would flood the user's
+    // inbox — an email-bombing vector. One live code per challenge window.
+    const userKey = this.stepUpUserKey(user.id)
+    const activeChallengeId = await this.redisService.get<string>(userKey)
+    if (activeChallengeId) {
+      const active =
+        await this.redisService.getStepUpChallenge(activeChallengeId)
+      if (active) {
+        return { stepUpRequired: true as const, challengeId: activeChallengeId }
+      }
+    }
+
+    const challengeId = randomUUID()
+    const code = generateVerificationCode()
+
+    const challenge: StepUpChallenge = {
+      userId: user.id,
+      email: user.email,
+      isStaff: user.isStaff,
+      role,
+      orgId,
+      code,
+      userAgent: userAgent ?? null,
+      ipAddress: ipAddress ?? null,
+    }
+
+    await this.redisService.setStepUpChallenge(
+      challengeId,
+      challenge,
+      this.STEP_UP_CHALLENGE_TTL_SECONDS
+    )
+    await this.redisService.set(
+      userKey,
+      challengeId,
+      this.STEP_UP_CHALLENGE_TTL_SECONDS
+    )
+
+    // Enqueue (HIGH priority) rather than sending inline: the login request
+    // must not block on the mail provider. The code is delivered by the mail
+    // worker within seconds, well inside its TTL.
+    const message = await renderEmail('step-up-otp', locale, {
+      name: user.name,
+      code,
+      minutes: Math.round(this.STEP_UP_CODE_TTL_SECONDS / 60),
+    })
+    await this.mailQueue.enqueue(
+      { to: user.email, ...message },
+      { priority: MailPriority.HIGH }
+    )
+
+    return { stepUpRequired: true as const, challengeId }
+  }
+
+  /**
+   * Completes a step-up challenge: validates the OTP and, on success, issues the
+   * session. The resulting login is marked step-up-verified so the audit
+   * listener records the device without sending a redundant alert.
+   */
+  async verifyStepUp(
+    challengeId: string,
+    code: string,
+    i18n: I18nContext,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
+    const challenge =
+      await this.redisService.getStepUpChallenge<StepUpChallenge>(challengeId)
+    if (!challenge) {
+      throw new UnauthorizedException(i18n.t('auth.errors.step_up_expired'))
+    }
+
+    const attempts =
+      await this.redisService.incrementStepUpAttempts(challengeId)
+    if (attempts > this.STEP_UP_MAX_ATTEMPTS) {
+      await this.failStepUp(challengeId, challenge, i18n)
+    }
+
+    if (challenge.code !== code) {
+      const remaining = this.STEP_UP_MAX_ATTEMPTS - attempts
+      if (remaining <= 0) {
+        await this.failStepUp(challengeId, challenge, i18n)
+      }
+      throw new UnauthorizedException(
+        i18n.t('auth.errors.step_up_invalid_code', {
+          args: { attempts: remaining },
+        })
+      )
+    }
+
+    await this.voidStepUpChallenge(challengeId, challenge.userId)
+
+    // Issue the session for the device that was challenged at login (stored on
+    // the challenge), so completing the OTP trusts exactly that device —
+    // independent of which client submitted the code.
+    const sessionUserAgent = challenge.userAgent ?? userAgent
+    const sessionIpAddress = challenge.ipAddress ?? ipAddress
+
+    const { geo, deviceFingerprint, ...session } = await this.initiateSession(
+      {
+        id: challenge.userId,
+        email: challenge.email,
+        isStaff: challenge.isStaff,
+      },
+      challenge.role,
+      challenge.orgId,
+      sessionUserAgent,
+      sessionIpAddress
+    )
+
+    await Sessions.deleteExpiredByUserId(challenge.userId)
+
+    this.eventEmitter.emit(
+      AUTH_EVENTS.LOGIN_SUCCESS,
+      new LoginSuccessEvent(
+        challenge.userId,
+        sessionIpAddress || null,
+        sessionUserAgent || null,
+        deviceFingerprint,
+        geo,
+        true
+      )
+    )
+
+    // Inform the owner that a new device signed in — even though they passed
+    // the OTP, this covers a socially-engineered code (Google-style "new
+    // sign-in" notice).
+    this.eventEmitter.emit(
+      AUTH_EVENTS.STEP_UP_VERIFIED,
+      new StepUpVerifiedEvent(
+        challenge.userId,
+        sessionIpAddress || null,
+        geo.country
+      )
     )
 
     return session
@@ -587,7 +914,7 @@ export class AuthService {
       throw new UnauthorizedException(i18n.t('auth.errors.user_not_found'))
     }
 
-    const session = await this.initiateSession(
+    const result = await this.initiateSession(
       user,
       role,
       orgId,
@@ -595,7 +922,14 @@ export class AuthService {
       ipAddress
     )
 
-    return session
+    // geo/deviceFingerprint are internal to session creation; don't leak them
+    // in the refresh response.
+    return {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      rawDeviceSecret: result.rawDeviceSecret,
+      expiresIn: result.expiresIn,
+    }
   }
 
   async logout(jti: string) {

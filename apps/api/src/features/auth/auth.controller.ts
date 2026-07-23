@@ -21,6 +21,7 @@ import { RegisterDto } from './dto/register.dto'
 import { VerifyEmailDto } from './dto/verify-email.dto'
 import { ResendVerificationDto } from './dto/resend-verification.dto'
 import { LoginDto } from './dto/login.dto'
+import { StepUpDto } from './dto/step-up.dto'
 import { RevokeSessionsDto } from './dto/revoke-sessions.dto'
 import { created, success } from '@/common/helpers/api-response.helper'
 import { ActiveUserGuard } from '@/common/guards/active-user.guard'
@@ -107,13 +108,52 @@ export class AuthController {
     @Headers('user-agent') userAgent: string,
     @Res({ passthrough: true }) res: Response
   ) {
-    const { refreshToken, rawDeviceSecret, ...result } =
-      await this.authService.login(dto, i18n, ipAddress, userAgent)
+    const loginResult = await this.authService.login(
+      dto,
+      i18n,
+      ipAddress,
+      userAgent
+    )
+
+    // Risky sign-in: no session yet, the client must complete the email OTP.
+    if ('stepUpRequired' in loginResult) {
+      return success(i18n.t('auth.login.step_up_required'), {
+        stepUpRequired: true,
+        challengeId: loginResult.challengeId,
+      })
+    }
+
+    const { refreshToken, rawDeviceSecret, ...result } = loginResult
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
     res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
 
     return success(i18n.t('auth.login.success'), result)
+  }
+
+  @Post('login/step-up')
+  @Throttle(getAuthThrottleConfig())
+  @HttpCode(HttpStatus.OK)
+  async stepUp(
+    @Body() dto: StepUpDto,
+    @I18n() i18n: I18nContext,
+    @Ip() ipAddress: string,
+    @Headers('user-agent') userAgent: string,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const { refreshToken, rawDeviceSecret, ...result } =
+      await this.authService.verifyStepUp(
+        dto.challengeId,
+        dto.code,
+        i18n,
+        ipAddress,
+        userAgent
+      )
+
+    res.cookie('refreshToken', refreshToken, this.getCookieOptions())
+    res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
+
+    return success(i18n.t('auth.step_up.success'), result)
   }
 
   @Post('refresh')

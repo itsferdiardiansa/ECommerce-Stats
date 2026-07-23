@@ -29,6 +29,7 @@ export type I18nTranslations = {
         };
         "login": {
             "success": string;
+            "step_up_required": string;
         };
         "logout": {
             "success": string;
@@ -63,10 +64,16 @@ export type I18nTranslations = {
             "session_expired": string;
             "invalid_refresh_token": string;
             "invalid_client": string;
+            "step_up_expired": string;
+            "step_up_invalid_code": string;
+            "step_up_too_many_attempts": string;
         };
         "validation": {
             "code_length": string;
             "code_numeric": string;
+        };
+        "step_up": {
+            "success": string;
         };
     };
     "common": {

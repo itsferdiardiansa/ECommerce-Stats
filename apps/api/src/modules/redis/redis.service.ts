@@ -1,4 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common'
+import { randomUUID } from 'crypto'
 import Redis from 'ioredis'
 import { REDIS_CLIENT } from './redis.constants'
 import { Verification } from '@rufieltics/db/domains/auth'
@@ -101,6 +102,51 @@ export class RedisService {
     ])
   }
 
+  private stepUpChallengeKey(id: string): string {
+    return `stepup:challenge:${id}`
+  }
+
+  private stepUpAttemptsKey(id: string): string {
+    return `stepup:attempts:${id}`
+  }
+
+  async setStepUpChallenge(
+    id: string,
+    data: object,
+    ttl: number
+  ): Promise<void> {
+    await Promise.all([
+      this.set(this.stepUpChallengeKey(id), data, ttl),
+      this.del(this.stepUpAttemptsKey(id)),
+    ])
+  }
+
+  async getStepUpChallenge<T = Record<string, unknown>>(
+    id: string
+  ): Promise<T | null> {
+    return this.get<T>(this.stepUpChallengeKey(id))
+  }
+
+  /** Atomic attempt counter for a step-up challenge (same guarantee as email verification). */
+  async incrementStepUpAttempts(id: string): Promise<number> {
+    const attemptsKey = this.stepUpAttemptsKey(id)
+    const count = await this.redisClient.incr(attemptsKey)
+
+    if (count === 1) {
+      const ttl = await this.redisClient.ttl(this.stepUpChallengeKey(id))
+      await this.redisClient.expire(attemptsKey, ttl > 0 ? ttl : 600)
+    }
+
+    return count
+  }
+
+  async deleteStepUpChallenge(id: string): Promise<void> {
+    await Promise.all([
+      this.del(this.stepUpChallengeKey(id)),
+      this.del(this.stepUpAttemptsKey(id)),
+    ])
+  }
+
   async setVerificationLockout(
     email: string,
     ttl = 3600,
@@ -192,6 +238,68 @@ export class RedisService {
       allowed: true,
       remaining: maxAttempts - newCount,
     }
+  }
+
+  /**
+   * Records a login failure for `scope` (e.g. `user:42` or `ip:1.2.3.4`) and
+   * returns how many failures fall inside the rolling window. Uses a Redis
+   * sorted set as a true sliding window, so brute-force detection is O(log n)
+   * in Redis instead of a growing `count(*)` over the audit table.
+   */
+  async recordLoginFailure(
+    scope: string,
+    windowSeconds = 900
+  ): Promise<number> {
+    const key = `bruteforce:${scope}`
+    const now = Date.now()
+    const cutoff = now - windowSeconds * 1000
+
+    const results = await this.redisClient
+      .multi()
+      .zadd(key, now, `${now}-${randomUUID()}`)
+      .zremrangebyscore(key, 0, cutoff)
+      .zcard(key)
+      .expire(key, windowSeconds)
+      .exec()
+
+    const card = results?.[2]?.[1]
+    return typeof card === 'number' ? card : 0
+  }
+
+  /**
+   * "Known device / country" cache backing new-device and new-country
+   * detection. A hit is an O(1) SISMEMBER, avoiding a DB read on the common
+   * case of a returning device. Populated on every successful login and warmed
+   * from history on a cache miss (see LoginAnomalyService).
+   */
+  async isKnownFactor(
+    kind: 'device' | 'country',
+    userId: number,
+    value: string
+  ): Promise<boolean> {
+    const exists = await this.redisClient.sismember(
+      this.knownFactorKey(kind, userId),
+      value
+    )
+    return exists === 1
+  }
+
+  async rememberFactor(
+    kind: 'device' | 'country',
+    userId: number,
+    value: string,
+    ttlSeconds = 7776000 // 90 days
+  ): Promise<void> {
+    const key = this.knownFactorKey(kind, userId)
+    await this.redisClient
+      .multi()
+      .sadd(key, value)
+      .expire(key, ttlSeconds)
+      .exec()
+  }
+
+  private knownFactorKey(kind: 'device' | 'country', userId: number): string {
+    return `known:${kind}:${userId}`
   }
 
   async setSession(
