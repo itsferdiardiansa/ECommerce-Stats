@@ -38,7 +38,12 @@ export function generateDeviceFingerprint(
   const region = geo ? geo.region : 'Unknown'
   const city = geo ? geo.city : 'Unknown'
 
-  const rawFingerprint = `${userId}:${browser}:${os}:${country}:${region}`
+  // Geo (country/region) is intentionally excluded from the enforced
+  // fingerprint: it is derived from the request IP, which legitimately changes
+  // for mobile/roaming/VPN users and would otherwise force a re-login or revoke
+  // the session on every network switch. Geo is still returned below for
+  // logging and anomaly alerting.
+  const rawFingerprint = `${userId}:${browser}:${os}`
   const hash = createHash('sha256').update(rawFingerprint).digest('hex')
 
   return {

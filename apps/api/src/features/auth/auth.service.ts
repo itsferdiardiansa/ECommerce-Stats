@@ -66,6 +66,23 @@ export class AuthService {
   private readonly VERIFICATION_MAX_ATTEMPTS = 5
   private readonly VERIFICATION_LOCKOUT_DURATION_SECONDS = 3600
 
+  private dummyPasswordHash: string | null = null
+
+  /**
+   * A throwaway argon2 hash used to verify against when no user is found, so a
+   * login attempt for a non-existent email costs the same time as one for a
+   * real account — closing the timing side-channel that would otherwise reveal
+   * whether an email is registered. Computed once and cached.
+   */
+  private async getDummyPasswordHash(): Promise<string> {
+    if (!this.dummyPasswordHash) {
+      this.dummyPasswordHash = await argon2.hash(
+        randomBytes(32).toString('hex')
+      )
+    }
+    return this.dummyPasswordHash
+  }
+
   /**
    * Single source of truth for the "account is locked out" message so that
    * every endpoint (register, verify-email, resend-verification, …) reports an
@@ -212,14 +229,18 @@ export class AuthService {
       throw new BadRequestException(i18n.t('auth.errors.code_expired'))
     }
 
-    if (storedData.attempts >= this.VERIFICATION_MAX_ATTEMPTS) {
+    // Atomically consume an attempt *before* comparing the code so the cap
+    // holds under concurrent requests (INCR can't be raced like a read-modify
+    // -write). The (MAX+1)th attempt is rejected before any comparison.
+    const attemptNo =
+      await this.redisService.incrementVerificationAttempts(email)
+
+    if (attemptNo > this.VERIFICATION_MAX_ATTEMPTS) {
       await this.triggerVerificationLockout(email, i18n, ipAddress, userAgent)
     }
 
     if (storedData.code !== code) {
-      const newAttempts =
-        await this.redisService.incrementVerificationAttempts(email)
-      const remaining = this.VERIFICATION_MAX_ATTEMPTS - newAttempts
+      const remaining = this.VERIFICATION_MAX_ATTEMPTS - attemptNo
 
       if (remaining <= 0) {
         await this.triggerVerificationLockout(email, i18n, ipAddress, userAgent)
@@ -402,16 +423,16 @@ export class AuthService {
     userAgent?: string
   ) {
     const user = await getUserByEmail(data.email)
-    if (!user) {
-      throw new UnauthorizedException(i18n.t('auth.errors.email_not_found'))
-    }
 
-    const isPasswordValid = await argon2.verify(
-      user.passwordHash,
-      data.password
-    )
-    if (!isPasswordValid) {
-      throw new UnauthorizedException(i18n.t('auth.errors.incorrect_password'))
+    // Always run a hash verification (against a dummy hash when the user is
+    // missing) so response time doesn't reveal whether the email exists, and
+    // return one generic message for both "no such email" and "wrong password".
+    const passwordHash =
+      user?.passwordHash ?? (await this.getDummyPasswordHash())
+    const isPasswordValid = await argon2.verify(passwordHash, data.password)
+
+    if (!user || !isPasswordValid) {
+      throw new UnauthorizedException(i18n.t('auth.errors.invalid_credentials'))
     }
 
     if (!user.isActive) {

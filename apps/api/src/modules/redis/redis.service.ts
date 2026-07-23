@@ -44,50 +44,61 @@ export class RedisService {
     return result === 'OK'
   }
 
+  private verificationCodeKey(email: string): string {
+    return `verification:email:${email.toLowerCase()}`
+  }
+
+  private verificationAttemptsKey(email: string): string {
+    return `verification:attempts:${email.toLowerCase()}`
+  }
+
   async setVerificationCode(
     email: string,
     code: string,
     ttl = 300
   ): Promise<void> {
-    const key = `verification:email:${email.toLowerCase()}`
-    await this.set(
-      key,
-      {
-        code,
-        attempts: 0,
-        createdAt: new Date().toISOString(),
-      },
-      ttl
-    )
+    await Promise.all([
+      this.set(
+        this.verificationCodeKey(email),
+        { code, createdAt: new Date().toISOString() },
+        ttl
+      ),
+      // Reset the attempt counter so a freshly issued code starts clean.
+      this.del(this.verificationAttemptsKey(email)),
+    ])
   }
 
   async getVerificationCode(
     email: string
-  ): Promise<{ code: string; attempts: number; createdAt: string } | null> {
-    const key = `verification:email:${email.toLowerCase()}`
-    return this.get(key)
+  ): Promise<{ code: string; createdAt: string } | null> {
+    return this.get(this.verificationCodeKey(email))
   }
 
+  /**
+   * Atomically increments and returns the verification attempt count via Redis
+   * INCR, so concurrent requests cannot bypass the attempt cap (no read-modify
+   * -write race). The counter is expired in lockstep with the code's remaining
+   * lifetime on first use.
+   */
   async incrementVerificationAttempts(email: string): Promise<number> {
-    const key = `verification:email:${email.toLowerCase()}`
-    const data = await this.getVerificationCode(email)
-    if (!data) return 0
+    const attemptsKey = this.verificationAttemptsKey(email)
+    const count = await this.redisClient.incr(attemptsKey)
 
-    data.attempts += 1
-
-    const ttl = await this.redisClient.ttl(key)
-    if (ttl > 0) {
-      await this.set(key, data, ttl)
-    } else {
-      await this.set(key, data, 300)
+    if (count === 1) {
+      const codeTtl = await this.redisClient.ttl(
+        this.verificationCodeKey(email)
+      )
+      await this.redisClient.expire(attemptsKey, codeTtl > 0 ? codeTtl : 300)
     }
 
-    return data.attempts
+    return count
   }
 
   async deleteVerificationCode(email: string): Promise<void> {
-    const key = `verification:email:${email.toLowerCase()}`
-    await this.del(key)
+    await Promise.all([
+      this.del(this.verificationCodeKey(email)),
+      this.del(this.verificationAttemptsKey(email)),
+    ])
   }
 
   async setVerificationLockout(
