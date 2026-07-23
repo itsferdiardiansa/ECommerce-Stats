@@ -35,6 +35,11 @@
       "key": "lockout_id",
       "value": "1",
       "type": "string"
+    },
+    {
+      "key": "step_up_challenge_id",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -164,7 +169,7 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "login"]
             },
-            "description": "Login with email and password. Returns access token and refresh token. Only active users (isActive=true) can login."
+            "description": "Login with email and password. Returns access + refresh tokens for a trusted sign-in. If the sign-in looks risky (new device/location), returns { stepUpRequired: true, challengeId } instead and emails a one-time code — complete it via 'Step Up (Verify OTP)'. The test script auto-saves either access_token or step_up_challenge_id."
           },
           "response": [],
           "event": [
@@ -178,8 +183,55 @@
                   "    if (response.data && response.data.accessToken) {",
                   "        pm.collectionVariables.set('access_token', response.data.accessToken);",
                   "        console.log('Access token saved');",
+                  "    } else if (response.data && response.data.stepUpRequired) {",
+                  "        pm.collectionVariables.set('step_up_challenge_id', response.data.challengeId);",
+                  "        console.log('Step-up required — challengeId saved. Check email for the OTP, then run \"Step Up (Verify OTP)\".');",
                   "    }",
-                  "    }"
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Step Up (Verify OTP)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{step_up_challenge_id}}\",\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login/step-up",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "step-up"]
+            },
+            "description": "Complete a risk-based step-up challenge. After POST /auth/login returns { stepUpRequired: true, challengeId }, an OTP is emailed (view it in Mailpit at http://localhost:8025 in dev). Submit challengeId + code here to receive tokens. challengeId is auto-filled from the Login test script; replace code with the value from the email."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.accessToken) {",
+                  "        pm.collectionVariables.set('access_token', response.data.accessToken);",
+                  "        console.log('Step-up passed — access token saved');",
+                  "    }",
+                  "}"
                 ]
               }
             }

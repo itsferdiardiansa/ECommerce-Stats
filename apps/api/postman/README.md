@@ -148,9 +148,41 @@ Authenticate user and receive access tokens. Only active users (`isActive=true`)
 
 **Access token is automatically saved** to collection variable for authenticated requests.
 
+**Risk-based step-up:** if the sign-in looks risky (new device / new location / impossible travel), the response instead contains no tokens and asks for an emailed one-time code:
+
+```json
+{
+  "status": 200,
+  "message": "Additional verification required. We've sent a code to your email.",
+  "data": {
+    "stepUpRequired": true,
+    "challengeId": "f4624cd5-909c-4f8e-b29a-c3f8a3d6961b"
+  }
+}
+```
+
+The Login test script auto-saves `challengeId`; complete the sign-in with **Step Up (Verify OTP)** below.
+
 ---
 
-### 5. **Logout** (POST `/auth/logout`)
+### 5. **Step Up (Verify OTP)** (POST `/auth/login/step-up`)
+
+Complete a risk-based step-up challenge and receive tokens. The OTP is emailed when `POST /auth/login` returns `stepUpRequired`. In development, view it in **Mailpit** at `http://localhost:8025`.
+
+**Request body:**
+
+```json
+{
+  "challengeId": "{{step_up_challenge_id}}",
+  "code": "123456"
+}
+```
+
+`challengeId` is auto-filled from the Login request; replace `code` with the value from the email. On success, tokens are set (access token saved to the collection variable). Wrong codes return `401` with the remaining attempts; after 5 the challenge is voided and you must sign in again.
+
+---
+
+### 6. **Logout** (POST `/auth/logout`)
 
 Logout and invalidate current session/token.
 
