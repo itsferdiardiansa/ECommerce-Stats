@@ -33,7 +33,10 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+    # noeviction: never silently drop keys under memory pressure (BullMQ jobs,
+    # sessions, step-up challenges, verification codes must not be evicted).
+    # Memory stays bounded because these keys all carry TTLs.
+    command: redis-server --maxmemory 256mb --maxmemory-policy noeviction --appendonly yes
     ports:
       - "6379:6379"
     volumes:
