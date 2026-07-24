@@ -6,6 +6,17 @@ export interface CodeVars {
   minutes: number
 }
 
+export type SecurityMethod = 'totp' | 'passkey' | 'trusted_device'
+
+export interface MethodVars {
+  name: string
+  method: SecurityMethod
+  /** ISO timestamp of the change. */
+  at: string
+  device: string | null
+  location: string | null
+}
+
 export interface AlertVars {
   name: string
   device: string | null
@@ -39,14 +50,34 @@ export interface AlertStrings {
   footer: string
 }
 
+export interface MethodStrings {
+  subject: string
+  preview: string
+  heading: string
+  greeting: string
+  body: string
+  methodName: string
+  methodNote: string
+  whenLabel: string
+  when: string
+  fromLabel: string
+  from: string | null
+  action: string
+  actionTone: 'neutral' | 'warning'
+  footer: string
+}
+
 type CodeName = 'verification-code' | 'step-up-otp'
+type MethodName = 'security-method-enabled' | 'security-method-disabled'
 type AlertName =
   | 'new-sign-in'
   | 'blocked-attempt'
   | 'suspicious-login'
   | 'session-compromise'
+  | 'password-changed'
 
 type CodeBuilders = Record<CodeName, (v: CodeVars) => CodeStrings>
+type MethodBuilders = Record<MethodName, (v: MethodVars) => MethodStrings>
 type AlertBuilders = Record<AlertName, (v: AlertVars) => AlertStrings>
 
 const enLabels = {
@@ -59,6 +90,37 @@ const idLabels = {
   locationLabel: 'Perkiraan lokasi',
   ipLabel: 'Alamat IP',
 }
+
+const enMethodNames: Record<SecurityMethod, string> = {
+  totp: 'Authenticator app',
+  passkey: 'Passkey',
+  trusted_device: 'Trusted browser',
+}
+const enMethodNotes: Record<SecurityMethod, string> = {
+  totp: 'Time-based one-time codes from your authenticator app.',
+  passkey: 'Sign in with your fingerprint, face or screen lock.',
+  trusted_device: 'This browser can skip the sign-in code for a while.',
+}
+const idMethodNames: Record<SecurityMethod, string> = {
+  totp: 'Aplikasi autentikator',
+  passkey: 'Passkey',
+  trusted_device: 'Peramban tepercaya',
+}
+const idMethodNotes: Record<SecurityMethod, string> = {
+  totp: 'Kode sekali pakai berbasis waktu dari aplikasi autentikator Anda.',
+  passkey: 'Masuk dengan sidik jari, wajah, atau kunci layar Anda.',
+  trusted_device: 'Peramban ini dapat melewati kode masuk untuk sementara.',
+}
+
+const formatWhen = (iso: string, locale: Locale): string =>
+  new Intl.DateTimeFormat(locale === 'id' ? 'id-ID' : 'en-GB', {
+    dateStyle: 'long',
+    timeStyle: 'short',
+    timeZone: 'UTC',
+  }).format(new Date(iso)) + ' UTC'
+
+const joinFrom = (v: MethodVars): string | null =>
+  [v.device, v.location].filter(Boolean).join(' — ') || null
 
 const enDetails = (v: AlertVars) => ({
   ...enLabels,
@@ -136,6 +198,17 @@ const en: CodeBuilders & AlertBuilders = {
     action: 'If this was not you, please reset your password immediately.',
     footer: 'You received this because security alerts are enabled.',
   }),
+  'password-changed': v => ({
+    subject: 'Your password was changed',
+    preview: 'Your password was changed',
+    heading: 'Your password was changed',
+    greeting: `Hi ${v.name},`,
+    body: 'The password for your account was just changed, and all other devices were signed out:',
+    ...enDetails(v),
+    action:
+      "If you didn't do this, reset your password immediately and review your active sessions.",
+    footer: 'You received this because security alerts are enabled.',
+  }),
 }
 
 const id: CodeBuilders & AlertBuilders = {
@@ -200,6 +273,95 @@ const id: CodeBuilders & AlertBuilders = {
     action: 'Jika ini bukan Anda, segera ubah kata sandi Anda.',
     footer: 'Anda menerima ini karena peringatan keamanan diaktifkan.',
   }),
+  'password-changed': v => ({
+    subject: 'Kata sandi Anda telah diubah',
+    preview: 'Kata sandi Anda telah diubah',
+    heading: 'Kata sandi Anda telah diubah',
+    greeting: `Hai ${v.name},`,
+    body: 'Kata sandi akun Anda baru saja diubah, dan semua perangkat lain telah dikeluarkan:',
+    ...idDetails(v),
+    action:
+      'Jika ini bukan Anda, segera atur ulang kata sandi dan tinjau sesi aktif Anda.',
+    footer: 'Anda menerima ini karena peringatan keamanan diaktifkan.',
+  }),
+}
+
+const enMethod: MethodBuilders = {
+  'security-method-enabled': v => ({
+    subject: `${enMethodNames[v.method]} added to your account`,
+    preview: `${enMethodNames[v.method]} added`,
+    heading: `${enMethodNames[v.method]} added`,
+    greeting: `Hi ${v.name},`,
+    body: 'This security method was just added to your account and can now be used to sign in.',
+    methodName: enMethodNames[v.method],
+    methodNote: enMethodNotes[v.method],
+    whenLabel: 'When:',
+    when: formatWhen(v.at, 'en'),
+    fromLabel: 'From:',
+    from: joinFrom(v),
+    action:
+      "If you didn't add this, remove it and change your password right away.",
+    actionTone: 'neutral',
+    footer: 'You received this because security alerts are enabled.',
+  }),
+  'security-method-disabled': v => ({
+    subject: `${enMethodNames[v.method]} removed from your account`,
+    preview: `${enMethodNames[v.method]} removed`,
+    heading: `${enMethodNames[v.method]} removed`,
+    greeting: `Hi ${v.name},`,
+    body: 'This security method was just removed and can no longer be used to sign in.',
+    methodName: enMethodNames[v.method],
+    methodNote: enMethodNotes[v.method],
+    whenLabel: 'When:',
+    when: formatWhen(v.at, 'en'),
+    fromLabel: 'From:',
+    from: joinFrom(v),
+    action:
+      "If you didn't remove this, change your password now — your account may be compromised.",
+    actionTone: 'warning',
+    footer: 'You received this because security alerts are enabled.',
+  }),
+}
+
+const idMethod: MethodBuilders = {
+  'security-method-enabled': v => ({
+    subject: `${idMethodNames[v.method]} ditambahkan ke akun Anda`,
+    preview: `${idMethodNames[v.method]} ditambahkan`,
+    heading: `${idMethodNames[v.method]} ditambahkan`,
+    greeting: `Hai ${v.name},`,
+    body: 'Metode keamanan ini baru saja ditambahkan ke akun Anda dan kini dapat digunakan untuk masuk.',
+    methodName: idMethodNames[v.method],
+    methodNote: idMethodNotes[v.method],
+    whenLabel: 'Waktu:',
+    when: formatWhen(v.at, 'id'),
+    fromLabel: 'Dari:',
+    from: joinFrom(v),
+    action:
+      'Jika ini bukan Anda, hapus metode tersebut dan segera ubah kata sandi Anda.',
+    actionTone: 'neutral',
+    footer: 'Anda menerima ini karena peringatan keamanan diaktifkan.',
+  }),
+  'security-method-disabled': v => ({
+    subject: `${idMethodNames[v.method]} dihapus dari akun Anda`,
+    preview: `${idMethodNames[v.method]} dihapus`,
+    heading: `${idMethodNames[v.method]} dihapus`,
+    greeting: `Hai ${v.name},`,
+    body: 'Metode keamanan ini baru saja dihapus dan tidak dapat lagi digunakan untuk masuk.',
+    methodName: idMethodNames[v.method],
+    methodNote: idMethodNotes[v.method],
+    whenLabel: 'Waktu:',
+    when: formatWhen(v.at, 'id'),
+    fromLabel: 'Dari:',
+    from: joinFrom(v),
+    action:
+      'Jika ini bukan Anda, segera ubah kata sandi Anda — akun Anda mungkin telah disusupi.',
+    actionTone: 'warning',
+    footer: 'Anda menerima ini karena peringatan keamanan diaktifkan.',
+  }),
 }
 
 export const copy: Record<Locale, CodeBuilders & AlertBuilders> = { en, id }
+export const methodCopy: Record<Locale, MethodBuilders> = {
+  en: enMethod,
+  id: idMethod,
+}

@@ -17,6 +17,10 @@ const KIND_TO_TEMPLATE: Record<SecurityNotificationKind, EmailName> = {
   [SecurityNotificationKind.NEW_SIGN_IN]: 'new-sign-in',
   [SecurityNotificationKind.STEP_UP_BLOCKED]: 'blocked-attempt',
   [SecurityNotificationKind.SESSION_COMPROMISE]: 'session-compromise',
+  [SecurityNotificationKind.PASSWORD_CHANGED]: 'password-changed',
+  [SecurityNotificationKind.SECURITY_METHOD_ENABLED]: 'security-method-enabled',
+  [SecurityNotificationKind.SECURITY_METHOD_DISABLED]:
+    'security-method-disabled',
 }
 
 /**
@@ -57,16 +61,23 @@ export class NotificationProcessor extends WorkerHost {
       (await this.geo.resolveLocation(data.context.ipAddress)) ||
       data.context.location
 
-    const message = await renderEmail(
-      KIND_TO_TEMPLATE[data.kind],
-      this.defaultLocale,
-      {
-        name: target.name,
-        device: data.context.device,
-        location,
-        ip: data.context.ipAddress,
-      }
-    )
+    const template = KIND_TO_TEMPLATE[data.kind]
+    const message =
+      template === 'security-method-enabled' ||
+      template === 'security-method-disabled'
+        ? await renderEmail(template, this.defaultLocale, {
+            name: target.name,
+            method: data.context.method ?? 'totp',
+            at: data.context.at ?? new Date().toISOString(),
+            device: data.context.device,
+            location,
+          })
+        : await renderEmail(template, this.defaultLocale, {
+            name: target.name,
+            device: data.context.device,
+            location,
+            ip: data.context.ipAddress,
+          })
 
     await this.mailQueue.enqueue({ to: target.email, ...message })
   }

@@ -248,9 +248,17 @@ export class AuthController {
   async revokeTrustedDevice(
     @CurrentUser() user: CurrentUserPayload,
     @Param('id') id: string,
-    @I18n() i18n: I18nContext
+    @I18n() i18n: I18nContext,
+    @Ip() ipAddress: string,
+    @Headers('user-agent') userAgent: string
   ) {
-    const result = await this.authService.revokeTrustedDevice(user.id, id, i18n)
+    const result = await this.authService.revokeTrustedDevice(
+      user.id,
+      id,
+      i18n,
+      ipAddress,
+      userAgent
+    )
     return success(result.message, null)
   }
 

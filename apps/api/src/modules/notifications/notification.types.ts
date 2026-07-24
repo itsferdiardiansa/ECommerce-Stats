@@ -7,7 +7,12 @@ export enum SecurityNotificationKind {
   NEW_SIGN_IN = 'NEW_SIGN_IN',
   // Step-up challenge failed/voided: correct password, but OTP not passed.
   STEP_UP_BLOCKED = 'STEP_UP_BLOCKED',
+  PASSWORD_CHANGED = 'PASSWORD_CHANGED',
+  SECURITY_METHOD_ENABLED = 'SECURITY_METHOD_ENABLED',
+  SECURITY_METHOD_DISABLED = 'SECURITY_METHOD_DISABLED',
 }
+
+export type SecurityMethod = 'totp' | 'passkey' | 'trusted_device'
 
 /**
  * The delivery *intent* placed on the queue. The worker resolves the recipient,
@@ -22,5 +27,7 @@ export interface SecurityNotificationJob {
     ipAddress: string | null
     location: string | null
     device: string | null
+    method?: SecurityMethod
+    at?: string
   }
 }

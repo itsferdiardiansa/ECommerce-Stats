@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Queue } from 'bullmq'
+import { randomUUID } from 'crypto'
 import { RedisService } from '@/modules/redis/redis.service'
 import {
   NOTIFICATIONS_QUEUE,
@@ -53,10 +54,8 @@ export class NotificationService {
   }
 
   /**
-   * Collapses repeats within the dedupe window. Suspicious logins dedupe per
-   * distinct signal set; new-sign-in / blocked dedupe per location so a
-   * different place still notifies but a burst from one place does not flood;
-   * a compromise dedupes per user.
+   * Collapses repeats within the dedupe window. Deliberate account changes are
+   * never collapsed — each one must reach the owner.
    */
   private dedupeKey(job: SecurityNotificationJob): string {
     let scope: string
@@ -67,6 +66,11 @@ export class NotificationService {
       case SecurityNotificationKind.NEW_SIGN_IN:
       case SecurityNotificationKind.STEP_UP_BLOCKED:
         scope = job.context.location || job.context.ipAddress || 'unknown'
+        break
+      case SecurityNotificationKind.PASSWORD_CHANGED:
+      case SecurityNotificationKind.SECURITY_METHOD_ENABLED:
+      case SecurityNotificationKind.SECURITY_METHOD_DISABLED:
+        scope = `${job.context.method ?? 'password'}:${randomUUID()}`
         break
       default:
         scope = 'compromise'

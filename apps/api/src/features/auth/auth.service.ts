@@ -59,6 +59,7 @@ import {
   SecurityCompromiseEvent,
   StepUpVerifiedEvent,
   StepUpBlockedEvent,
+  SecurityMethodChangedEvent,
 } from './events'
 
 interface StoredSession {
@@ -664,7 +665,11 @@ export class AuthService {
       ? this.TRUSTED_DEVICE_EXTENDED_TTL_SECONDS
       : this.TRUSTED_DEVICE_TTL_SECONDS
 
-    const { hash: fingerprint, device } = generateDeviceFingerprint(
+    const {
+      hash: fingerprint,
+      device,
+      geo,
+    } = generateDeviceFingerprint(
       userId,
       userAgent ?? undefined,
       ipAddress ?? undefined
@@ -681,6 +686,18 @@ export class AuthService {
       expiresAt: new Date(Date.now() + ttlSeconds * 1000),
     })
     await this.redisService.cacheTrustedDevice(tokenHash, userId, ttlSeconds)
+
+    this.eventEmitter.emit(
+      AUTH_EVENTS.SECURITY_METHOD_CHANGED,
+      new SecurityMethodChangedEvent(
+        userId,
+        'trusted_device',
+        true,
+        ipAddress,
+        formatLocation(geo),
+        formatDevice(userAgent)
+      )
+    )
 
     return { token, ttlSeconds }
   }
@@ -717,12 +734,32 @@ export class AuthService {
     }
   }
 
-  async revokeTrustedDevice(userId: number, id: string, i18n: I18nContext) {
+  async revokeTrustedDevice(
+    userId: number,
+    id: string,
+    i18n: I18nContext,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
     const record = await TrustedDevices.revokeById(userId, id)
     if (!record) {
       throw new NotFoundException(i18n.t('auth.trusted_devices.not_found'))
     }
     await this.redisService.evictTrustedDevice(record.tokenHash)
+
+    const { geo } = generateDeviceFingerprint(userId, userAgent, ipAddress)
+    this.eventEmitter.emit(
+      AUTH_EVENTS.SECURITY_METHOD_CHANGED,
+      new SecurityMethodChangedEvent(
+        userId,
+        'trusted_device',
+        false,
+        ipAddress || null,
+        formatLocation(geo),
+        formatDevice(userAgent)
+      )
+    )
+
     return {
       message: i18n.t('auth.trusted_devices.revoke_success', {
         defaultValue: 'Trusted device removed.',

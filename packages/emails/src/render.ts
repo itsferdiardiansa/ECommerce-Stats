@@ -2,7 +2,15 @@ import { createElement, type ComponentType } from 'react'
 import { render } from '@react-email/render'
 import { CodeEmail } from './templates/CodeEmail'
 import { AlertEmail } from './templates/AlertEmail'
-import { copy, type Locale, type CodeVars, type AlertVars } from './copy'
+import { MethodEmail } from './templates/MethodEmail'
+import {
+  copy,
+  methodCopy,
+  type Locale,
+  type CodeVars,
+  type AlertVars,
+  type MethodVars,
+} from './copy'
 
 /** Maps each email to its variable shape (compile-time checked per template). */
 export interface EmailVars {
@@ -12,6 +20,9 @@ export interface EmailVars {
   'blocked-attempt': AlertVars
   'suspicious-login': AlertVars
   'session-compromise': AlertVars
+  'password-changed': AlertVars
+  'security-method-enabled': MethodVars
+  'security-method-disabled': MethodVars
 }
 
 export type EmailName = keyof EmailVars
@@ -31,12 +42,23 @@ const COMPONENTS: Record<EmailName, AnyComponent> = {
   'blocked-attempt': AlertEmail as unknown as AnyComponent,
   'suspicious-login': AlertEmail as unknown as AnyComponent,
   'session-compromise': AlertEmail as unknown as AnyComponent,
+  'password-changed': AlertEmail as unknown as AnyComponent,
+  'security-method-enabled': MethodEmail as unknown as AnyComponent,
+  'security-method-disabled': MethodEmail as unknown as AnyComponent,
 }
 
 function isCodeEmail(
   name: EmailName
 ): name is 'verification-code' | 'step-up-otp' {
   return name === 'verification-code' || name === 'step-up-otp'
+}
+
+type MethodEmailName = 'security-method-enabled' | 'security-method-disabled'
+
+function isMethodEmail(name: EmailName): name is MethodEmailName {
+  return (
+    name === 'security-method-enabled' || name === 'security-method-disabled'
+  )
 }
 
 /**
@@ -49,10 +71,17 @@ export async function renderEmail<N extends EmailName>(
   locale: string,
   vars: EmailVars[N]
 ): Promise<RenderedEmail> {
-  const localeCopy = copy[locale as Locale] ?? copy.en
-  const build = localeCopy[name] as unknown as (
-    v: EmailVars[N]
-  ) => Record<string, string> & { subject: string }
+  const key: Locale = locale === 'id' ? 'id' : 'en'
+
+  type Build = (v: EmailVars[N]) => Record<string, unknown> & {
+    subject: string
+  }
+
+  const build = isMethodEmail(name)
+    ? (methodCopy[key][name] as unknown as Build)
+    : (copy[key][
+        name as Exclude<EmailName, MethodEmailName>
+      ] as unknown as Build)
 
   const { subject, ...strings } = build(vars)
   const props: Record<string, unknown> = isCodeEmail(name)

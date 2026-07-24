@@ -9,6 +9,8 @@ import {
   SecurityCompromiseEvent,
   StepUpVerifiedEvent,
   StepUpBlockedEvent,
+  PasswordChangedEvent,
+  SecurityMethodChangedEvent,
 } from '../events'
 
 /** Turns security signals into user notifications (dedupe + enqueue + deliver). */
@@ -69,6 +71,38 @@ export class SecurityAlertListener {
         ipAddress: event.ipAddress,
         location: event.location,
         device: event.device,
+      },
+    })
+  }
+
+  @OnEvent(AUTH_EVENTS.PASSWORD_CHANGED)
+  async handlePasswordChanged(event: PasswordChangedEvent) {
+    await this.notifications.notifySecurity({
+      userId: event.userId,
+      kind: SecurityNotificationKind.PASSWORD_CHANGED,
+      signals: [],
+      context: {
+        ipAddress: event.ipAddress,
+        location: event.location,
+        device: event.device,
+      },
+    })
+  }
+
+  @OnEvent(AUTH_EVENTS.SECURITY_METHOD_CHANGED)
+  async handleSecurityMethodChanged(event: SecurityMethodChangedEvent) {
+    await this.notifications.notifySecurity({
+      userId: event.userId,
+      kind: event.enabled
+        ? SecurityNotificationKind.SECURITY_METHOD_ENABLED
+        : SecurityNotificationKind.SECURITY_METHOD_DISABLED,
+      signals: [],
+      context: {
+        ipAddress: event.ipAddress,
+        location: event.location,
+        device: event.device,
+        method: event.method,
+        at: event.at,
       },
     })
   }
