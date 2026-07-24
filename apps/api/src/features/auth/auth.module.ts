@@ -2,18 +2,21 @@ import { Module } from '@nestjs/common'
 import { ScheduleModule } from '@nestjs/schedule'
 import { AuthController } from './auth.controller'
 import { AuthAdminController } from './auth-admin.controller'
+import { SudoController } from './sudo.controller'
 import { AuthService } from './auth.service'
 import { RedisModule } from '@/modules/redis/redis.module'
 import { SessionCleanupService } from './scheduler/session-cleanup.service'
 import { LoginAnomalyService } from './services/login-anomaly.service'
+import { SudoService } from './services/sudo.service'
 import { AuthAuditListener } from './listeners/auth-audit.listener'
 import { SecurityAlertListener } from './listeners/security-alert.listener'
 
 @Module({
   imports: [RedisModule, ScheduleModule.forRoot()],
-  controllers: [AuthController, AuthAdminController],
+  controllers: [AuthController, AuthAdminController, SudoController],
   providers: [
     AuthService,
+    SudoService,
     SessionCleanupService,
     LoginAnomalyService,
     AuthAuditListener,

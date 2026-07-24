@@ -26,7 +26,9 @@ import { StepUpDto } from './dto/step-up.dto'
 import { RevokeSessionsDto } from './dto/revoke-sessions.dto'
 import { created, success } from '@/common/helpers/api-response.helper'
 import { ActiveUserGuard } from '@/common/guards/active-user.guard'
+import { SudoGuard } from '@/common/guards/sudo.guard'
 import { CurrentUser } from '@/common/decorators/current-user.decorator'
+import { RequireSudo } from '@/common/decorators/require-sudo.decorator'
 import type { CurrentUserPayload } from '@/common/decorators/current-user.decorator'
 import { MyLockoutResponseDto } from './dto/my-lockout-response.dto'
 import { RedisService } from '@/modules/redis/redis.service'
@@ -241,7 +243,8 @@ export class AuthController {
   @Delete('trusted-devices/:id')
   @HttpCode(HttpStatus.OK)
   @Throttle(getAuthThrottleConfig())
-  @UseGuards(ActiveUserGuard)
+  @RequireSudo()
+  @UseGuards(ActiveUserGuard, SudoGuard)
   async revokeTrustedDevice(
     @CurrentUser() user: CurrentUserPayload,
     @Param('id') id: string,
@@ -254,7 +257,8 @@ export class AuthController {
   @Delete('sessions/others')
   @HttpCode(HttpStatus.OK)
   @Throttle(getAuthThrottleConfig())
-  @UseGuards(ActiveUserGuard)
+  @RequireSudo()
+  @UseGuards(ActiveUserGuard, SudoGuard)
   async revokeOtherSessions(
     @CurrentUser() user: CurrentUserPayload,
     @I18n() i18n: I18nContext
@@ -285,7 +289,8 @@ export class AuthController {
   @Delete('sessions')
   @HttpCode(HttpStatus.OK)
   @Throttle(getAuthThrottleConfig())
-  @UseGuards(ActiveUserGuard)
+  @RequireSudo()
+  @UseGuards(ActiveUserGuard, SudoGuard)
   async revokeSessions(
     @CurrentUser() user: CurrentUserPayload,
     @Body() dto: RevokeSessionsDto,

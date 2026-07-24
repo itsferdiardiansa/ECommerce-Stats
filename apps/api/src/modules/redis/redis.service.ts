@@ -333,6 +333,48 @@ export class RedisService {
     await this.del(`trusted:${tokenHash}`)
   }
 
+  /** Keyed by jti, not carried in the token: refresh would keep renewing a claim. */
+  private sudoKey(jti: string): string {
+    return `sudo:${jti}`
+  }
+
+  private sudoAttemptsKey(jti: string): string {
+    return `sudo:attempts:${jti}`
+  }
+
+  async grantSudo(jti: string, ttlSeconds: number): Promise<void> {
+    await Promise.all([
+      this.set(this.sudoKey(jti), 1, ttlSeconds),
+      this.del(this.sudoAttemptsKey(jti)),
+    ])
+  }
+
+  async getSudoTtl(jti: string): Promise<number | null> {
+    const ttl = await this.redisClient.ttl(this.sudoKey(jti))
+    return ttl > 0 ? ttl : null
+  }
+
+  async revokeSudo(jti: string): Promise<void> {
+    await Promise.all([
+      this.del(this.sudoKey(jti)),
+      this.del(this.sudoAttemptsKey(jti)),
+    ])
+  }
+
+  async incrementSudoAttempts(
+    jti: string,
+    windowSeconds: number
+  ): Promise<number> {
+    const key = this.sudoAttemptsKey(jti)
+    const count = await this.redisClient.incr(key)
+
+    if (count === 1) {
+      await this.redisClient.expire(key, windowSeconds)
+    }
+
+    return count
+  }
+
   async setSession(
     sessionId: string,
     data: Record<string, unknown>,
@@ -347,9 +389,10 @@ export class RedisService {
     return this.get(key)
   }
 
+  /** Dropping a session also drops its sudo grant — elevation is session-scoped. */
   async deleteSession(sessionId: string): Promise<void> {
     const key = `session:${sessionId}`
-    await this.del(key)
+    await Promise.all([this.del(key), this.revokeSudo(sessionId)])
   }
 
   async setPaymentIntent(

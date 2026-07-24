@@ -60,6 +60,11 @@ export default () => ({
         10
       ),
     },
+    sudo: {
+      // How long a re-authentication stays valid for sensitive actions.
+      ttlSeconds: parseInt(process.env.SUDO_TTL_SECONDS || '300', 10),
+      maxAttempts: parseInt(process.env.SUDO_MAX_ATTEMPTS || '5', 10),
+    },
     trustedDevice: {
       // Default: a browser is remembered for 30 days after passing step-up.
       ttlSeconds: parseInt(
