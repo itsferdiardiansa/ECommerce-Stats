@@ -16,7 +16,7 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts --format cjs --dts --clean",
+    "build": "tsc -b",
     "postinstall": "pnpm build"
   },
   "dependencies": {
