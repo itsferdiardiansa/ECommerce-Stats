@@ -7,8 +7,10 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter'
 import { ValidationPipe } from './common/pipes/validation.pipe'
 import { SerializeInterceptor } from './common/interceptors/serialize.interceptor'
 import { i18nZodErrorMap } from './common/i18n-zod.map'
+import { assertProductionSecrets } from './config/assert-secrets'
 
 async function bootstrap() {
+  assertProductionSecrets()
   z.config({ customError: i18nZodErrorMap })
   const app = await NestFactory.create(AppModule)
   const configService = app.get(ConfigService)
