@@ -61,4 +61,7 @@ export default () => ({
       ),
     },
   },
+  geo: {
+    ipinfoToken: process.env.IPINFO_TOKEN || '',
+  },
 })

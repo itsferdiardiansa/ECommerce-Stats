@@ -11,6 +11,7 @@ import {
   JwtModule,
   MailModule,
   NotificationsModule,
+  GeoModule,
 } from './modules'
 import { AuthModule, UsersModule, OrganizationsModule } from './features'
 import { I18nThrottlerGuard } from '@/common/guards/throttler.guard'
@@ -47,6 +48,7 @@ import { I18nThrottlerGuard } from '@/common/guards/throttler.guard'
     JwtModule,
     MailModule,
     NotificationsModule,
+    GeoModule,
     AuthModule,
     UsersModule,
     OrganizationsModule,
