@@ -83,6 +83,14 @@ export async function getSecurityNotificationTarget(userId: number) {
   }
 }
 
+/** Credential lookup for re-authentication — no relations, no over-fetch. */
+export async function getUserCredentials(userId: number) {
+  return db.user.findFirst({
+    where: { id: userId, deletedAt: null },
+    select: { id: true, email: true, name: true, passwordHash: true },
+  })
+}
+
 export async function getUserByEmail(email: string) {
   return db.user.findFirst({
     where: {

@@ -67,6 +67,7 @@ export type I18nTranslations = {
             "step_up_expired": string;
             "step_up_invalid_code": string;
             "step_up_too_many_attempts": string;
+            "password_reused": string;
         };
         "validation": {
             "code_length": string;
@@ -79,6 +80,16 @@ export type I18nTranslations = {
             "list_success": string;
             "revoke_success": string;
             "not_found": string;
+        };
+        "sudo": {
+            "success": string;
+            "status_success": string;
+            "required": string;
+            "invalid_password": string;
+            "too_many_attempts": string;
+        };
+        "password": {
+            "change_success": string;
         };
     };
     "common": {

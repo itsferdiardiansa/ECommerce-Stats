@@ -24,6 +24,7 @@ import { ResendVerificationDto } from './dto/resend-verification.dto'
 import { LoginDto } from './dto/login.dto'
 import { StepUpDto } from './dto/step-up.dto'
 import { RevokeSessionsDto } from './dto/revoke-sessions.dto'
+import { ChangePasswordDto } from './dto/change-password.dto'
 import { created, success } from '@/common/helpers/api-response.helper'
 import { ActiveUserGuard } from '@/common/guards/active-user.guard'
 import { SudoGuard } from '@/common/guards/sudo.guard'
@@ -227,6 +228,29 @@ export class AuthController {
     res.clearCookie('refreshToken', { path: this.AUTH_COOKIE_PATH })
     res.clearCookie('deviceSecret', { path: this.AUTH_COOKIE_PATH })
     return success(i18n.t('auth.logout.success'), null)
+  }
+
+  @Post('password')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(getAuthThrottleConfig())
+  @RequireSudo()
+  @UseGuards(ActiveUserGuard, SudoGuard)
+  async changePassword(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: ChangePasswordDto,
+    @I18n() i18n: I18nContext,
+    @Ip() ipAddress: string,
+    @Headers('user-agent') userAgent: string
+  ) {
+    const result = await this.authService.changePassword(
+      user.id,
+      user.jti,
+      dto.password,
+      i18n,
+      ipAddress,
+      userAgent
+    )
+    return success(result.message, null)
   }
 
   @Get('trusted-devices')

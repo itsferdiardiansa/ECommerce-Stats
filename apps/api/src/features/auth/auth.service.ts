@@ -16,12 +16,17 @@ import {
   updateUser,
   getUserByEmailIncludingDeleted,
   getUserByUsernameIncludingDeleted,
+  getUserCredentials,
 } from '@rufieltics/db/domains/identity/user'
 import {
   Organizations,
   OrganizationMembers,
 } from '@rufieltics/db/domains/identity/organization'
-import { Sessions, TrustedDevices } from '@rufieltics/db/domains/auth'
+import {
+  Sessions,
+  TrustedDevices,
+  PasswordSecurity,
+} from '@rufieltics/db/domains/auth'
 import { RedisService } from '@/modules/redis/redis.service'
 import { JwtService } from '@/modules/jwt/jwt.service'
 import { TokenDenylistService } from '@/modules/jwt/token-denylist.service'
@@ -59,6 +64,7 @@ import {
   SecurityCompromiseEvent,
   StepUpVerifiedEvent,
   StepUpBlockedEvent,
+  PasswordChangedEvent,
   SecurityMethodChangedEvent,
 } from './events'
 
@@ -1111,6 +1117,57 @@ export class AuthService {
       refreshToken: result.refreshToken,
       rawDeviceSecret: result.rawDeviceSecret,
       expiresIn: result.expiresIn,
+    }
+  }
+
+  /** Sudo-guarded password change: rejects reuse and signs out other devices. */
+  async changePassword(
+    userId: number,
+    currentJti: string,
+    newPassword: string,
+    i18n: I18nContext,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
+    const user = await getUserCredentials(userId)
+    if (!user) {
+      throw new NotFoundException(i18n.t('users.errors.user_not_found'))
+    }
+
+    if (await argon2.verify(user.passwordHash, newPassword)) {
+      throw new BadRequestException(i18n.t('auth.errors.password_reused'))
+    }
+
+    const recent = await PasswordSecurity.getRecentPasswords(userId)
+    for (const { password } of recent) {
+      if (await argon2.verify(password, newPassword)) {
+        throw new BadRequestException(i18n.t('auth.errors.password_reused'))
+      }
+    }
+
+    await PasswordSecurity.archivePassword(userId, user.passwordHash)
+
+    await updateUser(userId, {
+      passwordHash: await argon2.hash(newPassword),
+      passwordChangedAt: new Date(),
+    })
+
+    await this.revokeOtherSessions(userId, currentJti, i18n)
+    await this.redisService.revokeSudo(currentJti)
+
+    const { geo } = generateDeviceFingerprint(userId, userAgent, ipAddress)
+    this.eventEmitter.emit(
+      AUTH_EVENTS.PASSWORD_CHANGED,
+      new PasswordChangedEvent(
+        userId,
+        ipAddress || null,
+        formatLocation(geo),
+        formatDevice(userAgent)
+      )
+    )
+
+    return {
+      message: i18n.t('auth.password.change_success'),
     }
   }
 
