@@ -8,6 +8,7 @@ import {
   HttpStatus,
   Ip,
   Headers,
+  Param,
   UseGuards,
   Req,
   Res,
@@ -61,6 +62,16 @@ export class AuthController {
     }
   }
 
+  private getTrustedCookieOptions(ttlSeconds: number): CookieOptions {
+    return {
+      httpOnly: true,
+      secure: config.nodeEnv === 'production',
+      sameSite: 'strict',
+      path: this.AUTH_COOKIE_PATH,
+      maxAge: ttlSeconds * 1000,
+    }
+  }
+
   @Post('register')
   @Throttle(getAuthThrottleConfig())
   @HttpCode(HttpStatus.CREATED)
@@ -106,13 +117,16 @@ export class AuthController {
     @I18n() i18n: I18nContext,
     @Ip() ipAddress: string,
     @Headers('user-agent') userAgent: string,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response
   ) {
+    const trustedDeviceToken = req.cookies?.trustedDevice as string | undefined
     const loginResult = await this.authService.login(
       dto,
       i18n,
       ipAddress,
-      userAgent
+      userAgent,
+      trustedDeviceToken
     )
 
     // Risky sign-in: no session yet, the client must complete the email OTP.
@@ -141,17 +155,28 @@ export class AuthController {
     @Headers('user-agent') userAgent: string,
     @Res({ passthrough: true }) res: Response
   ) {
-    const { refreshToken, rawDeviceSecret, ...result } =
-      await this.authService.verifyStepUp(
-        dto.challengeId,
-        dto.code,
-        i18n,
-        ipAddress,
-        userAgent
-      )
+    const {
+      refreshToken,
+      rawDeviceSecret,
+      trustedDeviceToken,
+      trustedDeviceTtl,
+      ...result
+    } = await this.authService.verifyStepUp(
+      dto.challengeId,
+      dto.code,
+      i18n,
+      ipAddress,
+      userAgent,
+      dto.trustDevice
+    )
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
     res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
+    res.cookie(
+      'trustedDevice',
+      trustedDeviceToken,
+      this.getTrustedCookieOptions(trustedDeviceTtl)
+    )
 
     return success(i18n.t('auth.step_up.success'), result)
   }
@@ -200,6 +225,30 @@ export class AuthController {
     res.clearCookie('refreshToken', { path: this.AUTH_COOKIE_PATH })
     res.clearCookie('deviceSecret', { path: this.AUTH_COOKIE_PATH })
     return success(i18n.t('auth.logout.success'), null)
+  }
+
+  @Get('trusted-devices')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ActiveUserGuard)
+  async getTrustedDevices(
+    @CurrentUser() user: CurrentUserPayload,
+    @I18n() i18n: I18nContext
+  ) {
+    const result = await this.authService.listTrustedDevices(user.id, i18n)
+    return success(result.message, result.data)
+  }
+
+  @Delete('trusted-devices/:id')
+  @HttpCode(HttpStatus.OK)
+  @Throttle(getAuthThrottleConfig())
+  @UseGuards(ActiveUserGuard)
+  async revokeTrustedDevice(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+    @I18n() i18n: I18nContext
+  ) {
+    const result = await this.authService.revokeTrustedDevice(user.id, id, i18n)
+    return success(result.message, null)
   }
 
   @Delete('sessions/others')

@@ -23,6 +23,7 @@ model User {
   accounts              Account[]
   authenticators        Authenticator[]
   loginHistory          LoginHistory[]
+  trustedDevices        TrustedDevice[]
   passwordHistory       PasswordHistory[]
   twoFactorConfirmation TwoFactorConfirmation?
   

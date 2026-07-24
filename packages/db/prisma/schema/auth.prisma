@@ -113,6 +113,27 @@ model LoginHistory {
   @@schema("auth")
 }
 
+// A browser the user has opted to trust: presenting a valid token skips the
+// login step-up. Durable source of truth (Redis fronts it for the hot lookup);
+// revocable and expiring. tokenHash is a SHA-256 of a random cookie token.
+model TrustedDevice {
+  id                String    @id @default(cuid())
+  userId            Int
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash         String    @unique
+  deviceFingerprint String
+  label             String?
+  userAgent         String?
+  ipAddress         String?
+  lastUsedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  expiresAt         DateTime
+
+  @@index([userId])
+  @@index([userId, deviceFingerprint])
+  @@schema("auth")
+}
+
 enum LoginReason {
   SUCCESS
   INVALID_PASSWORD

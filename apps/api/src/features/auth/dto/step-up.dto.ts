@@ -9,6 +9,7 @@ export const StepUpSchema = z.object({
     .string({ error: 'common.validation.required' })
     .length(6, { message: 'auth.validation.code_length' })
     .regex(/^\d{6}$/, { message: 'auth.validation.code_numeric' }),
+  trustDevice: z.boolean().optional(),
 })
 
 export class StepUpDto extends createZodDto(StepUpSchema) {}

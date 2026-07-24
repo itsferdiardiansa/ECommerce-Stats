@@ -60,6 +60,18 @@ export default () => ({
         10
       ),
     },
+    trustedDevice: {
+      // Default: a browser is remembered for 30 days after passing step-up.
+      ttlSeconds: parseInt(
+        process.env.TRUSTED_DEVICE_TTL_SECONDS || '2592000',
+        10
+      ),
+      // "Trust this browser" ticked (private device): 90 days.
+      extendedTtlSeconds: parseInt(
+        process.env.TRUSTED_DEVICE_EXTENDED_TTL_SECONDS || '7776000',
+        10
+      ),
+    },
   },
   geo: {
     ipinfoToken: process.env.IPINFO_TOKEN || '',

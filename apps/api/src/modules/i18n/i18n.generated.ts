@@ -75,6 +75,11 @@ export type I18nTranslations = {
         "step_up": {
             "success": string;
         };
+        "trusted_devices": {
+            "list_success": string;
+            "revoke_success": string;
+            "not_found": string;
+        };
     };
     "common": {
         "errors": {

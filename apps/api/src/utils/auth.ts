@@ -1,4 +1,4 @@
-import { randomUUID, randomInt } from 'crypto'
+import { randomUUID, randomInt, randomBytes, createHash } from 'crypto'
 
 export const ROLE_PRIORITY: Record<string, number> = {
   OWNER: 4,
@@ -9,6 +9,19 @@ export const ROLE_PRIORITY: Record<string, number> = {
 
 export function generateVerificationCode(): string {
   return randomInt(100000, 999999).toString()
+}
+
+/** High-entropy opaque token stored in the trusted-device cookie. */
+export function generateTrustedDeviceToken(): string {
+  return randomBytes(32).toString('hex')
+}
+
+/**
+ * SHA-256 of a trusted-device token for storage/lookup. Fast hashing is correct
+ * here — the token is already high-entropy random, unlike a password.
+ */
+export function hashTrustedDeviceToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
 }
 
 export function generateOrgSlug(username: string): string {

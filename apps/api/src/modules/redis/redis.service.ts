@@ -298,8 +298,39 @@ export class RedisService {
       .exec()
   }
 
+  async forgetFactor(
+    kind: 'device' | 'country',
+    userId: number,
+    value: string
+  ): Promise<void> {
+    await this.redisClient.srem(this.knownFactorKey(kind, userId), value)
+  }
+
   private knownFactorKey(kind: 'device' | 'country', userId: number): string {
     return `known:${kind}:${userId}`
+  }
+
+  /**
+   * Hot cache for trusted-device lookups: tokenHash -> userId, TTL = trust
+   * lifetime. Keeps the login step-up gate off Postgres on the common path;
+   * Postgres remains the durable source of truth (see TrustedDevices).
+   */
+  async cacheTrustedDevice(
+    tokenHash: string,
+    userId: number,
+    ttlSeconds: number
+  ): Promise<void> {
+    if (ttlSeconds <= 0) return
+    await this.set(`trusted:${tokenHash}`, userId, ttlSeconds)
+  }
+
+  async getTrustedDeviceUser(tokenHash: string): Promise<number | null> {
+    const value = await this.get<number>(`trusted:${tokenHash}`)
+    return typeof value === 'number' ? value : null
+  }
+
+  async evictTrustedDevice(tokenHash: string): Promise<void> {
+    await this.del(`trusted:${tokenHash}`)
   }
 
   async setSession(
