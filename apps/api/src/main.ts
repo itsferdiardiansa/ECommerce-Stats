@@ -18,6 +18,10 @@ async function bootstrap() {
     credentials: configService.get<boolean>('cors.credentials'),
   })
 
+  // Trust the first proxy so req.ip reflects the real client (X-Forwarded-For)
+  // behind a load balancer — required for correct geo, and per-IP brute-force.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1)
+
   app.use(cookieParser())
   app.setGlobalPrefix('api/v1')
   app.useGlobalFilters(new AllExceptionsFilter())
