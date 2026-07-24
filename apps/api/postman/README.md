@@ -25,6 +25,9 @@ The collection uses these variables (already configured):
 - `user_id`: `1` (used in user management endpoints)
 - `verification_code`: `123456` (used in email verification)
 - `access_token`: (auto-populated after login)
+- `trusted_device_id`: (paste from `GET /auth/trusted-devices`)
+
+Authenticated requests must send the **same `User-Agent`** the session was issued for, plus the `deviceSecret` cookie (or `X-Device-Secret` header) -- tokens are bound to the device fingerprint.
 
 To change variables:
 
@@ -182,7 +185,44 @@ Complete a risk-based step-up challenge and receive tokens. The OTP is emailed w
 
 ---
 
-### 6. **Logout** (POST `/auth/logout`)
+### 6. **Sudo (Re-authenticate)** (POST `/auth/sudo`)
+
+Proves identity again before a destructive action. Sensitive routes reject with `403` and `error.code = SUDO_REQUIRED` until this succeeds.
+
+**Headers:** `Authorization: Bearer {access_token}`, `X-Device-Secret: {deviceSecret}`
+
+**Request body:**
+
+```json
+{
+  "method": "password",
+  "password": "Password123!"
+}
+```
+
+The grant lasts `SUDO_TTL_SECONDS` (default 300) and is bound to the **current session only** -- elevating on one device does not elevate another. It is dropped when the session is revoked. Five failed attempts lock elevation for that session. `GET /auth/sudo` returns `{ active, expiresIn }` so the UI can prompt before showing a risky form.
+
+Sudo-guarded routes: `POST /auth/password`, `DELETE /auth/trusted-devices/:id`, `DELETE /auth/sessions`, `DELETE /auth/sessions/others`, `DELETE /users/:id`.
+
+---
+
+### 7. **Change Password** (POST `/auth/password`)
+
+Requires sudo.
+
+**Request body:**
+
+```json
+{
+  "password": "NewPassword123!"
+}
+```
+
+Rejects reuse of the current password or the last five, signs out every other device, untrusts those browsers, consumes the sudo grant, and emails the owner. Reuse returns `400`; missing sudo returns `403`.
+
+---
+
+### 8. **Logout** (POST `/auth/logout`)
 
 Logout and invalidate current session/token.
 

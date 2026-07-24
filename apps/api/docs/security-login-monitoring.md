@@ -276,10 +276,76 @@ anomaly detection/alerts.
 
 **Endpoints**
 
-| Endpoint                       | Result                                             |
-| ------------------------------ | -------------------------------------------------- |
-| `GET /auth/trusted-devices`    | List the user's trusted browsers                   |
-| `DELETE /auth/trusted-devices/:id` | Revoke one trusted browser                     |
+| Endpoint                           | Result                           |
+| ---------------------------------- | -------------------------------- |
+| `GET /auth/trusted-devices`        | List the user's trusted browsers |
+| `DELETE /auth/trusted-devices/:id` | Revoke one trusted browser       |
+
+## Sudo mode (auth freshness)
+
+Destructive actions require a recent re-authentication, so a stolen session
+cannot silently change credentials or strip security methods. This is the
+precondition for 2FA: without it, a future "disable authenticator" endpoint
+would be protected by nothing but a valid access token.
+
+- **Where the grant lives:** Redis, keyed by session `jti` (`sudo:{jti}`) — not
+  a JWT claim. Access tokens are re-minted on refresh, so a claim would keep
+  renewing itself; a Redis key expires on its own and is dropped whenever the
+  session is deleted.
+- **Scope:** per session. Elevating one device does not elevate another.
+- **Trust does not satisfy sudo.** A trusted browser skips the login challenge
+  but must still re-authenticate for destructive actions.
+- **Extensible:** the elevate request carries `method` (`password` today); TOTP
+  and passkey assertions slot in without changing call sites.
+- **Failure response:** `403` with `error.code = SUDO_REQUIRED`, so clients
+  branch on a stable identifier rather than translated text.
+
+**Endpoints**
+
+| Endpoint              | Result                                             |
+| --------------------- | -------------------------------------------------- |
+| `POST /auth/sudo`     | Elevate; body `{ method: "password", password }`   |
+| `GET /auth/sudo`      | `{ active, expiresIn }` so the UI can prompt early |
+| `POST /auth/password` | Change password (sudo-guarded)                     |
+
+**Sudo-guarded routes:** `POST /auth/password`,
+`DELETE /auth/trusted-devices/:id`, `DELETE /auth/sessions`,
+`DELETE /auth/sessions/others`, `DELETE /users/:id`.
+
+Password change archives the outgoing hash to `PasswordHistory`, rejects reuse
+of the last five, signs out every other device, untrusts their browsers, and
+consumes the sudo grant.
+
+## Account-change notifications
+
+Deliberate changes to how an account is secured always notify the owner, and are
+never collapsed by the dedupe window — each one must arrive.
+
+| Event                   | Email                      | Template      |
+| ----------------------- | -------------------------- | ------------- |
+| Password changed        | `password-changed`         | `AlertEmail`  |
+| Security method added   | `security-method-enabled`  | `MethodEmail` |
+| Security method removed | `security-method-disabled` | `MethodEmail` |
+
+Security-method emails use their own template and layout, deliberately unlike
+the suspicious-activity alerts: they name the method and say what it does, then
+state when it changed and from where. There is no IP/location details table --
+this is a change the user made, not an anomaly to investigate.
+
+```
+Authenticator app added
+
+  Authenticator app
+  Time-based one-time codes from your authenticator app.
+
+When: 24 July 2026 at 13:45 UTC
+From: Chrome on Windows -- Jakarta, Jakarta, ID
+```
+
+`SecurityMethodChangedEvent` carries the method (`totp`, `passkey`,
+`trusted_device`), whether it was enabled or disabled, and the timestamp.
+Trusted devices emit it today; authenticator and passkey enrolment reuse the
+same path.
 
 ## Location resolution
 
@@ -309,19 +375,21 @@ true when a user has no settings row).
 
 ## Redis keys
 
-| Key                                 | Type   | TTL | Purpose                                     |
-| ----------------------------------- | ------ | --- | ------------------------------------------- |
-| `known:device:{userId}`             | set    | 90d | seen device fingerprints (new-device cache) |
-| `known:country:{userId}`            | set    | 90d | seen countries (new-country cache)          |
-| `bruteforce:user:{userId}`          | zset   | 15m | failure sliding window per user             |
-| `bruteforce:ip:{ip}`                | zset   | 15m | failure sliding window per IP               |
-| `notif:sec:{userId}:{kind}:{scope}` | string | 24h | notification dedupe                         |
-| `stepup:challenge:{id}`             | string | 10m | pending step-up login context + OTP         |
-| `stepup:attempts:{id}`              | string | 10m | atomic step-up attempt counter              |
-| `trusted:{tokenHash}`               | string | 30-90d | trusted-device hot lookup -> userId       |
-| `geo:loc:{ip}`                      | string | 24h | resolved location cache                      |
-| `bull:security-notifications:*`     | bullmq | --  | delivery queue                              |
-| `bull:mail:*`                       | bullmq | --  | mail delivery queue                          |
+| Key                                 | Type   | TTL    | Purpose                                     |
+| ----------------------------------- | ------ | ------ | ------------------------------------------- |
+| `known:device:{userId}`             | set    | 90d    | seen device fingerprints (new-device cache) |
+| `known:country:{userId}`            | set    | 90d    | seen countries (new-country cache)          |
+| `bruteforce:user:{userId}`          | zset   | 15m    | failure sliding window per user             |
+| `bruteforce:ip:{ip}`                | zset   | 15m    | failure sliding window per IP               |
+| `notif:sec:{userId}:{kind}:{scope}` | string | 24h    | notification dedupe                         |
+| `stepup:challenge:{id}`             | string | 10m    | pending step-up login context + OTP         |
+| `stepup:attempts:{id}`              | string | 10m    | atomic step-up attempt counter              |
+| `trusted:{tokenHash}`               | string | 30-90d | trusted-device hot lookup -> userId         |
+| `sudo:{jti}`                        | string | 5m     | auth-freshness grant for the session        |
+| `sudo:attempts:{jti}`               | string | 5m     | atomic sudo attempt counter                 |
+| `geo:loc:{ip}`                      | string | 24h    | resolved location cache                     |
+| `bull:security-notifications:*`     | bullmq | --     | delivery queue                              |
+| `bull:mail:*`                       | bullmq | --     | mail delivery queue                         |
 
 ## Project structure
 
@@ -409,22 +477,24 @@ Providers (both plain SMTP, no code change):
 
 **Detection & step-up tunables**
 
-| Env                               | Default   | Controls                                          |
-| --------------------------------- | --------- | ------------------------------------------------- |
-| `BRUTE_FORCE_WINDOW_SECONDS`      | `900`     | sliding window for failure counting               |
-| `BRUTE_FORCE_THRESHOLD`           | `5`       | failures (per user or IP) that trip `BRUTE_FORCE` |
-| `IMPOSSIBLE_TRAVEL_KMH`           | `900`     | speed above which travel is "impossible"          |
-| `KNOWN_FACTOR_TTL_SECONDS`        | `7776000` | how long a device/location stays "known" (90d)    |
-| `NOTIFICATION_DEDUPE_TTL_SECONDS` | `86400`   | notification dedupe window (24h)                  |
-| `VERIFICATION_CODE_TTL_SECONDS`   | `300`     | email verification code lifetime                  |
-| `VERIFICATION_MAX_ATTEMPTS`       | `5`       | verification attempts before lockout              |
-| `VERIFICATION_LOCKOUT_SECONDS`    | `3600`    | verification lockout duration                     |
-| `STEP_UP_CODE_TTL_SECONDS`        | `300`     | step-up OTP lifetime                              |
-| `STEP_UP_MAX_ATTEMPTS`            | `5`       | step-up attempts before the challenge is voided   |
-| `STEP_UP_CHALLENGE_TTL_SECONDS`   | `600`     | how long a pending step-up challenge lives        |
-| `TRUSTED_DEVICE_TTL_SECONDS`      | `2592000` | remember-this-browser default lifetime (30d)      |
-| `TRUSTED_DEVICE_EXTENDED_TTL_SECONDS` | `7776000` | lifetime when "trust this browser" is ticked (90d) |
-| `IPINFO_TOKEN`                    | (unset)   | ipinfo.io token for city/region in email location |
+| Env                                   | Default   | Controls                                              |
+| ------------------------------------- | --------- | ----------------------------------------------------- |
+| `BRUTE_FORCE_WINDOW_SECONDS`          | `900`     | sliding window for failure counting                   |
+| `BRUTE_FORCE_THRESHOLD`               | `5`       | failures (per user or IP) that trip `BRUTE_FORCE`     |
+| `IMPOSSIBLE_TRAVEL_KMH`               | `900`     | speed above which travel is "impossible"              |
+| `KNOWN_FACTOR_TTL_SECONDS`            | `7776000` | how long a device/location stays "known" (90d)        |
+| `NOTIFICATION_DEDUPE_TTL_SECONDS`     | `86400`   | notification dedupe window (24h)                      |
+| `VERIFICATION_CODE_TTL_SECONDS`       | `300`     | email verification code lifetime                      |
+| `VERIFICATION_MAX_ATTEMPTS`           | `5`       | verification attempts before lockout                  |
+| `VERIFICATION_LOCKOUT_SECONDS`        | `3600`    | verification lockout duration                         |
+| `STEP_UP_CODE_TTL_SECONDS`            | `300`     | step-up OTP lifetime                                  |
+| `STEP_UP_MAX_ATTEMPTS`                | `5`       | step-up attempts before the challenge is voided       |
+| `STEP_UP_CHALLENGE_TTL_SECONDS`       | `600`     | how long a pending step-up challenge lives            |
+| `TRUSTED_DEVICE_TTL_SECONDS`          | `2592000` | remember-this-browser default lifetime (30d)          |
+| `TRUSTED_DEVICE_EXTENDED_TTL_SECONDS` | `7776000` | lifetime when "trust this browser" is ticked (90d)    |
+| `SUDO_TTL_SECONDS`                    | `300`     | how long a re-authentication covers sensitive actions |
+| `SUDO_MAX_ATTEMPTS`                   | `5`       | failed elevations before the session is locked out    |
+| `IPINFO_TOKEN`                        | (unset)   | ipinfo.io token for city/region in email location     |
 
 BullMQ and the Redis caches reuse the existing `REDIS_HOST` / `REDIS_PORT` /
 `REDIS_PASSWORD` / `REDIS_DB` connection.

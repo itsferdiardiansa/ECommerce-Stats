@@ -40,6 +40,16 @@
       "key": "step_up_challenge_id",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "trusted_device_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "device_secret",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -68,8 +78,13 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/register",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "register"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
             },
             "description": "Register a new user account. User will be created with isActive=false and requires email verification. A 6-digit verification code will be sent to the provided email address."
           },
@@ -112,8 +127,13 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/verify-email",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "verify-email"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "verify-email"
+              ]
             },
             "description": "Verify email address with the 6-digit code received via email. Upon successful verification, the user's isActive will be set to true and emailVerifiedAt will be updated."
           },
@@ -139,8 +159,13 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/resend-verification",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "resend-verification"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "resend-verification"
+              ]
             },
             "description": "Resend verification code to the email address. The previous code will be invalidated and a new 6-digit code will be sent. Rate limited to 3 requests per hour per email."
           },
@@ -166,8 +191,13 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/login",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             },
             "description": "Login with email and password. Returns access + refresh tokens for a trusted sign-in. If the sign-in looks risky (new device/location), returns { stepUpRequired: true, challengeId } instead and emails a one-time code — complete it via 'Step Up (Verify OTP)'. The test script auto-saves either access_token or step_up_challenge_id."
           },
@@ -185,7 +215,14 @@
                   "        console.log('Access token saved');",
                   "    } else if (response.data && response.data.stepUpRequired) {",
                   "        pm.collectionVariables.set('step_up_challenge_id', response.data.challengeId);",
-                  "        console.log('Step-up required — challengeId saved. Check email for the OTP, then run \"Step Up (Verify OTP)\".');",
+                  "        console.log('Step-up required - challengeId saved. Check Mailpit for the OTP, then run \"Step Up (Verify OTP)\".');",
+                  "    }",
+                  "    // Tokens are bound to the device. The cookie is scoped to /api/v1/auth,",
+                  "    // so requests outside that path must send X-Device-Secret instead.",
+                  "    const secret = pm.cookies.get('deviceSecret');",
+                  "    if (secret) {",
+                  "        pm.collectionVariables.set('device_secret', secret);",
+                  "        console.log('Device secret saved');",
                   "    }",
                   "}"
                 ]
@@ -213,8 +250,14 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/login/step-up",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "login", "step-up"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login",
+                "step-up"
+              ]
             },
             "description": "Complete a risk-based step-up challenge. After POST /auth/login returns { stepUpRequired: true, challengeId }, an OTP is emailed (view it in Mailpit at http://localhost:8025 in dev). Submit challengeId + code here to receive tokens. challengeId is auto-filled from the Login test script; replace code with the value from the email."
           },
@@ -229,7 +272,17 @@
                   "    const response = pm.response.json();",
                   "    if (response.data && response.data.accessToken) {",
                   "        pm.collectionVariables.set('access_token', response.data.accessToken);",
-                  "        console.log('Step-up passed — access token saved');",
+                  "        console.log('Access token saved');",
+                  "    } else if (response.data && response.data.stepUpRequired) {",
+                  "        pm.collectionVariables.set('step_up_challenge_id', response.data.challengeId);",
+                  "        console.log('Step-up required - challengeId saved. Check Mailpit for the OTP, then run \"Step Up (Verify OTP)\".');",
+                  "    }",
+                  "    // Tokens are bound to the device. The cookie is scoped to /api/v1/auth,",
+                  "    // so requests outside that path must send X-Device-Secret instead.",
+                  "    const secret = pm.cookies.get('deviceSecret');",
+                  "    if (secret) {",
+                  "        pm.collectionVariables.set('device_secret', secret);",
+                  "        console.log('Device secret saved');",
                   "    }",
                   "}"
                 ]
@@ -257,8 +310,13 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/refresh",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "refresh"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
             },
             "description": "Exchange a valid refresh token for a new access + refresh token pair. The used refresh token is immediately invalidated (single-use rotation). If the same refresh token is used twice, both are revoked."
           },
@@ -294,12 +352,22 @@
               {
                 "key": "Accept-Language",
                 "value": "en"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
               }
             ],
             "url": {
               "raw": "{{base_url}}/auth/logout",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "logout"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
             },
             "description": "Revokes the current session. Deletes the refresh token from Redis and marks the DB session as isRevoked=true. Subsequent /auth/refresh calls with the same token will return 401."
           },
@@ -329,12 +397,23 @@
                 "key": "Authorization",
                 "value": "Bearer {{access_token}}",
                 "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
               }
             ],
             "url": {
               "raw": "{{base_url}}/auth/sessions/others",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "sessions", "others"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "sessions",
+                "others"
+              ]
             }
           },
           "response": []
@@ -353,6 +432,11 @@
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
               }
             ],
             "body": {
@@ -361,8 +445,13 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/sessions",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "sessions"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "sessions"
+              ]
             }
           },
           "response": []
@@ -376,13 +465,203 @@
                 "key": "Authorization",
                 "value": "Bearer {{access_token}}",
                 "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
               }
             ],
             "url": {
               "raw": "{{base_url}}/auth/sessions",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "sessions"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "sessions"
+              ]
             }
+          },
+          "response": []
+        },
+        {
+          "name": "Sudo (Re-authenticate)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Elevation lasts SUDO_TTL_SECONDS and is bound to this session only.",
+                  "pm.test('elevated', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"password\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/sudo",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "sudo"
+              ]
+            },
+            "description": "Proves identity again before a destructive action. Guarded routes return 403 with error.code=SUDO_REQUIRED until this succeeds."
+          },
+          "response": []
+        },
+        {
+          "name": "Sudo Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/sudo",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "sudo"
+              ]
+            },
+            "description": "Returns { active, expiresIn } so the client can prompt before showing a risky form."
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"NewPassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "password"
+              ]
+            },
+            "description": "Requires sudo. Rejects reuse of the last 5 passwords, signs out all other devices, untrusts their browsers, and emails the owner."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Trusted Devices",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/trusted-devices",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "trusted-devices"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Revoke Trusted Device",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/trusted-devices/{{trusted_device_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "trusted-devices",
+                "{{trusted_device_id}}"
+              ]
+            },
+            "description": "Requires sudo. Emails the owner that a security method was removed."
           },
           "response": []
         }
@@ -409,8 +688,13 @@
             ],
             "url": {
               "raw": "{{base_url}}/admin/lockouts?page=1&limit=10&status=active",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "lockouts"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "lockouts"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -473,8 +757,13 @@
             ],
             "url": {
               "raw": "{{base_url}}/admin/lockouts?status=cleared&page=1&limit=10",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "lockouts"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "lockouts"
+              ],
               "query": [
                 {
                   "key": "status",
@@ -510,8 +799,13 @@
             ],
             "url": {
               "raw": "{{base_url}}/admin/lockouts?email=john.doe@example.com&status=all",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "lockouts"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "lockouts"
+              ],
               "query": [
                 {
                   "key": "email",
@@ -545,8 +839,14 @@
             ],
             "url": {
               "raw": "{{base_url}}/admin/lockouts/1",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "lockouts", "1"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "lockouts",
+                "1"
+              ]
             },
             "description": "Get detailed information about a specific lockout by ID. Admin privileges required."
           },
@@ -568,8 +868,14 @@
             ],
             "url": {
               "raw": "{{base_url}}/admin/lockouts/1",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "lockouts", "1"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "lockouts",
+                "1"
+              ]
             },
             "description": "Manually clear a lockout to allow the user to attempt verification again. Admin privileges required. Records the admin ID who cleared the lockout and removes it from both database and Redis."
           },
@@ -592,8 +898,13 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/my-lockout",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "my-lockout"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "my-lockout"
+              ]
             },
             "description": "Check your own verification lockout status. Returns whether you're locked, the reason, expiry time, and remaining seconds/minutes. Authenticated users only."
           },
@@ -617,8 +928,12 @@
             ],
             "url": {
               "raw": "{{base_url}}/users?page=1&limit=10",
-              "host": ["{{base_url}}"],
-              "path": ["users"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -646,8 +961,12 @@
             ],
             "url": {
               "raw": "{{base_url}}/users?search=john&page=1&limit=10",
-              "host": ["{{base_url}}"],
-              "path": ["users"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users"
+              ],
               "query": [
                 {
                   "key": "search",
@@ -680,8 +999,12 @@
             ],
             "url": {
               "raw": "{{base_url}}/users?isActive=true&isStaff=false&isTwoFactorEnabled=false&tierLevel=BASIC&page=1&limit=10",
-              "host": ["{{base_url}}"],
-              "path": ["users"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users"
+              ],
               "query": [
                 {
                   "key": "isActive",
@@ -729,8 +1052,12 @@
             ],
             "url": {
               "raw": "{{base_url}}/users?email=john.doe@example.com&name=John&page=1&limit=10",
-              "host": ["{{base_url}}"],
-              "path": ["users"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users"
+              ],
               "query": [
                 {
                   "key": "email",
@@ -768,8 +1095,12 @@
             ],
             "url": {
               "raw": "{{base_url}}/users?includeDeleted=true&page=1&limit=10",
-              "host": ["{{base_url}}"],
-              "path": ["users"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users"
+              ],
               "query": [
                 {
                   "key": "includeDeleted",
@@ -802,8 +1133,12 @@
             ],
             "url": {
               "raw": "{{base_url}}/users?sortBy=createdAt&sortOrder=desc&page=1&limit=10",
-              "host": ["{{base_url}}"],
-              "path": ["users"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users"
+              ],
               "query": [
                 {
                   "key": "sortBy",
@@ -841,8 +1176,13 @@
             ],
             "url": {
               "raw": "{{base_url}}/users/{{user_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["users", "{{user_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users",
+                "{{user_id}}"
+              ]
             },
             "description": "Get detailed information for a specific user by ID."
           },
@@ -873,8 +1213,13 @@
             },
             "url": {
               "raw": "{{base_url}}/users/{{user_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["users", "{{user_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users",
+                "{{user_id}}"
+              ]
             },
             "description": "Update own profile. Requires a valid access token. Only name, username, password, and avatar can be updated here. Privilege fields (isActive, isStaff, isTwoFactorEnabled) are intentionally excluded — use the admin endpoint for those."
           },
@@ -905,8 +1250,14 @@
             },
             "url": {
               "raw": "{{base_url}}/admin/users/{{user_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "users", "{{user_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{user_id}}"
+              ]
             },
             "description": "Admin-only endpoint to update privilege fields (isActive, isStaff, isTwoFactorEnabled). Requires a Bearer token from a user with isStaff=true. Returns 403 for non-staff callers."
           },
@@ -932,8 +1283,13 @@
             },
             "url": {
               "raw": "{{base_url}}/users/{{user_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["users", "{{user_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users",
+                "{{user_id}}"
+              ]
             },
             "description": "Update user password. Password must be at least 8 characters with complexity requirements. passwordChangedAt will be automatically updated."
           },
@@ -947,12 +1303,27 @@
               {
                 "key": "Accept-Language",
                 "value": "en"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
               }
             ],
             "url": {
               "raw": "{{base_url}}/users/{{user_id}}",
-              "host": ["{{base_url}}"],
-              "path": ["users", "{{user_id}}"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users",
+                "{{user_id}}"
+              ]
             },
             "description": "Delete a user by ID."
           },
@@ -978,8 +1349,12 @@
             },
             "url": {
               "raw": "{{base_url}}/users",
-              "host": ["{{base_url}}"],
-              "path": ["users"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "users"
+              ]
             },
             "description": "Admin endpoint to create a user directly (bypass registration flow). User will still be created with isActive=false unless explicitly set."
           },
@@ -1012,8 +1387,13 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/register",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "register"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
             },
             "description": "Test validation error messages in Indonesian. Should return all validation errors translated to Bahasa Indonesia."
           },
@@ -1039,8 +1419,13 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/verify-email",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "verify-email"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "verify-email"
+              ]
             },
             "description": "Test verification with invalid code. Should return error message."
           },
@@ -1066,8 +1451,13 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/login",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             },
             "description": "Test login with unverified account (isActive=false). Should return error indicating account needs verification."
           },
