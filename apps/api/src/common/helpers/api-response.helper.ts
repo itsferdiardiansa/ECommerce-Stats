@@ -30,6 +30,8 @@ export interface ApiErrorResponse {
   timestamp: string
   error: {
     message?: string
+    // Locale-independent cause, e.g. SUDO_REQUIRED.
+    code?: string
     messages?: Array<{
       field: string
       message: string
@@ -95,7 +97,8 @@ export function error(
     field: string
     message: string
     code: string
-  }>
+  }>,
+  code?: string
 ): ApiErrorResponse {
   return {
     status: statusCode,
@@ -105,7 +108,9 @@ export function error(
     error:
       messages && messages.length > 0
         ? { messages }
-        : { message: errorMessage },
+        : code
+          ? { message: errorMessage, code }
+          : { message: errorMessage },
   }
 }
 

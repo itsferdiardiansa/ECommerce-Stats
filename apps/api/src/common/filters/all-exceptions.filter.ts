@@ -51,6 +51,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
           code: string
         }>
       | undefined = undefined
+    let errorCode: string | undefined = undefined
 
     if (exception instanceof ZodValidationException) {
       status = HttpStatus.UNPROCESSABLE_ENTITY
@@ -100,6 +101,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
         errorMessage = this.translateIfKey(i18n ?? null, raw)
       } else if (typeof raw === 'object' && raw !== null) {
         const rawObj = raw as Record<string, unknown>
+        if (typeof rawObj['code'] === 'string') {
+          errorCode = rawObj['code']
+        }
         const rawMsg = rawObj['message']
         if (typeof rawMsg === 'string') {
           errorMessage = this.translateIfKey(i18n ?? null, rawMsg)
@@ -124,7 +128,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
       status,
       errorMessage,
       request.url,
-      validationMessages
+      validationMessages,
+      errorCode
     )
 
     response.status(status).json(responseBody)
