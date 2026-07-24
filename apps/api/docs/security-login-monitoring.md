@@ -255,6 +255,41 @@ Notes:
 | `POST /auth/login`         | Issues a session, or returns `{ stepUpRequired: true, challengeId }` when risky |
 | `POST /auth/login/step-up` | `{ challengeId, code }` -> issues the session on a valid OTP                    |
 
+## Trusted devices (remember this browser)
+
+Trust is an explicit, revocable token — not the fingerprint. The login step-up
+gate keys on it (Google/LinkedIn model); the fingerprint is used only for
+anomaly detection/alerts.
+
+- **Gate:** a login is challenged unless the browser presents a valid
+  trusted-device token; impossible travel forces a challenge even if trusted.
+- **Issue:** passing step-up remembers the browser (a random token, SHA-256
+  hashed, set in an `httpOnly` cookie). `trustDevice: true` on the step-up
+  request extends the lifetime (30d default -> 90d).
+- **Storage (hybrid):** Postgres `TrustedDevice` is the durable source of truth
+  (list + revoke + expiry); Redis (`trusted:{tokenHash}` -> userId) is the O(1)
+  hot lookup, warmed from Postgres on a miss. Fast hashing (SHA-256) — the token
+  is already high-entropy.
+- **Untrust on revoke:** revoking a session removes the trusted device for that
+  session's fingerprint (and the known-device entry), so the next login from it
+  is challenged again. `revokeAllSessions` untrusts everything.
+
+**Endpoints**
+
+| Endpoint                       | Result                                             |
+| ------------------------------ | -------------------------------------------------- |
+| `GET /auth/trusted-devices`    | List the user's trusted browsers                   |
+| `DELETE /auth/trusted-devices/:id` | Revoke one trusted browser                     |
+
+## Location resolution
+
+Notification emails show "City, Region, Country" via `GeoService`
+(`modules/geo`), resolved in the notification worker (off the request path) and
+Redis-cached per IP. Uses ipinfo.io when `IPINFO_TOKEN` is set (city/region),
+otherwise the offline `geoip-lite` DB (country-level). Falls back to the raw IP
+when nothing resolves. IP geolocation is city-level at best — never a street
+address.
+
 ## Data model
 
 `LoginHistory` (schema `auth`) gained three columns and two indexes
@@ -283,7 +318,10 @@ true when a user has no settings row).
 | `notif:sec:{userId}:{kind}:{scope}` | string | 24h | notification dedupe                         |
 | `stepup:challenge:{id}`             | string | 10m | pending step-up login context + OTP         |
 | `stepup:attempts:{id}`              | string | 10m | atomic step-up attempt counter              |
+| `trusted:{tokenHash}`               | string | 30-90d | trusted-device hot lookup -> userId       |
+| `geo:loc:{ip}`                      | string | 24h | resolved location cache                      |
 | `bull:security-notifications:*`     | bullmq | --  | delivery queue                              |
+| `bull:mail:*`                       | bullmq | --  | mail delivery queue                          |
 
 ## Project structure
 
@@ -384,6 +422,9 @@ Providers (both plain SMTP, no code change):
 | `STEP_UP_CODE_TTL_SECONDS`        | `300`     | step-up OTP lifetime                              |
 | `STEP_UP_MAX_ATTEMPTS`            | `5`       | step-up attempts before the challenge is voided   |
 | `STEP_UP_CHALLENGE_TTL_SECONDS`   | `600`     | how long a pending step-up challenge lives        |
+| `TRUSTED_DEVICE_TTL_SECONDS`      | `2592000` | remember-this-browser default lifetime (30d)      |
+| `TRUSTED_DEVICE_EXTENDED_TTL_SECONDS` | `7776000` | lifetime when "trust this browser" is ticked (90d) |
+| `IPINFO_TOKEN`                    | (unset)   | ipinfo.io token for city/region in email location |
 
 BullMQ and the Redis caches reuse the existing `REDIS_HOST` / `REDIS_PORT` /
 `REDIS_PASSWORD` / `REDIS_DB` connection.
