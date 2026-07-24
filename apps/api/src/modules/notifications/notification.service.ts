@@ -66,7 +66,7 @@ export class NotificationService {
         break
       case SecurityNotificationKind.NEW_SIGN_IN:
       case SecurityNotificationKind.STEP_UP_BLOCKED:
-        scope = job.context.country || job.context.ipAddress || 'unknown'
+        scope = job.context.location || job.context.ipAddress || 'unknown'
         break
       default:
         scope = 'compromise'

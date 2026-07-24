@@ -61,3 +61,21 @@ export function generateDeviceFingerprint(
     },
   }
 }
+
+/** "City, Region, Country" from GeoIP parts; null when nothing is known. */
+export function formatLocation(geo: {
+  city?: string | null
+  region?: string | null
+  country?: string | null
+}): string | null {
+  const parts = [geo.city, geo.region, geo.country].filter(Boolean)
+  return parts.length > 0 ? parts.join(', ') : null
+}
+
+/** "Chrome on Windows" from a User-Agent; null when unknown. */
+export function formatDevice(userAgent?: string | null): string | null {
+  if (!userAgent) return null
+  const ua = new UAParser(userAgent).getResult()
+  if (!ua.browser.name && !ua.os.name) return null
+  return `${ua.browser.name ?? 'Unknown browser'} on ${ua.os.name ?? 'Unknown OS'}`
+}

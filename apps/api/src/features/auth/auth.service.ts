@@ -36,7 +36,11 @@ import type { ResendVerificationDto } from './dto/resend-verification.dto'
 import type { LoginDto } from './dto/login.dto'
 import type { RefreshTokenDto } from './dto/refresh-token.dto'
 import { formatRemainingTime } from '@/utils/datetime'
-import { generateDeviceFingerprint } from '@/utils/fingerprint'
+import {
+  generateDeviceFingerprint,
+  formatLocation,
+  formatDevice,
+} from '@/utils/fingerprint'
 import {
   generateVerificationCode,
   generateOrgSlug,
@@ -636,7 +640,12 @@ export class AuthService {
     )
     this.eventEmitter.emit(
       AUTH_EVENTS.STEP_UP_BLOCKED,
-      new StepUpBlockedEvent(challenge.userId, challenge.ipAddress, geo.country)
+      new StepUpBlockedEvent(
+        challenge.userId,
+        challenge.ipAddress,
+        formatLocation(geo),
+        formatDevice(challenge.userAgent)
+      )
     )
 
     throw new UnauthorizedException(
@@ -785,7 +794,8 @@ export class AuthService {
       new StepUpVerifiedEvent(
         challenge.userId,
         sessionIpAddress || null,
-        geo.country
+        formatLocation(geo),
+        formatDevice(sessionUserAgent)
       )
     )
 

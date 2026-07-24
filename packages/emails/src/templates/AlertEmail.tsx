@@ -1,4 +1,4 @@
-import { Text, Section } from '@react-email/components'
+import { Text, Section, Row, Column } from '@react-email/components'
 import { Layout } from '../components/Layout'
 
 export interface AlertEmailProps {
@@ -6,18 +6,23 @@ export interface AlertEmailProps {
   heading: string
   greeting: string
   body: string
-  where: string
-  whereLabel: string
+  deviceLabel: string
+  device: string | null
+  locationLabel: string
+  location: string | null
+  ipLabel: string
+  ip: string | null
   action: string
   footer: string
 }
 
-/**
- * Shared layout for security-notification emails (new sign-in, blocked attempt,
- * suspicious activity, session compromise). Purely presentational — wording and
- * severity come from the copy layer via props.
- */
 export function AlertEmail(props: AlertEmailProps) {
+  const rows: Array<{ label: string; value: string }> = [
+    { label: props.deviceLabel, value: props.device ?? '' },
+    { label: props.locationLabel, value: props.location ?? '' },
+    { label: props.ipLabel, value: props.ip ?? '' },
+  ].filter(r => r.value)
+
   return (
     <Layout
       preview={props.preview}
@@ -34,19 +39,27 @@ export function AlertEmail(props: AlertEmailProps) {
           margin: '16px 0',
         }}
       >
-        <Text style={{ margin: '0', fontSize: '13px', color: '#6b7280' }}>
-          {props.whereLabel}
-        </Text>
-        <Text
-          style={{
-            margin: '0',
-            fontSize: '15px',
-            fontWeight: 700,
-            color: '#111827',
-          }}
-        >
-          {props.where}
-        </Text>
+        {rows.map(r => (
+          <Row key={r.label} style={{ marginBottom: '4px' }}>
+            <Column style={{ width: '42%', verticalAlign: 'top' }}>
+              <Text style={{ margin: '0', fontSize: '13px', color: '#6b7280' }}>
+                {r.label}
+              </Text>
+            </Column>
+            <Column>
+              <Text
+                style={{
+                  margin: '0',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: '#111827',
+                }}
+              >
+                {r.value}
+              </Text>
+            </Column>
+          </Row>
+        ))}
       </Section>
       <Text style={{ fontWeight: 700, color: '#b91c1c' }}>{props.action}</Text>
     </Layout>

@@ -20,6 +20,7 @@ export interface SecurityNotificationJob {
   signals: string[]
   context: {
     ipAddress: string | null
-    country: string | null
+    location: string | null
+    device: string | null
   }
 }

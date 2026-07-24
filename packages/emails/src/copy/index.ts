@@ -8,7 +8,9 @@ export interface CodeVars {
 
 export interface AlertVars {
   name: string
-  where: string
+  device: string | null
+  location: string | null
+  ip: string | null
 }
 
 export interface CodeStrings {
@@ -27,8 +29,12 @@ export interface AlertStrings {
   heading: string
   greeting: string
   body: string
-  whereLabel: string
-  where: string
+  deviceLabel: string
+  device: string | null
+  locationLabel: string
+  location: string | null
+  ipLabel: string
+  ip: string | null
   action: string
   footer: string
 }
@@ -42,6 +48,30 @@ type AlertName =
 
 type CodeBuilders = Record<CodeName, (v: CodeVars) => CodeStrings>
 type AlertBuilders = Record<AlertName, (v: AlertVars) => AlertStrings>
+
+const enLabels = {
+  deviceLabel: 'Device',
+  locationLabel: 'Approximate location',
+  ipLabel: 'IP address',
+}
+const idLabels = {
+  deviceLabel: 'Perangkat',
+  locationLabel: 'Perkiraan lokasi',
+  ipLabel: 'Alamat IP',
+}
+
+const enDetails = (v: AlertVars) => ({
+  ...enLabels,
+  device: v.device,
+  location: v.location,
+  ip: v.ip,
+})
+const idDetails = (v: AlertVars) => ({
+  ...idLabels,
+  device: v.device,
+  location: v.location,
+  ip: v.ip,
+})
 
 const en: CodeBuilders & AlertBuilders = {
   'verification-code': v => ({
@@ -68,9 +98,8 @@ const en: CodeBuilders & AlertBuilders = {
     preview: 'A new device signed in',
     heading: 'New sign-in to your account',
     greeting: `Hi ${v.name},`,
-    body: 'Your account was just accessed from a new device or location after verifying a one-time code.',
-    whereLabel: 'Location',
-    where: v.where,
+    body: 'Your account was just accessed from a new device after verifying a one-time code:',
+    ...enDetails(v),
     action:
       "If this wasn't you, reset your password and sign out of all devices immediately.",
     footer: 'You received this because security alerts are enabled.',
@@ -80,9 +109,8 @@ const en: CodeBuilders & AlertBuilders = {
     preview: 'A sign-in was blocked',
     heading: 'A sign-in attempt was blocked',
     greeting: `Hi ${v.name},`,
-    body: 'Someone entered your correct password to sign in from a new device but could not complete the additional verification, so the sign-in was blocked.',
-    whereLabel: 'Attempted from',
-    where: v.where,
+    body: 'Someone entered your correct password from a new device but could not complete verification, so the sign-in was blocked:',
+    ...enDetails(v),
     action:
       'Your password may be compromised — change it now and review your active sessions.',
     footer: 'You received this because security alerts are enabled.',
@@ -92,9 +120,8 @@ const en: CodeBuilders & AlertBuilders = {
     preview: 'Suspicious sign-in activity',
     heading: 'Suspicious sign-in activity',
     greeting: `Hi ${v.name},`,
-    body: 'We detected repeated failed sign-in attempts on your account.',
-    whereLabel: 'Detected from',
-    where: v.where,
+    body: 'We detected repeated failed sign-in attempts on your account:',
+    ...enDetails(v),
     action:
       "If this wasn't you, change your password and enable two-factor authentication.",
     footer: 'You received this because security alerts are enabled.',
@@ -104,9 +131,8 @@ const en: CodeBuilders & AlertBuilders = {
     preview: 'Unusual session activity',
     heading: 'Unusual session activity',
     greeting: `Hi ${v.name},`,
-    body: 'We detected a reused session token on your account and signed out all active sessions as a precaution.',
-    whereLabel: 'Detected from',
-    where: v.where,
+    body: 'We detected a reused session token and signed out all active sessions as a precaution:',
+    ...enDetails(v),
     action: 'If this was not you, please reset your password immediately.',
     footer: 'You received this because security alerts are enabled.',
   }),
@@ -136,9 +162,8 @@ const id: CodeBuilders & AlertBuilders = {
     preview: 'Perangkat baru telah masuk',
     heading: 'Masuk baru ke akun Anda',
     greeting: `Hai ${v.name},`,
-    body: 'Akun Anda baru saja diakses dari perangkat atau lokasi baru setelah memverifikasi kode sekali pakai.',
-    whereLabel: 'Lokasi',
-    where: v.where,
+    body: 'Akun Anda baru saja diakses dari perangkat baru setelah memverifikasi kode sekali pakai:',
+    ...idDetails(v),
     action:
       'Jika ini bukan Anda, segera ubah kata sandi dan keluarkan semua perangkat.',
     footer: 'Anda menerima ini karena peringatan keamanan diaktifkan.',
@@ -148,9 +173,8 @@ const id: CodeBuilders & AlertBuilders = {
     preview: 'Sebuah upaya masuk diblokir',
     heading: 'Upaya masuk diblokir',
     greeting: `Hai ${v.name},`,
-    body: 'Seseorang memasukkan kata sandi Anda yang benar untuk masuk dari perangkat baru tetapi tidak dapat menyelesaikan verifikasi tambahan, sehingga upaya masuk diblokir.',
-    whereLabel: 'Dicoba dari',
-    where: v.where,
+    body: 'Seseorang memasukkan kata sandi Anda yang benar dari perangkat baru tetapi tidak dapat menyelesaikan verifikasi, sehingga upaya masuk diblokir:',
+    ...idDetails(v),
     action:
       'Kata sandi Anda mungkin telah bocor — segera ubah dan tinjau sesi aktif Anda.',
     footer: 'Anda menerima ini karena peringatan keamanan diaktifkan.',
@@ -160,9 +184,8 @@ const id: CodeBuilders & AlertBuilders = {
     preview: 'Aktivitas masuk mencurigakan',
     heading: 'Aktivitas masuk mencurigakan',
     greeting: `Hai ${v.name},`,
-    body: 'Kami mendeteksi beberapa upaya masuk yang gagal secara berulang pada akun Anda.',
-    whereLabel: 'Terdeteksi dari',
-    where: v.where,
+    body: 'Kami mendeteksi beberapa upaya masuk yang gagal secara berulang pada akun Anda:',
+    ...idDetails(v),
     action:
       'Jika ini bukan Anda, ubah kata sandi dan aktifkan autentikasi dua faktor.',
     footer: 'Anda menerima ini karena peringatan keamanan diaktifkan.',
@@ -172,9 +195,8 @@ const id: CodeBuilders & AlertBuilders = {
     preview: 'Aktivitas sesi tidak biasa',
     heading: 'Aktivitas sesi tidak biasa',
     greeting: `Hai ${v.name},`,
-    body: 'Kami mendeteksi token sesi yang digunakan kembali pada akun Anda dan mengeluarkan semua sesi aktif sebagai tindakan pencegahan.',
-    whereLabel: 'Terdeteksi dari',
-    where: v.where,
+    body: 'Kami mendeteksi token sesi yang digunakan kembali dan mengeluarkan semua sesi aktif sebagai tindakan pencegahan:',
+    ...idDetails(v),
     action: 'Jika ini bukan Anda, segera ubah kata sandi Anda.',
     footer: 'Anda menerima ini karena peringatan keamanan diaktifkan.',
   }),

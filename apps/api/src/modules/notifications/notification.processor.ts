@@ -5,6 +5,7 @@ import { Job } from 'bullmq'
 import { getSecurityNotificationTarget } from '@rufieltics/db/domains/identity/user'
 import { renderEmail, type EmailName } from '@rufieltics/emails'
 import { MailQueueService } from '@/modules/mail/mail-queue.service'
+import { GeoService } from '@/modules/geo/geo.service'
 import {
   NOTIFICATIONS_QUEUE,
   SecurityNotificationJob,
@@ -30,6 +31,7 @@ export class NotificationProcessor extends WorkerHost {
 
   constructor(
     private readonly mailQueue: MailQueueService,
+    private readonly geo: GeoService,
     config: ConfigService
   ) {
     super()
@@ -51,13 +53,19 @@ export class NotificationProcessor extends WorkerHost {
       return
     }
 
-    const where =
-      data.context.country || data.context.ipAddress || 'an unknown location'
+    const location =
+      (await this.geo.resolveLocation(data.context.ipAddress)) ||
+      data.context.location
 
     const message = await renderEmail(
       KIND_TO_TEMPLATE[data.kind],
       this.defaultLocale,
-      { name: target.name, where }
+      {
+        name: target.name,
+        device: data.context.device,
+        location,
+        ip: data.context.ipAddress,
+      }
     )
 
     await this.mailQueue.enqueue({ to: target.email, ...message })

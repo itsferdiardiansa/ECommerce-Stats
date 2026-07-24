@@ -2,6 +2,7 @@ export interface LoginGeo {
   latitude: number | null
   longitude: number | null
   city: string | null
+  region: string | null
   country: string | null
 }
 
