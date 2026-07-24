@@ -5,7 +5,6 @@ import {
   ForbiddenException,
 } from '@nestjs/common'
 import { I18nContext } from 'nestjs-i18n'
-import * as argon2 from 'argon2'
 import {
   deleteUser,
   getUserById,
@@ -52,16 +51,8 @@ export class UsersService {
       throw new ForbiddenException(i18n.t('common.errors.forbidden'))
     }
 
-    const { password, ...rest } = data
-    const payload: Record<string, unknown> = { ...rest }
-
-    if (password) {
-      payload.passwordHash = await argon2.hash(password)
-      payload.passwordChangedAt = new Date()
-    }
-
     try {
-      return await updateUser(id, payload)
+      return await updateUser(id, { ...data })
     } catch (error) {
       if (
         error instanceof Error &&
@@ -73,7 +64,16 @@ export class UsersService {
     }
   }
 
-  async remove(id: number, i18n: I18nContext) {
+  async remove(
+    id: number,
+    i18n: I18nContext,
+    requestingUserId: number,
+    isAdmin = false
+  ) {
+    if (!isAdmin && id !== requestingUserId) {
+      throw new ForbiddenException(i18n.t('common.errors.forbidden'))
+    }
+
     try {
       return await deleteUser(id)
     } catch (error) {
