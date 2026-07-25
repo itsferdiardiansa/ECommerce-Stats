@@ -9,7 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter'
 import * as argon2 from 'argon2'
 import { createHash, randomBytes, randomUUID } from 'crypto'
 import {
-  getUserById,
+  getSessionUser,
   updateUser,
   getUserCredentials,
 } from '@rufieltics/db/domains/identity/user'
@@ -258,7 +258,7 @@ export class AuthService {
       ),
     ])
 
-    const user = await getUserById(userId)
+    const user = await getSessionUser(userId)
     if (!user) {
       throw new UnauthorizedException(i18n.t('auth.errors.user_not_found'))
     }

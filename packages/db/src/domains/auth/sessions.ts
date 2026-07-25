@@ -120,15 +120,6 @@ export const Sessions = {
     return { count: result.count }
   },
 
-  async deleteExpiredByUserId(userId: number): Promise<void> {
-    await db.session.deleteMany({
-      where: {
-        userId,
-        OR: [{ expires: { lt: new Date() } }, { isRevoked: true }],
-      },
-    })
-  },
-
   async findMany(params: {
     skip?: number
     take?: number

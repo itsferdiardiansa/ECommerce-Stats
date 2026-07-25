@@ -10,7 +10,7 @@ import * as argon2 from 'argon2'
 import { randomUUID, randomBytes } from 'crypto'
 import { getUserByEmail } from '@rufieltics/db/domains/identity/user'
 import { OrganizationMembers } from '@rufieltics/db/domains/identity/organization'
-import { Sessions, Totp, RecoveryCodes } from '@rufieltics/db/domains/auth'
+import { Totp, RecoveryCodes } from '@rufieltics/db/domains/auth'
 import { RedisService } from '@/modules/redis/redis.service'
 import { MailQueueService } from '@/modules/mail/mail-queue.service'
 import { MailPriority } from '@/modules/mail/mail.constants'
@@ -193,8 +193,6 @@ export class LoginService {
         userAgent,
         ipAddress
       )
-
-    await Sessions.deleteExpiredByUserId(user.id)
 
     this.eventEmitter.emit(
       AUTH_EVENTS.LOGIN_SUCCESS,
@@ -458,8 +456,6 @@ export class LoginService {
         sessionUserAgent,
         sessionIpAddress
       )
-
-    await Sessions.deleteExpiredByUserId(challenge.userId)
 
     this.eventEmitter.emit(
       AUTH_EVENTS.LOGIN_SUCCESS,
