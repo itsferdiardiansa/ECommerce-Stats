@@ -255,24 +255,43 @@ Notes:
 | `POST /auth/login`         | Issues a session, or returns `{ stepUpRequired: true, challengeId }` when risky |
 | `POST /auth/login/step-up` | `{ challengeId, code }` -> issues the session on a valid OTP                    |
 
+## The login gate
+
+Whether a sign-in must clear a second factor depends on whether the account has
+one, because the two cases have opposite economics.
+
+| Account          | Challenged when                                         | Cost per challenge |
+| ---------------- | ------------------------------------------------------- | ------------------ |
+| Two-factor on    | Always, unless the browser was explicitly trusted       | Free (app code)    |
+| No second factor | Only when a risk signal fires (new device/location/...) | An email           |
+
+Impossible travel overrides trust in both cases -- the account cannot be in two
+places at once.
+
+For accounts **with** 2FA the device fingerprint is deliberately _not_ accepted
+as a reason to skip: `userId:browser:os` collides across machines running the
+same browser and OS (a Chrome version bump is the same device), which is far too
+weak to bypass a second factor. Only the explicit trusted-device token does.
+
+For accounts **without** 2FA, "known device" comes from `LoginAnomalyService`
+(Redis set, Postgres fallback, 90 days). That survives a user clearing cookies,
+so a returning visitor is not emailed a code on every sign-in.
+
 ## Trusted devices (remember this browser)
 
-Trust is an explicit, revocable token — not the fingerprint. The login step-up
-gate keys on it (Google/LinkedIn model); the fingerprint is used only for
-anomaly detection/alerts.
+Trust is an explicit, revocable token -- not the fingerprint.
 
-- **Gate:** a login is challenged unless the browser presents a valid
-  trusted-device token; impossible travel forces a challenge even if trusted.
-- **Issue:** passing step-up remembers the browser (a random token, SHA-256
-  hashed, set in an `httpOnly` cookie). `trustDevice: true` on the step-up
-  request extends the lifetime (30d default -> 90d).
+- **Opt-in only.** A trusted device is issued when the user passes step-up
+  **and** sets `trustDevice: true`. Remembering a browser nobody asked to
+  remember silently weakens every later sign-in, including on shared machines.
 - **Storage (hybrid):** Postgres `TrustedDevice` is the durable source of truth
   (list + revoke + expiry); Redis (`trusted:{tokenHash}` -> userId) is the O(1)
-  hot lookup, warmed from Postgres on a miss. Fast hashing (SHA-256) — the token
+  hot lookup, warmed from Postgres on a miss. Fast hashing (SHA-256) -- the token
   is already high-entropy.
 - **Untrust on revoke:** revoking a session removes the trusted device for that
   session's fingerprint (and the known-device entry), so the next login from it
   is challenged again. `revokeAllSessions` untrusts everything.
+- **Reset when 2FA is switched on:** see below.
 
 **Endpoints**
 
@@ -280,6 +299,27 @@ anomaly detection/alerts.
 | ---------------------------------- | -------------------------------- |
 | `GET /auth/trusted-devices`        | List the user's trusted browsers |
 | `DELETE /auth/trusted-devices/:id` | Revoke one trusted browser       |
+
+### Enabling 2FA resets the trust boundary
+
+Turning on a second factor is a statement that the current boundary is no longer
+good enough -- often prompted by a suspected compromise. So confirming enrolment
+revokes **every** trusted device and **every other** session.
+
+Without this, a user with five trusted browsers who enables 2FA after fearing
+compromise would change nothing for an attacker holding one of them: the
+attacker's browser keeps skipping the new factor and their session keeps
+working. The user completes the setup, sees "two-factor enabled", and is no
+safer -- the worst kind of security feature, one that produces false confidence.
+
+The enrolling session survives; it just proved both a password (sudo) and a TOTP
+code. `AuthService` handles `auth.mfa.enabled` for this, so `MfaService` does not
+need to depend on it (`AuthService` already depends on `MfaService` for recovery
+codes, which would be circular).
+
+Disabling 2FA deliberately does **not** mass-revoke. If an attacker is the one
+disabling it, they hold the surviving session and revocation would only log out
+the victim. The notification email is the right response there.
 
 ## Sudo mode (auth freshness)
 
@@ -346,6 +386,76 @@ From: Chrome on Windows -- Jakarta, Jakarta, ID
 `trusted_device`), whether it was enabled or disabled, and the timestamp.
 Trusted devices emit it today; authenticator and passkey enrolment reuse the
 same path.
+
+## Two-factor authentication (TOTP)
+
+An authenticator app is the first user-owned factor. It is offline, costs
+nothing per use (unlike the email OTP, which is a per-message charge), and
+replaces the email challenge entirely once enrolled.
+
+- **Confirm before enable.** `POST /auth/mfa/totp` stores an _unconfirmed_
+  secret and returns the `otpauth://` URI; `isTwoFactorEnabled` flips only once
+  the user proves a working code. Enabling at QR-display time would let clock
+  skew or a mis-scan lock a user out permanently.
+- **Secret at rest.** AES-256-GCM encrypted with `TOTP_ENCRYPTION_KEY`, not
+  hashed -- verification has to recover it. Recovery codes are argon2-hashed,
+  since they are only ever compared. Losing the key locks out every enrolled
+  user, so production refuses to boot without it.
+- **Replay protection.** A 6-digit code stays valid for its whole 30s step plus
+  drift. The consumed step is recorded (`totp:step:{userId}`) and passed back as
+  `afterTimeStep`, so a sniffed code cannot be reused -- including within its own
+  window. A code is therefore single-use: enrol and sign in are different steps.
+- **Drift.** `TOTP_WINDOW` steps either side of now (default 1, i.e. +/-30s).
+- **QR rendering** is the client's job; the API returns only the URI.
+
+**Endpoints**
+
+| Endpoint                        | Guard          | Result                                   |
+| ------------------------------- | -------------- | ---------------------------------------- |
+| `GET /auth/mfa`                 | session        | Enabled/pending state + codes remaining  |
+| `POST /auth/mfa/totp`           | session + sudo | Unconfirmed secret + `otpauth://` URI    |
+| `POST /auth/mfa/totp/confirm`   | session + sudo | Enables 2FA, returns recovery codes once |
+| `DELETE /auth/mfa/totp`         | session + sudo | Disables 2FA, clears recovery codes      |
+| `POST /auth/mfa/recovery-codes` | session + sudo | New set, invalidating the previous one   |
+
+### Login with a second factor
+
+`initiateStepUp` picks the strongest available factor. The challenge records
+which one it expects, and the response advertises `method` plus
+`availableMethods` so the client can offer a fallback.
+
+| User has | `method` | Email sent | Fallback   |
+| -------- | -------- | ---------- | ---------- |
+| TOTP     | `totp`   | No         | `recovery` |
+| No TOTP  | `email`  | Yes        | --         |
+
+`POST /auth/login/step-up` **requires** `method` (`email`, `totp`, `recovery`) --
+the client must declare which factor it is answering with, so it can never be
+told "invalid code" when it meant a different factor. A method the challenge
+does not offer (e.g. `email` against a TOTP account) is rejected up front with a
+`400` naming the expected factor, and does **not** consume an attempt or write
+to Redis. Only a wrong code for a valid method counts toward the cap. Device
+binding and the blocked-attempt alert are unchanged.
+
+The **active-challenge reuse** rule stays email-only. It exists because email
+costs money and can flood an inbox; applying it to TOTP would strand a user who
+simply mistyped a code.
+
+A trusted browser still skips the challenge, TOTP or not -- that is what makes
+"remember this browser" worth having. Two limits apply: trust is opt-in, and
+enabling 2FA revokes every trusted device that predates it. Trust never
+satisfies sudo.
+
+### Recovery codes
+
+Ten single-use codes (`3F9K-2QX7-M4TD`), shown once at enrolment and on
+regeneration, argon2-hashed at rest. Spending one emails the owner: needing a
+recovery code usually means a lost device, and if the user did not lose one,
+someone else is signing in.
+
+TOTP is also a sudo elevation method (`POST /auth/sudo` with
+`{ method: "totp", code }`), so every sudo-guarded route gains a real second
+factor without further change.
 
 ## Location resolution
 
@@ -477,24 +587,23 @@ Providers (both plain SMTP, no code change):
 
 **Detection & step-up tunables**
 
-| Env                                   | Default   | Controls                                              |
-| ------------------------------------- | --------- | ----------------------------------------------------- |
-| `BRUTE_FORCE_WINDOW_SECONDS`          | `900`     | sliding window for failure counting                   |
-| `BRUTE_FORCE_THRESHOLD`               | `5`       | failures (per user or IP) that trip `BRUTE_FORCE`     |
-| `IMPOSSIBLE_TRAVEL_KMH`               | `900`     | speed above which travel is "impossible"              |
-| `KNOWN_FACTOR_TTL_SECONDS`            | `7776000` | how long a device/location stays "known" (90d)        |
-| `NOTIFICATION_DEDUPE_TTL_SECONDS`     | `86400`   | notification dedupe window (24h)                      |
-| `VERIFICATION_CODE_TTL_SECONDS`       | `300`     | email verification code lifetime                      |
-| `VERIFICATION_MAX_ATTEMPTS`           | `5`       | verification attempts before lockout                  |
-| `VERIFICATION_LOCKOUT_SECONDS`        | `3600`    | verification lockout duration                         |
-| `STEP_UP_CODE_TTL_SECONDS`            | `300`     | step-up OTP lifetime                                  |
-| `STEP_UP_MAX_ATTEMPTS`                | `5`       | step-up attempts before the challenge is voided       |
-| `STEP_UP_CHALLENGE_TTL_SECONDS`       | `600`     | how long a pending step-up challenge lives            |
-| `TRUSTED_DEVICE_TTL_SECONDS`          | `2592000` | remember-this-browser default lifetime (30d)          |
-| `TRUSTED_DEVICE_EXTENDED_TTL_SECONDS` | `7776000` | lifetime when "trust this browser" is ticked (90d)    |
-| `SUDO_TTL_SECONDS`                    | `300`     | how long a re-authentication covers sensitive actions |
-| `SUDO_MAX_ATTEMPTS`                   | `5`       | failed elevations before the session is locked out    |
-| `IPINFO_TOKEN`                        | (unset)   | ipinfo.io token for city/region in email location     |
+| Env                               | Default   | Controls                                              |
+| --------------------------------- | --------- | ----------------------------------------------------- |
+| `BRUTE_FORCE_WINDOW_SECONDS`      | `900`     | sliding window for failure counting                   |
+| `BRUTE_FORCE_THRESHOLD`           | `5`       | failures (per user or IP) that trip `BRUTE_FORCE`     |
+| `IMPOSSIBLE_TRAVEL_KMH`           | `900`     | speed above which travel is "impossible"              |
+| `KNOWN_FACTOR_TTL_SECONDS`        | `7776000` | how long a device/location stays "known" (90d)        |
+| `NOTIFICATION_DEDUPE_TTL_SECONDS` | `86400`   | notification dedupe window (24h)                      |
+| `VERIFICATION_CODE_TTL_SECONDS`   | `300`     | email verification code lifetime                      |
+| `VERIFICATION_MAX_ATTEMPTS`       | `5`       | verification attempts before lockout                  |
+| `VERIFICATION_LOCKOUT_SECONDS`    | `3600`    | verification lockout duration                         |
+| `STEP_UP_CODE_TTL_SECONDS`        | `300`     | step-up OTP lifetime                                  |
+| `STEP_UP_MAX_ATTEMPTS`            | `5`       | step-up attempts before the challenge is voided       |
+| `STEP_UP_CHALLENGE_TTL_SECONDS`   | `600`     | how long a pending step-up challenge lives            |
+| `TRUSTED_DEVICE_TTL_SECONDS`      | `2592000` | how long an opted-in trusted browser lasts (30d)      |
+| `SUDO_TTL_SECONDS`                | `300`     | how long a re-authentication covers sensitive actions |
+| `SUDO_MAX_ATTEMPTS`               | `5`       | failed elevations before the session is locked out    |
+| `IPINFO_TOKEN`                    | (unset)   | ipinfo.io token for city/region in email location     |
 
 BullMQ and the Redis caches reuse the existing `REDIS_HOST` / `REDIS_PORT` /
 `REDIS_PASSWORD` / `REDIS_DB` connection.

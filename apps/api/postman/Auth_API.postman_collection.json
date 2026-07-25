@@ -50,6 +50,16 @@
       "key": "device_secret",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "totp_secret",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "recovery_code",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -246,7 +256,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"challengeId\": \"{{step_up_challenge_id}}\",\n  \"code\": \"123456\"\n}"
+              "raw": "{\n  \"challengeId\": \"{{step_up_challenge_id}}\",\n  \"code\": \"123456\",\n  \"method\": \"email\",\n  \"trustDevice\": false\n}"
             },
             "url": {
               "raw": "{{base_url}}/auth/login/step-up",
@@ -259,7 +269,7 @@
                 "step-up"
               ]
             },
-            "description": "Complete a risk-based step-up challenge. After POST /auth/login returns { stepUpRequired: true, challengeId }, an OTP is emailed (view it in Mailpit at http://localhost:8025 in dev). Submit challengeId + code here to receive tokens. challengeId is auto-filled from the Login test script; replace code with the value from the email."
+            "description": "Completes a step-up challenge. Set trustDevice: true to be remembered on this browser - trust is opt-in, so leaving it out means the next sign-in from a new device or location is challenged again. The method field is required: use \"email\" here, \"totp\" or \"recovery\" for a 2FA account."
           },
           "response": [],
           "event": [
@@ -662,6 +672,340 @@
               ]
             },
             "description": "Requires sudo. Emails the owner that a security method was removed."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Two-Factor (TOTP)",
+      "item": [
+        {
+          "name": "MFA Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "mfa"
+              ]
+            },
+            "description": "Shows whether TOTP is enabled/pending and how many recovery codes remain."
+          },
+          "response": []
+        },
+        {
+          "name": "Begin TOTP Enrolment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const d = pm.response.json().data;",
+                  "    pm.collectionVariables.set('totp_secret', d.secret);",
+                  "    console.log('otpauth URI:', d.otpauthUri);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/totp",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "mfa",
+                "totp"
+              ]
+            },
+            "description": "Requires sudo. Returns the base32 secret and an otpauth:// URI. Two-factor is NOT enabled yet - confirm a code first. Paste the URI into any QR generator, or type the secret into your authenticator app manually."
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm TOTP Enrolment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const codes = pm.response.json().data.recoveryCodes;",
+                  "    pm.collectionVariables.set('recovery_code', codes[0]);",
+                  "    console.log('Recovery codes (shown once):', codes.join(' '));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/totp/confirm",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "mfa",
+                "totp",
+                "confirm"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"123456\"\n}"
+            },
+            "description": "Requires sudo. Enter the 6-digit code from your authenticator app. On success two-factor turns on and the recovery codes are returned ONCE - save them. Enabling two-factor also revokes every trusted browser and signs out all other sessions - anything trusted before the second factor existed must not bypass it."
+          },
+          "response": []
+        },
+        {
+          "name": "Regenerate Recovery Codes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/recovery-codes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "mfa",
+                "recovery-codes"
+              ]
+            },
+            "description": "Requires sudo. Issues a new set and invalidates every previous code."
+          },
+          "response": []
+        },
+        {
+          "name": "Disable TOTP",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/totp",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "mfa",
+                "totp"
+              ]
+            },
+            "description": "Requires sudo. Removes the authenticator and all recovery codes, and emails the owner."
+          },
+          "response": []
+        },
+        {
+          "name": "Step Up (TOTP)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const d = pm.response.json().data;",
+                  "    if (d.accessToken) pm.collectionVariables.set('access_token', d.accessToken);",
+                  "    const s = pm.cookies.get('deviceSecret');",
+                  "    if (s) pm.collectionVariables.set('device_secret', s);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login/step-up",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login",
+                "step-up"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{step_up_challenge_id}}\",\n  \"code\": \"123456\",\n  \"method\": \"totp\",\n  \"trustDevice\": false\n}"
+            },
+            "description": "When the account has TOTP, POST /auth/login returns method: 'totp' and sends NO email. Submit the code from your authenticator app here."
+          },
+          "response": []
+        },
+        {
+          "name": "Step Up (Recovery Code)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login/step-up",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login",
+                "step-up"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{step_up_challenge_id}}\",\n  \"code\": \"{{recovery_code}}\",\n  \"method\": \"recovery\"\n}"
+            },
+            "description": "Lost your phone? Use a recovery code instead. Single use - it is burned on success and the owner is emailed."
+          },
+          "response": []
+        },
+        {
+          "name": "Sudo via TOTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/sudo",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "sudo"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"totp\",\n  \"code\": \"123456\"\n}"
+            },
+            "description": "Elevate using the authenticator app instead of the password."
           },
           "response": []
         }
