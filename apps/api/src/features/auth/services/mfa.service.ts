@@ -15,11 +15,7 @@ import {
 import { TotpService } from './totp.service'
 import { RedisService } from '@/modules/redis/redis.service'
 import { generateRecoveryCode, normalizeRecoveryCode } from '@/utils/auth'
-import {
-  generateDeviceFingerprint,
-  formatLocation,
-  formatDevice,
-} from '@/utils/fingerprint'
+import { generateDeviceFingerprint } from '@/utils/fingerprint'
 import {
   AUTH_EVENTS,
   SecurityMethodChangedEvent,
@@ -177,13 +173,13 @@ export class MfaService {
     const { geo } = generateDeviceFingerprint(userId, userAgent, ipAddress)
     this.eventEmitter.emit(
       AUTH_EVENTS.SECURITY_METHOD_CHANGED,
-      new SecurityMethodChangedEvent(
+      SecurityMethodChangedEvent.from(
         userId,
         'totp',
         enabled,
-        ipAddress || null,
-        formatLocation(geo),
-        formatDevice(userAgent)
+        geo,
+        ipAddress,
+        userAgent
       )
     )
   }

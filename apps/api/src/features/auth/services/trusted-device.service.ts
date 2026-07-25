@@ -6,11 +6,7 @@ import { Sessions, TrustedDevices } from '@rufieltics/db/domains/auth'
 import { RedisService } from '@/modules/redis/redis.service'
 import { JwtService } from '@/modules/jwt/jwt.service'
 import { TokenDenylistService } from '@/modules/jwt/token-denylist.service'
-import {
-  generateDeviceFingerprint,
-  formatLocation,
-  formatDevice,
-} from '@/utils/fingerprint'
+import { generateDeviceFingerprint } from '@/utils/fingerprint'
 import {
   generateTrustedDeviceToken,
   hashTrustedDeviceToken,
@@ -98,13 +94,13 @@ export class TrustedDeviceService {
 
     this.eventEmitter.emit(
       AUTH_EVENTS.SECURITY_METHOD_CHANGED,
-      new SecurityMethodChangedEvent(
+      SecurityMethodChangedEvent.from(
         userId,
         'trusted_device',
         true,
+        geo,
         ipAddress,
-        formatLocation(geo),
-        formatDevice(userAgent)
+        userAgent
       )
     )
 
@@ -159,13 +155,13 @@ export class TrustedDeviceService {
     const { geo } = generateDeviceFingerprint(userId, userAgent, ipAddress)
     this.eventEmitter.emit(
       AUTH_EVENTS.SECURITY_METHOD_CHANGED,
-      new SecurityMethodChangedEvent(
+      SecurityMethodChangedEvent.from(
         userId,
         'trusted_device',
         false,
-        ipAddress || null,
-        formatLocation(geo),
-        formatDevice(userAgent)
+        geo,
+        ipAddress,
+        userAgent
       )
     )
 

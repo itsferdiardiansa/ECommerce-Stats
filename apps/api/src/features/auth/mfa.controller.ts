@@ -20,16 +20,7 @@ import { SudoGuard } from '@/common/guards/sudo.guard'
 import { CurrentUser } from '@/common/decorators/current-user.decorator'
 import { RequireSudo } from '@/common/decorators/require-sudo.decorator'
 import type { CurrentUserPayload } from '@/common/decorators/current-user.decorator'
-import configuration from '@/config/configuration'
-
-const config = configuration()
-
-const getAuthThrottleConfig = () => ({
-  default: {
-    limit: config.throttle.auth.limit,
-    ttl: config.throttle.auth.ttl,
-  },
-})
+import { authThrottle } from '@/common/helpers/throttle.helper'
 
 @Controller('auth/mfa')
 @UseGuards(ActiveUserGuard, SudoGuard)
@@ -48,7 +39,7 @@ export class MfaController {
 
   @Post('totp')
   @HttpCode(HttpStatus.OK)
-  @Throttle(getAuthThrottleConfig())
+  @Throttle(authThrottle())
   @RequireSudo()
   async beginTotp(
     @CurrentUser() user: CurrentUserPayload,
@@ -60,7 +51,7 @@ export class MfaController {
 
   @Post('totp/confirm')
   @HttpCode(HttpStatus.OK)
-  @Throttle(getAuthThrottleConfig())
+  @Throttle(authThrottle())
   @RequireSudo()
   async confirmTotp(
     @CurrentUser() user: CurrentUserPayload,
@@ -82,7 +73,7 @@ export class MfaController {
 
   @Delete('totp')
   @HttpCode(HttpStatus.OK)
-  @Throttle(getAuthThrottleConfig())
+  @Throttle(authThrottle())
   @RequireSudo()
   async disableTotp(
     @CurrentUser() user: CurrentUserPayload,
@@ -96,7 +87,7 @@ export class MfaController {
 
   @Post('recovery-codes')
   @HttpCode(HttpStatus.OK)
-  @Throttle(getAuthThrottleConfig())
+  @Throttle(authThrottle())
   @RequireSudo()
   async regenerateRecoveryCodes(
     @CurrentUser() user: CurrentUserPayload,

@@ -38,15 +38,9 @@ import { MyLockoutResponseDto } from './dto/my-lockout-response.dto'
 import { RedisService } from '@/modules/redis/redis.service'
 import { JwtService } from '@/modules/jwt/jwt.service'
 import configuration from '@/config/configuration'
+import { authThrottle } from '@/common/helpers/throttle.helper'
 
 const config = configuration()
-
-const getAuthThrottleConfig = () => ({
-  default: {
-    limit: config.throttle.auth.limit,
-    ttl: config.throttle.auth.ttl,
-  },
-})
 
 @Controller('auth')
 export class AuthController {
@@ -82,7 +76,7 @@ export class AuthController {
   }
 
   @Post('register')
-  @Throttle(getAuthThrottleConfig())
+  @Throttle(authThrottle())
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() dto: RegisterDto, @I18n() i18n: I18nContext) {
     const user = await this.registration.register(dto, i18n)
@@ -90,7 +84,7 @@ export class AuthController {
   }
 
   @Post('verify-email')
-  @Throttle(getAuthThrottleConfig())
+  @Throttle(authThrottle())
   @HttpCode(HttpStatus.OK)
   async verifyEmail(
     @Body() dto: VerifyEmailDto,
@@ -108,7 +102,7 @@ export class AuthController {
   }
 
   @Post('resend-verification')
-  @Throttle(getAuthThrottleConfig())
+  @Throttle(authThrottle())
   @HttpCode(HttpStatus.OK)
   async resendVerification(
     @Body() dto: ResendVerificationDto,
@@ -119,7 +113,7 @@ export class AuthController {
   }
 
   @Post('login')
-  @Throttle(getAuthThrottleConfig())
+  @Throttle(authThrottle())
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() dto: LoginDto,
@@ -160,7 +154,7 @@ export class AuthController {
   }
 
   @Post('login/step-up')
-  @Throttle(getAuthThrottleConfig())
+  @Throttle(authThrottle())
   @HttpCode(HttpStatus.OK)
   async stepUp(
     @Body() dto: StepUpDto,
@@ -246,7 +240,7 @@ export class AuthController {
 
   @Post('password')
   @HttpCode(HttpStatus.OK)
-  @Throttle(getAuthThrottleConfig())
+  @Throttle(authThrottle())
   @RequireSudo()
   @UseGuards(ActiveUserGuard, SudoGuard)
   async changePassword(
@@ -280,7 +274,7 @@ export class AuthController {
 
   @Delete('trusted-devices/:id')
   @HttpCode(HttpStatus.OK)
-  @Throttle(getAuthThrottleConfig())
+  @Throttle(authThrottle())
   @RequireSudo()
   @UseGuards(ActiveUserGuard, SudoGuard)
   async revokeTrustedDevice(
@@ -302,7 +296,7 @@ export class AuthController {
 
   @Delete('sessions/others')
   @HttpCode(HttpStatus.OK)
-  @Throttle(getAuthThrottleConfig())
+  @Throttle(authThrottle())
   @RequireSudo()
   @UseGuards(ActiveUserGuard, SudoGuard)
   async revokeOtherSessions(
@@ -334,7 +328,7 @@ export class AuthController {
 
   @Delete('sessions')
   @HttpCode(HttpStatus.OK)
-  @Throttle(getAuthThrottleConfig())
+  @Throttle(authThrottle())
   @RequireSudo()
   @UseGuards(ActiveUserGuard, SudoGuard)
   async revokeSessions(

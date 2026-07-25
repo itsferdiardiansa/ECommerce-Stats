@@ -15,9 +15,7 @@ import { success } from '@/common/helpers/api-response.helper'
 import { ActiveUserGuard } from '@/common/guards/active-user.guard'
 import { CurrentUser } from '@/common/decorators/current-user.decorator'
 import type { CurrentUserPayload } from '@/common/decorators/current-user.decorator'
-import configuration from '@/config/configuration'
-
-const config = configuration()
+import { authThrottle } from '@/common/helpers/throttle.helper'
 
 @Controller('auth/sudo')
 @UseGuards(ActiveUserGuard)
@@ -26,12 +24,7 @@ export class SudoController {
 
   @Post()
   @HttpCode(HttpStatus.OK)
-  @Throttle({
-    default: {
-      limit: config.throttle.auth.limit,
-      ttl: config.throttle.auth.ttl,
-    },
-  })
+  @Throttle(authThrottle())
   async elevate(
     @CurrentUser() user: CurrentUserPayload,
     @Body() dto: SudoDto,
