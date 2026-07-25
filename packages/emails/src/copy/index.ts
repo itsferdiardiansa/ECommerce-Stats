@@ -75,6 +75,7 @@ type AlertName =
   | 'suspicious-login'
   | 'session-compromise'
   | 'password-changed'
+  | 'recovery-code-used'
 
 type CodeBuilders = Record<CodeName, (v: CodeVars) => CodeStrings>
 type MethodBuilders = Record<MethodName, (v: MethodVars) => MethodStrings>
@@ -209,6 +210,17 @@ const en: CodeBuilders & AlertBuilders = {
       "If you didn't do this, reset your password immediately and review your active sessions.",
     footer: 'You received this because security alerts are enabled.',
   }),
+  'recovery-code-used': v => ({
+    subject: 'A recovery code was used to sign in',
+    preview: 'A recovery code was used',
+    heading: 'A recovery code was used',
+    greeting: `Hi ${v.name},`,
+    body: 'Someone signed in using one of your recovery codes instead of your authenticator app. That code is now used up:',
+    ...enDetails(v),
+    action:
+      "If this wasn't you, change your password and regenerate your recovery codes immediately.",
+    footer: 'You received this because security alerts are enabled.',
+  }),
 }
 
 const id: CodeBuilders & AlertBuilders = {
@@ -282,6 +294,17 @@ const id: CodeBuilders & AlertBuilders = {
     ...idDetails(v),
     action:
       'Jika ini bukan Anda, segera atur ulang kata sandi dan tinjau sesi aktif Anda.',
+    footer: 'Anda menerima ini karena peringatan keamanan diaktifkan.',
+  }),
+  'recovery-code-used': v => ({
+    subject: 'Kode pemulihan digunakan untuk masuk',
+    preview: 'Kode pemulihan digunakan',
+    heading: 'Kode pemulihan digunakan',
+    greeting: `Hai ${v.name},`,
+    body: 'Seseorang masuk menggunakan salah satu kode pemulihan Anda, bukan aplikasi autentikator. Kode tersebut kini sudah terpakai:',
+    ...idDetails(v),
+    action:
+      'Jika ini bukan Anda, segera ubah kata sandi dan buat ulang kode pemulihan Anda.',
     footer: 'Anda menerima ini karena peringatan keamanan diaktifkan.',
   }),
 }

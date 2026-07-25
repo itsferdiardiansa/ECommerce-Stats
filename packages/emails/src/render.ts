@@ -21,6 +21,7 @@ export interface EmailVars {
   'suspicious-login': AlertVars
   'session-compromise': AlertVars
   'password-changed': AlertVars
+  'recovery-code-used': AlertVars
   'security-method-enabled': MethodVars
   'security-method-disabled': MethodVars
 }
@@ -43,6 +44,7 @@ const COMPONENTS: Record<EmailName, AnyComponent> = {
   'suspicious-login': AlertEmail as unknown as AnyComponent,
   'session-compromise': AlertEmail as unknown as AnyComponent,
   'password-changed': AlertEmail as unknown as AnyComponent,
+  'recovery-code-used': AlertEmail as unknown as AnyComponent,
   'security-method-enabled': MethodEmail as unknown as AnyComponent,
   'security-method-disabled': MethodEmail as unknown as AnyComponent,
 }
