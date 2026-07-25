@@ -20,6 +20,7 @@ import { I18n, I18nContext } from 'nestjs-i18n'
 import { AuthService } from './auth.service'
 import { TrustedDeviceService } from './services/trusted-device.service'
 import { RegistrationService } from './services/registration.service'
+import { LoginService } from './services/login.service'
 import { RegisterDto } from './dto/register.dto'
 import { VerifyEmailDto } from './dto/verify-email.dto'
 import { ResendVerificationDto } from './dto/resend-verification.dto'
@@ -54,6 +55,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly registration: RegistrationService,
+    private readonly loginService: LoginService,
     private readonly trustedDevices: TrustedDeviceService,
     private readonly redisService: RedisService,
     private readonly jwtService: JwtService
@@ -128,7 +130,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response
   ) {
     const trustedDeviceToken = req.cookies?.trustedDevice as string | undefined
-    const loginResult = await this.authService.login(
+    const loginResult = await this.loginService.login(
       dto,
       i18n,
       ipAddress,
@@ -173,7 +175,7 @@ export class AuthController {
       trustedDeviceToken,
       trustedDeviceTtl,
       ...result
-    } = await this.authService.verifyStepUp(
+    } = await this.loginService.verifyStepUp(
       dto.challengeId,
       dto.code,
       dto.method,
