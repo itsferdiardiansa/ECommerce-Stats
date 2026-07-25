@@ -12,6 +12,7 @@ import { SudoService } from './services/sudo.service'
 import { TotpService } from './services/totp.service'
 import { MfaService } from './services/mfa.service'
 import { TrustedDeviceService } from './services/trusted-device.service'
+import { RegistrationService } from './services/registration.service'
 import { AuthAuditListener } from './listeners/auth-audit.listener'
 import { SecurityAlertListener } from './listeners/security-alert.listener'
 
@@ -29,6 +30,7 @@ import { SecurityAlertListener } from './listeners/security-alert.listener'
     TotpService,
     MfaService,
     TrustedDeviceService,
+    RegistrationService,
     SessionCleanupService,
     LoginAnomalyService,
     AuthAuditListener,

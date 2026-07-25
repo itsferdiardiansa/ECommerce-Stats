@@ -10,18 +10,12 @@ import { EventEmitter2 } from '@nestjs/event-emitter'
 import * as argon2 from 'argon2'
 import { createHash, randomBytes, randomUUID } from 'crypto'
 import {
-  createUser,
   getUserByEmail,
   getUserById,
   updateUser,
-  getUserByEmailIncludingDeleted,
-  getUserByUsernameIncludingDeleted,
   getUserCredentials,
 } from '@rufieltics/db/domains/identity/user'
-import {
-  Organizations,
-  OrganizationMembers,
-} from '@rufieltics/db/domains/identity/organization'
+import { OrganizationMembers } from '@rufieltics/db/domains/identity/organization'
 import {
   Sessions,
   TrustedDevices,
@@ -42,23 +36,16 @@ import {
 import { TotpService } from './services/totp.service'
 import { MfaService } from './services/mfa.service'
 import { TrustedDeviceService } from './services/trusted-device.service'
+import { RegistrationService } from './services/registration.service'
 import type { AccessTokenPayload } from '@/modules/jwt/jwt.service'
-import type { RegisterDto } from './dto/register.dto'
-import type { VerifyEmailDto } from './dto/verify-email.dto'
-import type { ResendVerificationDto } from './dto/resend-verification.dto'
 import type { LoginDto } from './dto/login.dto'
 import type { RefreshTokenDto } from './dto/refresh-token.dto'
-import { formatRemainingTime } from '@/utils/datetime'
 import {
   generateDeviceFingerprint,
   formatLocation,
   formatDevice,
 } from '@/utils/fingerprint'
-import {
-  generateVerificationCode,
-  generateOrgSlug,
-  pickPrimaryMembership,
-} from '@/utils/auth'
+import { generateVerificationCode, pickPrimaryMembership } from '@/utils/auth'
 import { Prisma } from '@rufieltics/db'
 import {
   AUTH_EVENTS,
@@ -100,10 +87,6 @@ interface StepUpChallenge {
 
 @Injectable()
 export class AuthService {
-  private readonly VERIFICATION_CODE_TTL_SECONDS: number
-  private readonly VERIFICATION_CODE_MAX_AGE_MS: number
-  private readonly VERIFICATION_MAX_ATTEMPTS: number
-  private readonly VERIFICATION_LOCKOUT_DURATION_SECONDS: number
   private readonly STEP_UP_CODE_TTL_SECONDS: number
   private readonly STEP_UP_MAX_ATTEMPTS: number
   private readonly STEP_UP_CHALLENGE_TTL_SECONDS: number
@@ -118,22 +101,9 @@ export class AuthService {
     private readonly totpService: TotpService,
     private readonly mfaService: MfaService,
     private readonly trustedDevices: TrustedDeviceService,
+    private readonly registration: RegistrationService,
     config: ConfigService
   ) {
-    this.VERIFICATION_CODE_TTL_SECONDS = config.get<number>(
-      'security.verification.codeTtlSeconds',
-      300
-    )
-    this.VERIFICATION_CODE_MAX_AGE_MS =
-      this.VERIFICATION_CODE_TTL_SECONDS * 1000
-    this.VERIFICATION_MAX_ATTEMPTS = config.get<number>(
-      'security.verification.maxAttempts',
-      5
-    )
-    this.VERIFICATION_LOCKOUT_DURATION_SECONDS = config.get<number>(
-      'security.verification.lockoutSeconds',
-      3600
-    )
     this.STEP_UP_CODE_TTL_SECONDS = config.get<number>(
       'security.stepUp.codeTtlSeconds',
       300
@@ -163,230 +133,6 @@ export class AuthService {
       )
     }
     return this.dummyPasswordHash
-  }
-
-  /**
-   * Single source of truth for the "account is locked out" message so that
-   * every endpoint (register, verify-email, resend-verification, …) reports an
-   * identical, consistent response for a lockout.
-   */
-  private lockoutException(
-    ttlSeconds: number,
-    i18n: I18nContext
-  ): BadRequestException {
-    const { minutes, seconds } = formatRemainingTime(ttlSeconds * 1000)
-    const messageKey =
-      minutes > 0
-        ? 'auth.errors.account_locked'
-        : 'auth.errors.account_locked_seconds'
-    const args = minutes > 0 ? { minutes, seconds } : { seconds }
-    return new BadRequestException(i18n.t(messageKey, { args }))
-  }
-
-  /** Throws the consistent lockout response when a lockout is active. */
-  private assertNotLockedOut(
-    lockout: { ttl: number } | null,
-    i18n: I18nContext
-  ): void {
-    if (!lockout) return
-    throw this.lockoutException(lockout.ttl, i18n)
-  }
-
-  /**
-   * Arms a verification lockout (persisting it + clearing the active code) and
-   * throws the same lockout response every other endpoint returns, so the
-   * moment of lockout and every subsequent call read identically.
-   */
-  private async triggerVerificationLockout(
-    email: string,
-    i18n: I18nContext,
-    ipAddress?: string,
-    userAgent?: string
-  ): Promise<never> {
-    await this.redisService.setVerificationLockout(
-      email,
-      this.VERIFICATION_LOCKOUT_DURATION_SECONDS,
-      'TOO_MANY_ATTEMPTS',
-      ipAddress,
-      userAgent
-    )
-    await this.redisService.deleteVerificationCode(email)
-    throw this.lockoutException(
-      this.VERIFICATION_LOCKOUT_DURATION_SECONDS,
-      i18n
-    )
-  }
-
-  /** Renders and queues the email-verification code (register + resend). */
-  private async sendVerificationEmail(
-    to: string,
-    name: string,
-    code: string,
-    i18n: I18nContext
-  ): Promise<void> {
-    const message = await renderEmail('verification-code', i18n.lang, {
-      name,
-      code,
-      minutes: Math.round(this.VERIFICATION_CODE_TTL_SECONDS / 60),
-    })
-    await this.mailQueue.enqueue(
-      { to, ...message },
-      { priority: MailPriority.HIGH }
-    )
-  }
-
-  async register(data: RegisterDto, i18n: I18nContext) {
-    try {
-      const { password, ...rest } = data
-      const { email, username } = data
-
-      const existingUserByEmail = await getUserByEmailIncludingDeleted(email)
-      if (existingUserByEmail) {
-        if (existingUserByEmail.deletedAt) {
-          throw new BadRequestException(
-            i18n.t('auth.errors.email_already_exists_deleted')
-          )
-        }
-
-        const fullUser = await getUserByEmail(email)
-        if (fullUser && !fullUser.isActive && !fullUser.emailVerifiedAt) {
-          const lockout = await this.redisService.getVerificationLockout(email)
-          this.assertNotLockedOut(lockout, i18n)
-        }
-
-        throw new BadRequestException(
-          i18n.t('auth.errors.email_already_exists')
-        )
-      }
-
-      const existingUserByUsername =
-        await getUserByUsernameIncludingDeleted(username)
-      if (existingUserByUsername) {
-        if (existingUserByUsername.deletedAt) {
-          throw new BadRequestException(
-            i18n.t('auth.errors.username_already_exists_deleted')
-          )
-        }
-        throw new BadRequestException(
-          i18n.t('auth.errors.username_already_exists')
-        )
-      }
-
-      const passwordHash = await argon2.hash(password)
-
-      const user = await createUser({
-        ...rest,
-        passwordHash,
-        isActive: false,
-      })
-
-      const code = generateVerificationCode()
-      await this.redisService.setVerificationCode(
-        email,
-        code,
-        this.VERIFICATION_CODE_TTL_SECONDS
-      )
-
-      await this.sendVerificationEmail(email, user.name, code, i18n)
-
-      return user
-    } catch (err) {
-      if (err instanceof BadRequestException) {
-        throw err
-      }
-      throw new BadRequestException((err as Error).message)
-    }
-  }
-
-  async verifyEmail(
-    data: VerifyEmailDto,
-    i18n: I18nContext,
-    ipAddress?: string,
-    userAgent?: string
-  ) {
-    const { email, code } = data
-
-    const user = await getUserByEmail(email)
-    if (!user) {
-      throw new NotFoundException(i18n.t('auth.errors.user_not_found'))
-    }
-
-    if (user.isActive && user.emailVerifiedAt) {
-      throw new BadRequestException(i18n.t('auth.errors.already_verified'))
-    }
-
-    const lockout = await this.redisService.getVerificationLockout(email)
-    this.assertNotLockedOut(lockout, i18n)
-
-    const storedData = await this.redisService.getVerificationCode(email)
-
-    if (!storedData) {
-      throw new BadRequestException(i18n.t('auth.errors.code_expired'))
-    }
-
-    const codeAge = Date.now() - new Date(storedData.createdAt).getTime()
-
-    if (codeAge > this.VERIFICATION_CODE_MAX_AGE_MS) {
-      await this.redisService.deleteVerificationCode(email)
-      throw new BadRequestException(i18n.t('auth.errors.code_expired'))
-    }
-
-    // Atomically consume an attempt *before* comparing the code so the cap
-    // holds under concurrent requests (INCR can't be raced like a read-modify
-    // -write). The (MAX+1)th attempt is rejected before any comparison.
-    const attemptNo =
-      await this.redisService.incrementVerificationAttempts(email)
-
-    if (attemptNo > this.VERIFICATION_MAX_ATTEMPTS) {
-      await this.triggerVerificationLockout(email, i18n, ipAddress, userAgent)
-    }
-
-    if (storedData.code !== code) {
-      const remaining = this.VERIFICATION_MAX_ATTEMPTS - attemptNo
-
-      if (remaining <= 0) {
-        await this.triggerVerificationLockout(email, i18n, ipAddress, userAgent)
-      }
-
-      const messageKey =
-        remaining === 1
-          ? 'auth.errors.invalid_code_last_attempt'
-          : 'auth.errors.invalid_code'
-      throw new BadRequestException(
-        i18n.t(messageKey, { args: { attempts: remaining } })
-      )
-    }
-
-    const [updatedUser] = await Promise.all([
-      updateUser(user.id, {
-        isActive: true,
-        emailVerifiedAt: new Date(),
-      }),
-      this.redisService.deleteVerificationCode(email),
-      this.provisionPersonalWorkspace(user.id, user.name, user.username),
-    ])
-
-    return updatedUser
-  }
-
-  private async provisionPersonalWorkspace(
-    userId: number,
-    name: string,
-    username: string
-  ) {
-    const existing = await OrganizationMembers.listByUser(userId)
-    if (existing.length > 0) return
-
-    const org = await Organizations.create({
-      name: `${name}'s Workspace`,
-      slug: generateOrgSlug(username),
-    })
-
-    await OrganizationMembers.addMember({
-      organizationId: org.id,
-      userId,
-      role: 'OWNER',
-    })
   }
 
   private async initiateSession(
@@ -472,52 +218,6 @@ export class AuthService {
       expiresIn: this.jwtService.getAccessExpiresIn(),
       deviceFingerprint,
       geo,
-    }
-  }
-
-  async resendVerification(data: ResendVerificationDto, i18n: I18nContext) {
-    const { email } = data
-
-    const user = await getUserByEmail(email)
-    if (!user) {
-      throw new NotFoundException(i18n.t('auth.errors.user_not_found'))
-    }
-
-    if (user.isActive && user.emailVerifiedAt) {
-      throw new BadRequestException(i18n.t('auth.errors.already_verified'))
-    }
-
-    const lockout = await this.redisService.getVerificationLockout(email)
-    this.assertNotLockedOut(lockout, i18n)
-
-    const existingCode = await this.redisService.getVerificationCode(email)
-
-    if (existingCode) {
-      const codeAge = Date.now() - new Date(existingCode.createdAt).getTime()
-
-      if (codeAge < this.VERIFICATION_CODE_MAX_AGE_MS) {
-        const remainingTime = this.VERIFICATION_CODE_MAX_AGE_MS - codeAge
-        const { minutes, seconds } = formatRemainingTime(remainingTime)
-        const messageKey =
-          minutes > 0
-            ? 'auth.errors.code_still_valid'
-            : 'auth.errors.code_still_valid_seconds'
-        const args = minutes > 0 ? { minutes, seconds } : { seconds }
-        throw new BadRequestException(i18n.t(messageKey, { args }))
-      }
-    }
-
-    const code = generateVerificationCode()
-    await this.redisService.setVerificationCode(
-      email,
-      code,
-      this.VERIFICATION_CODE_TTL_SECONDS
-    )
-
-    await this.sendVerificationEmail(email, user.name, code, i18n)
-
-    return {
-      message: i18n.t('auth.resend.success'),
     }
   }
 

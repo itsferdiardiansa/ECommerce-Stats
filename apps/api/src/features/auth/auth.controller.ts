@@ -19,6 +19,7 @@ import { Throttle, SkipThrottle } from '@nestjs/throttler'
 import { I18n, I18nContext } from 'nestjs-i18n'
 import { AuthService } from './auth.service'
 import { TrustedDeviceService } from './services/trusted-device.service'
+import { RegistrationService } from './services/registration.service'
 import { RegisterDto } from './dto/register.dto'
 import { VerifyEmailDto } from './dto/verify-email.dto'
 import { ResendVerificationDto } from './dto/resend-verification.dto'
@@ -52,6 +53,7 @@ export class AuthController {
 
   constructor(
     private readonly authService: AuthService,
+    private readonly registration: RegistrationService,
     private readonly trustedDevices: TrustedDeviceService,
     private readonly redisService: RedisService,
     private readonly jwtService: JwtService
@@ -81,7 +83,7 @@ export class AuthController {
   @Throttle(getAuthThrottleConfig())
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() dto: RegisterDto, @I18n() i18n: I18nContext) {
-    const user = await this.authService.register(dto, i18n)
+    const user = await this.registration.register(dto, i18n)
     return created(i18n.t('auth.register.success'), user)
   }
 
@@ -94,7 +96,7 @@ export class AuthController {
     @Ip() ipAddress: string,
     @Headers('user-agent') userAgent: string
   ) {
-    const result = await this.authService.verifyEmail(
+    const result = await this.registration.verifyEmail(
       dto,
       i18n,
       ipAddress,
@@ -110,7 +112,7 @@ export class AuthController {
     @Body() dto: ResendVerificationDto,
     @I18n() i18n: I18nContext
   ) {
-    await this.authService.resendVerification(dto, i18n)
+    await this.registration.resendVerification(dto, i18n)
     return success(i18n.t('auth.resend.success'), null)
   }
 
