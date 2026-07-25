@@ -342,6 +342,26 @@ export class RedisService {
     return `sudo:attempts:${jti}`
   }
 
+  private pendingTotpKey(userId: number): string {
+    return `totp:pending:${userId}`
+  }
+
+  async setPendingTotp(
+    userId: number,
+    encryptedSecret: string,
+    ttlSeconds: number
+  ): Promise<void> {
+    await this.set(this.pendingTotpKey(userId), encryptedSecret, ttlSeconds)
+  }
+
+  async getPendingTotp(userId: number): Promise<string | null> {
+    return this.get<string>(this.pendingTotpKey(userId))
+  }
+
+  async deletePendingTotp(userId: number): Promise<void> {
+    await this.del(this.pendingTotpKey(userId))
+  }
+
   async grantSudo(jti: string, ttlSeconds: number): Promise<void> {
     await Promise.all([
       this.set(this.sudoKey(jti), 1, ttlSeconds),

@@ -2,13 +2,19 @@ import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Queue } from 'bullmq'
-import { randomUUID } from 'crypto'
 import { RedisService } from '@/modules/redis/redis.service'
 import {
   NOTIFICATIONS_QUEUE,
   SecurityNotificationJob,
   SecurityNotificationKind,
 } from './notification.types'
+
+const ALWAYS_DELIVER = new Set<SecurityNotificationKind>([
+  SecurityNotificationKind.PASSWORD_CHANGED,
+  SecurityNotificationKind.SECURITY_METHOD_ENABLED,
+  SecurityNotificationKind.SECURITY_METHOD_DISABLED,
+  SecurityNotificationKind.RECOVERY_CODE_USED,
+])
 
 /**
  * Entry point for security notifications. Deduplicates cheaply in Redis (so a
@@ -34,15 +40,17 @@ export class NotificationService {
   }
 
   async notifySecurity(job: SecurityNotificationJob): Promise<void> {
-    const dedupeKey = this.dedupeKey(job)
-    const allowed = await this.redis.setNX(
-      `notif:${dedupeKey}`,
-      '1',
-      this.dedupeTtlSeconds
-    )
-    if (!allowed) {
-      this.logger.debug(`Deduped security notification ${dedupeKey}`)
-      return
+    if (!ALWAYS_DELIVER.has(job.kind)) {
+      const dedupeKey = this.dedupeKey(job)
+      const allowed = await this.redis.setNX(
+        `notif:${dedupeKey}`,
+        '1',
+        this.dedupeTtlSeconds
+      )
+      if (!allowed) {
+        this.logger.debug(`Deduped security notification ${dedupeKey}`)
+        return
+      }
     }
 
     await this.queue.add(job.kind, job, {
@@ -66,11 +74,6 @@ export class NotificationService {
       case SecurityNotificationKind.NEW_SIGN_IN:
       case SecurityNotificationKind.STEP_UP_BLOCKED:
         scope = job.context.location || job.context.ipAddress || 'unknown'
-        break
-      case SecurityNotificationKind.PASSWORD_CHANGED:
-      case SecurityNotificationKind.SECURITY_METHOD_ENABLED:
-      case SecurityNotificationKind.SECURITY_METHOD_DISABLED:
-        scope = `${job.context.method ?? 'password'}:${randomUUID()}`
         break
       default:
         scope = 'compromise'

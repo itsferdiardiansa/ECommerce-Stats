@@ -11,6 +11,7 @@ import {
   StepUpBlockedEvent,
   PasswordChangedEvent,
   SecurityMethodChangedEvent,
+  RecoveryCodeUsedEvent,
 } from '../events'
 
 /** Turns security signals into user notifications (dedupe + enqueue + deliver). */
@@ -85,6 +86,25 @@ export class SecurityAlertListener {
         ipAddress: event.ipAddress,
         location: event.location,
         device: event.device,
+      },
+    })
+  }
+
+  @OnEvent(AUTH_EVENTS.RECOVERY_CODE_USED)
+  async handleRecoveryCodeUsed(event: RecoveryCodeUsedEvent) {
+    this.logger.warn(
+      `[SECURITY] Recovery code used for user ${event.userId} ` +
+        `(${event.remaining} remaining)`
+    )
+
+    await this.notifications.notifySecurity({
+      userId: event.userId,
+      kind: SecurityNotificationKind.RECOVERY_CODE_USED,
+      signals: [],
+      context: {
+        ipAddress: event.ipAddress,
+        location: null,
+        device: null,
       },
     })
   }

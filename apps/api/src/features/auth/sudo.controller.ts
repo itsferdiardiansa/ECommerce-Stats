@@ -40,7 +40,7 @@ export class SudoController {
     const result = await this.sudoService.elevate(
       user.id,
       user.jti,
-      dto.password,
+      { method: dto.method, password: dto.password, code: dto.code },
       i18n
     )
     return success(i18n.t('auth.sudo.success'), result)

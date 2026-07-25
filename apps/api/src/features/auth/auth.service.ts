@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common'
 import { I18nContext } from 'nestjs-i18n'
 import { ConfigService } from '@nestjs/config'
-import { EventEmitter2 } from '@nestjs/event-emitter'
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import * as argon2 from 'argon2'
 import { createHash, randomBytes, randomUUID } from 'crypto'
 import {
@@ -26,6 +26,8 @@ import {
   Sessions,
   TrustedDevices,
   PasswordSecurity,
+  Totp,
+  RecoveryCodes,
 } from '@rufieltics/db/domains/auth'
 import { RedisService } from '@/modules/redis/redis.service'
 import { JwtService } from '@/modules/jwt/jwt.service'
@@ -37,6 +39,8 @@ import {
   LoginAnomalyService,
   RiskSignal,
 } from './services/login-anomaly.service'
+import { TotpService } from './services/totp.service'
+import { MfaService } from './services/mfa.service'
 import type { AccessTokenPayload } from '@/modules/jwt/jwt.service'
 import type { RegisterDto } from './dto/register.dto'
 import type { VerifyEmailDto } from './dto/verify-email.dto'
@@ -66,6 +70,8 @@ import {
   StepUpBlockedEvent,
   PasswordChangedEvent,
   SecurityMethodChangedEvent,
+  RecoveryCodeUsedEvent,
+  TwoFactorEnabledEvent,
 } from './events'
 
 interface StoredSession {
@@ -78,13 +84,16 @@ interface StoredSession {
   deviceFingerprint: string
 }
 
+export type StepUpMethod = 'email' | 'totp' | 'recovery'
+
 interface StepUpChallenge {
   userId: number
   email: string
   isStaff: boolean
   role: string | null
   orgId: string | null
-  code: string
+  code: string | null
+  method: StepUpMethod
   // The device that initiated (and was risk-assessed at) login. The session is
   // issued for THIS device on success, so passing the OTP trusts exactly the
   // device that was challenged — not whichever client submitted the code.
@@ -102,7 +111,6 @@ export class AuthService {
   private readonly STEP_UP_MAX_ATTEMPTS: number
   private readonly STEP_UP_CHALLENGE_TTL_SECONDS: number
   private readonly TRUSTED_DEVICE_TTL_SECONDS: number
-  private readonly TRUSTED_DEVICE_EXTENDED_TTL_SECONDS: number
 
   constructor(
     private readonly redisService: RedisService,
@@ -111,6 +119,8 @@ export class AuthService {
     private readonly tokenDenylist: TokenDenylistService,
     private readonly anomaly: LoginAnomalyService,
     private readonly mailQueue: MailQueueService,
+    private readonly totpService: TotpService,
+    private readonly mfaService: MfaService,
     config: ConfigService
   ) {
     this.VERIFICATION_CODE_TTL_SECONDS = config.get<number>(
@@ -142,10 +152,6 @@ export class AuthService {
     this.TRUSTED_DEVICE_TTL_SECONDS = config.get<number>(
       'security.trustedDevice.ttlSeconds',
       2592000
-    )
-    this.TRUSTED_DEVICE_EXTENDED_TTL_SECONDS = config.get<number>(
-      'security.trustedDevice.extendedTtlSeconds',
-      7776000
     )
   }
 
@@ -576,8 +582,6 @@ export class AuthService {
     const role = primary?.role ?? null
     const orgId = primary?.organizationId ?? null
 
-    // Challenge unless this browser is a trusted device; impossible travel
-    // forces a challenge anyway.
     const { hash: fingerprint, geo: previewGeo } = generateDeviceFingerprint(
       user.id,
       userAgent,
@@ -595,14 +599,16 @@ export class AuthService {
       latitude: previewGeo.latitude,
       longitude: previewGeo.longitude,
     })
-    const forceStepUp = risk.includes(RiskSignal.IMPOSSIBLE_TRAVEL)
 
-    if (!trusted || forceStepUp) {
+    const hasTotp = (await Totp.findConfirmed(user.id)) !== null
+
+    if (this.shouldChallenge(hasTotp, trusted, risk)) {
       return this.initiateStepUp(
         user,
         role,
         orgId,
         i18n.lang,
+        hasTotp,
         userAgent,
         ipAddress
       )
@@ -630,6 +636,42 @@ export class AuthService {
     )
 
     return session
+  }
+
+  private shouldChallenge(
+    hasTotp: boolean,
+    trusted: boolean,
+    risk: RiskSignal[]
+  ): boolean {
+    if (risk.includes(RiskSignal.IMPOSSIBLE_TRAVEL)) return true
+    if (trusted) return false
+    if (hasTotp) return true
+
+    return risk.length > 0
+  }
+
+  @OnEvent(AUTH_EVENTS.TWO_FACTOR_ENABLED)
+  async handleTwoFactorEnabled(event: TwoFactorEnabledEvent) {
+    const revoked = await TrustedDevices.revokeAllByUser(event.userId)
+    await Promise.all(
+      revoked.map(r => this.redisService.evictTrustedDevice(r.tokenHash))
+    )
+
+    const activeSessions = await Sessions.findActiveByUserId(event.userId)
+    const otherJtis = activeSessions
+      .map(s => s.jti)
+      .filter(jti => jti !== event.currentJti)
+
+    if (otherJtis.length === 0) return
+
+    await this.tokenDenylist.denyMany(
+      otherJtis,
+      this.jwtService.getAccessExpiresIn()
+    )
+    await Promise.all(
+      otherJtis.map(jti => this.redisService.deleteSession(jti))
+    )
+    await Sessions.revokeAllExceptJti(event.userId, event.currentJti)
   }
 
   /** Valid trusted-device token for the user? Redis hot path, Postgres fallback. */
@@ -662,14 +704,11 @@ export class AuthService {
   private async issueTrustedDevice(
     userId: number,
     userAgent: string | null,
-    ipAddress: string | null,
-    extended: boolean
+    ipAddress: string | null
   ): Promise<{ token: string; ttlSeconds: number }> {
     const token = generateTrustedDeviceToken()
     const tokenHash = hashTrustedDeviceToken(token)
-    const ttlSeconds = extended
-      ? this.TRUSTED_DEVICE_EXTENDED_TTL_SECONDS
-      : this.TRUSTED_DEVICE_TTL_SECONDS
+    const ttlSeconds = this.TRUSTED_DEVICE_TTL_SECONDS
 
     const {
       hash: fingerprint,
@@ -829,25 +868,32 @@ export class AuthService {
     role: string | null,
     orgId: string | null,
     locale: string,
+    hasTotp: boolean,
     userAgent?: string,
     ipAddress?: string
   ) {
-    // Reuse an already-pending challenge instead of emailing a fresh OTP on
-    // every risky login. Without this, repeatedly signing in (e.g. varying the
-    // User-Agent, which changes the device fingerprint) would flood the user's
-    // inbox — an email-bombing vector. One live code per challenge window.
+    const method: StepUpMethod = hasTotp ? 'totp' : 'email'
+    const availableMethods = hasTotp ? ['totp', 'recovery'] : ['email']
+
     const userKey = this.stepUpUserKey(user.id)
-    const activeChallengeId = await this.redisService.get<string>(userKey)
-    if (activeChallengeId) {
-      const active =
-        await this.redisService.getStepUpChallenge(activeChallengeId)
-      if (active) {
-        return { stepUpRequired: true as const, challengeId: activeChallengeId }
+    if (method === 'email') {
+      const activeChallengeId = await this.redisService.get<string>(userKey)
+      if (activeChallengeId) {
+        const active =
+          await this.redisService.getStepUpChallenge(activeChallengeId)
+        if (active) {
+          return {
+            stepUpRequired: true as const,
+            challengeId: activeChallengeId,
+            method,
+            availableMethods,
+          }
+        }
       }
     }
 
     const challengeId = randomUUID()
-    const code = generateVerificationCode()
+    const code = method === 'email' ? generateVerificationCode() : null
 
     const challenge: StepUpChallenge = {
       userId: user.id,
@@ -856,6 +902,7 @@ export class AuthService {
       role,
       orgId,
       code,
+      method,
       userAgent: userAgent ?? null,
       ipAddress: ipAddress ?? null,
     }
@@ -865,36 +912,75 @@ export class AuthService {
       challenge,
       this.STEP_UP_CHALLENGE_TTL_SECONDS
     )
-    await this.redisService.set(
-      userKey,
-      challengeId,
-      this.STEP_UP_CHALLENGE_TTL_SECONDS
-    )
+
+    if (method === 'email') {
+      await this.redisService.set(
+        userKey,
+        challengeId,
+        this.STEP_UP_CHALLENGE_TTL_SECONDS
+      )
+    }
 
     // Enqueue (HIGH priority) rather than sending inline: the login request
     // must not block on the mail provider. The code is delivered by the mail
     // worker within seconds, well inside its TTL.
-    const message = await renderEmail('step-up-otp', locale, {
-      name: user.name,
-      code,
-      minutes: Math.round(this.STEP_UP_CODE_TTL_SECONDS / 60),
-    })
-    await this.mailQueue.enqueue(
-      { to: user.email, ...message },
-      { priority: MailPriority.HIGH }
-    )
+    if (code) {
+      const message = await renderEmail('step-up-otp', locale, {
+        name: user.name,
+        code,
+        minutes: Math.round(this.STEP_UP_CODE_TTL_SECONDS / 60),
+      })
+      await this.mailQueue.enqueue(
+        { to: user.email, ...message },
+        { priority: MailPriority.HIGH }
+      )
+    }
 
-    return { stepUpRequired: true as const, challengeId }
+    return {
+      stepUpRequired: true as const,
+      challengeId,
+      method,
+      availableMethods,
+    }
+  }
+
+  private async verifyStepUpFactor(
+    challenge: StepUpChallenge,
+    method: StepUpMethod,
+    code: string
+  ): Promise<boolean> {
+    if (method === 'email') {
+      return challenge.method === 'email' && challenge.code === code
+    }
+
+    if (challenge.method !== 'totp') return false
+
+    if (method === 'recovery') {
+      return this.mfaService.consumeRecoveryCode(challenge.userId, code)
+    }
+
+    const record = await Totp.findConfirmed(challenge.userId)
+    if (!record) return false
+
+    const secret = this.totpService.decryptSecret(record.secret)
+    const ok = await this.totpService.verifyAndConsume(
+      challenge.userId,
+      secret,
+      code
+    )
+    if (ok) await Totp.touchLastUsed(challenge.userId)
+    return ok
   }
 
   /**
-   * Completes a step-up challenge: validates the OTP and, on success, issues the
-   * session. The resulting login is marked step-up-verified so the audit
-   * listener records the device without sending a redundant alert.
+   * Completes a step-up challenge: validates the submitted factor and, on
+   * success, issues the session. The resulting login is marked step-up-verified
+   * so the audit listener records the device without a redundant alert.
    */
   async verifyStepUp(
     challengeId: string,
     code: string,
+    method: StepUpMethod,
     i18n: I18nContext,
     ipAddress?: string,
     userAgent?: string,
@@ -906,13 +992,27 @@ export class AuthService {
       throw new UnauthorizedException(i18n.t('auth.errors.step_up_expired'))
     }
 
+    const usedMethod = method
+    const allowedMethods: StepUpMethod[] =
+      challenge.method === 'email' ? ['email'] : ['totp', 'recovery']
+    if (!allowedMethods.includes(usedMethod)) {
+      throw new BadRequestException(
+        i18n.t(
+          challenge.method === 'totp'
+            ? 'auth.errors.step_up_expects_totp'
+            : 'auth.errors.step_up_expects_email'
+        )
+      )
+    }
+
     const attempts =
       await this.redisService.incrementStepUpAttempts(challengeId)
     if (attempts > this.STEP_UP_MAX_ATTEMPTS) {
       await this.failStepUp(challengeId, challenge, i18n)
     }
+    const passed = await this.verifyStepUpFactor(challenge, usedMethod, code)
 
-    if (challenge.code !== code) {
+    if (!passed) {
       const remaining = this.STEP_UP_MAX_ATTEMPTS - attempts
       if (remaining <= 0) {
         await this.failStepUp(challengeId, challenge, i18n)
@@ -925,6 +1025,17 @@ export class AuthService {
     }
 
     await this.voidStepUpChallenge(challengeId, challenge.userId)
+
+    if (usedMethod === 'recovery') {
+      this.eventEmitter.emit(
+        AUTH_EVENTS.RECOVERY_CODE_USED,
+        new RecoveryCodeUsedEvent(
+          challenge.userId,
+          challenge.ipAddress,
+          await RecoveryCodes.countUnused(challenge.userId)
+        )
+      )
+    }
 
     // Issue the session for the device that was challenged at login.
     const sessionUserAgent = challenge.userAgent ?? userAgent
@@ -966,17 +1077,18 @@ export class AuthService {
       )
     )
 
-    const trustedDevice = await this.issueTrustedDevice(
-      challenge.userId,
-      sessionUserAgent ?? null,
-      sessionIpAddress ?? null,
-      trustDevice
-    )
+    const trustedDevice = trustDevice
+      ? await this.issueTrustedDevice(
+          challenge.userId,
+          sessionUserAgent ?? null,
+          sessionIpAddress ?? null
+        )
+      : null
 
     return {
       ...session,
-      trustedDeviceToken: trustedDevice.token,
-      trustedDeviceTtl: trustedDevice.ttlSeconds,
+      trustedDeviceToken: trustedDevice?.token ?? null,
+      trustedDeviceTtl: trustedDevice?.ttlSeconds ?? 0,
     }
   }
 

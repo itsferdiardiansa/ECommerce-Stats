@@ -132,11 +132,16 @@ export class AuthController {
       trustedDeviceToken
     )
 
-    // Risky sign-in: no session yet, the client must complete the email OTP.
     if ('stepUpRequired' in loginResult) {
-      return success(i18n.t('auth.login.step_up_required'), {
+      const messageKey =
+        loginResult.method === 'totp'
+          ? 'auth.login.step_up_required_totp'
+          : 'auth.login.step_up_required'
+      return success(i18n.t(messageKey), {
         stepUpRequired: true,
         challengeId: loginResult.challengeId,
+        method: loginResult.method,
+        availableMethods: loginResult.availableMethods,
       })
     }
 
@@ -167,6 +172,7 @@ export class AuthController {
     } = await this.authService.verifyStepUp(
       dto.challengeId,
       dto.code,
+      dto.method,
       i18n,
       ipAddress,
       userAgent,
@@ -175,11 +181,13 @@ export class AuthController {
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
     res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
-    res.cookie(
-      'trustedDevice',
-      trustedDeviceToken,
-      this.getTrustedCookieOptions(trustedDeviceTtl)
-    )
+    if (trustedDeviceToken) {
+      res.cookie(
+        'trustedDevice',
+        trustedDeviceToken,
+        this.getTrustedCookieOptions(trustedDeviceTtl)
+      )
+    }
 
     return success(i18n.t('auth.step_up.success'), result)
   }

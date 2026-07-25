@@ -10,6 +10,7 @@ export enum SecurityNotificationKind {
   PASSWORD_CHANGED = 'PASSWORD_CHANGED',
   SECURITY_METHOD_ENABLED = 'SECURITY_METHOD_ENABLED',
   SECURITY_METHOD_DISABLED = 'SECURITY_METHOD_DISABLED',
+  RECOVERY_CODE_USED = 'RECOVERY_CODE_USED',
 }
 
 export type SecurityMethod = 'totp' | 'passkey' | 'trusted_device'

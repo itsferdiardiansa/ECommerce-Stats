@@ -7,6 +7,8 @@ export const AUTH_EVENTS = {
   STEP_UP_BLOCKED: 'auth.stepup.blocked',
   PASSWORD_CHANGED: 'auth.password.changed',
   SECURITY_METHOD_CHANGED: 'auth.security.method_changed',
+  RECOVERY_CODE_USED: 'auth.security.recovery_code_used',
+  TWO_FACTOR_ENABLED: 'auth.mfa.enabled',
 } as const
 
 export { LoginSuccessEvent } from './login-success.event'
@@ -17,3 +19,5 @@ export { SecurityCompromiseEvent } from './security-compromise.event'
 export { StepUpVerifiedEvent, StepUpBlockedEvent } from './step-up.event'
 export { PasswordChangedEvent } from './password-changed.event'
 export { SecurityMethodChangedEvent } from './security-method.event'
+export { RecoveryCodeUsedEvent } from './recovery-code.event'
+export { TwoFactorEnabledEvent } from './mfa-enabled.event'

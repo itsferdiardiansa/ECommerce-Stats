@@ -21,6 +21,7 @@ const KIND_TO_TEMPLATE: Record<SecurityNotificationKind, EmailName> = {
   [SecurityNotificationKind.SECURITY_METHOD_ENABLED]: 'security-method-enabled',
   [SecurityNotificationKind.SECURITY_METHOD_DISABLED]:
     'security-method-disabled',
+  [SecurityNotificationKind.RECOVERY_CODE_USED]: 'recovery-code-used',
 }
 
 /**

@@ -60,20 +60,28 @@ export default () => ({
         10
       ),
     },
+    totp: {
+      // AES-256-GCM key for the stored TOTP secret. Generate with:
+      // openssl rand -hex 32
+      encryptionKey: process.env.TOTP_ENCRYPTION_KEY || '',
+      issuer: process.env.TOTP_ISSUER || 'Rufieltics',
+      // Steps of clock drift tolerated either side of now (1 = +/-30s).
+      window: parseInt(process.env.TOTP_WINDOW || '1', 10),
+      recoveryCodeCount: parseInt(process.env.RECOVERY_CODE_COUNT || '10', 10),
+      enrolmentTtlSeconds: parseInt(
+        process.env.TOTP_ENROLMENT_TTL_SECONDS || '900',
+        10
+      ),
+    },
     sudo: {
       // How long a re-authentication stays valid for sensitive actions.
       ttlSeconds: parseInt(process.env.SUDO_TTL_SECONDS || '300', 10),
       maxAttempts: parseInt(process.env.SUDO_MAX_ATTEMPTS || '5', 10),
     },
     trustedDevice: {
-      // Default: a browser is remembered for 30 days after passing step-up.
+      // How long "remember this browser" lasts once the user opts in.
       ttlSeconds: parseInt(
         process.env.TRUSTED_DEVICE_TTL_SECONDS || '2592000',
-        10
-      ),
-      // "Trust this browser" ticked (private device): 90 days.
-      extendedTtlSeconds: parseInt(
-        process.env.TRUSTED_DEVICE_EXTENDED_TTL_SECONDS || '7776000',
         10
       ),
     },

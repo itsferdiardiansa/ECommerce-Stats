@@ -30,6 +30,8 @@ export type I18nTranslations = {
         "login": {
             "success": string;
             "step_up_required": string;
+            "step_up_required_totp": string;
+            "step_up_required_recovery": string;
         };
         "logout": {
             "success": string;
@@ -68,6 +70,8 @@ export type I18nTranslations = {
             "step_up_invalid_code": string;
             "step_up_too_many_attempts": string;
             "password_reused": string;
+            "step_up_expects_totp": string;
+            "step_up_expects_email": string;
         };
         "validation": {
             "code_length": string;
@@ -87,9 +91,21 @@ export type I18nTranslations = {
             "required": string;
             "invalid_password": string;
             "too_many_attempts": string;
+            "invalid_code": string;
         };
         "password": {
             "change_success": string;
+        };
+        "mfa": {
+            "status_success": string;
+            "enrolment_started": string;
+            "enabled": string;
+            "disabled": string;
+            "recovery_codes_regenerated": string;
+            "already_enabled": string;
+            "not_started": string;
+            "not_enabled": string;
+            "invalid_code": string;
         };
     };
     "common": {

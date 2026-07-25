@@ -11,6 +11,22 @@ export function generateVerificationCode(): string {
   return randomInt(100000, 999999).toString()
 }
 
+/** Recovery code shown once at enrolment, e.g. "3F9K-2QX7-M4TD". */
+export function generateRecoveryCode(): string {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const bytes = randomBytes(12)
+  const chars = Array.from(bytes, b => alphabet[b % alphabet.length])
+  return [
+    chars.slice(0, 4).join(''),
+    chars.slice(4, 8).join(''),
+    chars.slice(8, 12).join(''),
+  ].join('-')
+}
+
+export function normalizeRecoveryCode(code: string): string {
+  return code.trim().toUpperCase().replace(/\s+/g, '')
+}
+
 /** High-entropy opaque token stored in the trusted-device cookie. */
 export function generateTrustedDeviceToken(): string {
   return randomBytes(32).toString('hex')
