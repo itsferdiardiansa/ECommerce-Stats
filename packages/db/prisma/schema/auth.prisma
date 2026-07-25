@@ -54,21 +54,30 @@ model VerificationToken {
   @@schema("auth")
 }
 
-model TwoFactorToken {
-  id         String   @id @default(cuid())
-  email      String
-  token      String   @unique
-  expires    DateTime
+model UserTotp {
+  id          String    @id @default(cuid())
+  userId      Int       @unique
+  secret      String
+  confirmedAt DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  @@unique([email, token])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@schema("auth")
 }
 
-model TwoFactorConfirmation {
-  id     String @id @default(cuid())
-  userId Int    @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+model RecoveryCode {
+  id        String    @id @default(cuid())
+  userId    Int
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
   @@schema("auth")
 }
 

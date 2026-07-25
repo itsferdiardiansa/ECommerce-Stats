@@ -25,7 +25,8 @@ model User {
   loginHistory          LoginHistory[]
   trustedDevices        TrustedDevice[]
   passwordHistory       PasswordHistory[]
-  twoFactorConfirmation TwoFactorConfirmation?
+  totp                  UserTotp?
+  recoveryCodes         RecoveryCode[]
   
   profile             UserProfile?
   addresses           UserAddress[]

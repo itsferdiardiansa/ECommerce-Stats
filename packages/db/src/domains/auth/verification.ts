@@ -29,51 +29,6 @@ export const Verification = {
     })
   },
 
-  async createTwoFactorToken(data: Prisma.TwoFactorTokenUncheckedCreateInput) {
-    return db.twoFactorToken.create({ data })
-  },
-
-  async findTwoFactorToken(email: string, token: string) {
-    return db.twoFactorToken.findUnique({
-      where: {
-        email_token: {
-          email,
-          token,
-        },
-      },
-    })
-  },
-
-  async deleteTwoFactorToken(id: string) {
-    return db.twoFactorToken.delete({
-      where: { id },
-    })
-  },
-
-  async deleteTwoFactorTokenByEmail(email: string) {
-    return db.twoFactorToken.deleteMany({
-      where: { email },
-    })
-  },
-
-  async createTwoFactorConfirmation(userId: number) {
-    return db.twoFactorConfirmation.create({
-      data: { userId },
-    })
-  },
-
-  async findTwoFactorConfirmation(userId: number) {
-    return db.twoFactorConfirmation.findUnique({
-      where: { userId },
-    })
-  },
-
-  async deleteTwoFactorConfirmation(userId: number) {
-    return db.twoFactorConfirmation.delete({
-      where: { userId },
-    })
-  },
-
   async createVerificationLockout(
     data: Prisma.VerificationLockoutUncheckedCreateInput
   ) {
