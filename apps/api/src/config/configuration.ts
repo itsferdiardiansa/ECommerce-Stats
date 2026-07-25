@@ -59,6 +59,14 @@ export default () => ({
         process.env.STEP_UP_CHALLENGE_TTL_SECONDS || '600',
         10
       ),
+      maxUserFailures: parseInt(
+        process.env.STEP_UP_MAX_USER_FAILURES || '10',
+        10
+      ),
+      lockoutSeconds: parseInt(
+        process.env.STEP_UP_LOCKOUT_SECONDS || '900',
+        10
+      ),
     },
     totp: {
       // AES-256-GCM key for the stored TOTP secret. Generate with:

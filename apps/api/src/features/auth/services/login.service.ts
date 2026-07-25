@@ -56,6 +56,8 @@ export class LoginService {
   private readonly STEP_UP_CODE_TTL_SECONDS: number
   private readonly STEP_UP_MAX_ATTEMPTS: number
   private readonly STEP_UP_CHALLENGE_TTL_SECONDS: number
+  private readonly STEP_UP_MAX_USER_FAILURES: number
+  private readonly STEP_UP_LOCKOUT_SECONDS: number
 
   constructor(
     private readonly authService: AuthService,
@@ -79,6 +81,14 @@ export class LoginService {
     this.STEP_UP_CHALLENGE_TTL_SECONDS = config.get<number>(
       'security.stepUp.challengeTtlSeconds',
       600
+    )
+    this.STEP_UP_MAX_USER_FAILURES = config.get<number>(
+      'security.stepUp.maxUserFailures',
+      10
+    )
+    this.STEP_UP_LOCKOUT_SECONDS = config.get<number>(
+      'security.stepUp.lockoutSeconds',
+      900
     )
   }
 
@@ -408,6 +418,15 @@ export class LoginService {
       )
     }
 
+    const userFailures = await this.redisService.getStepUpUserFailures(
+      challenge.userId
+    )
+    if (userFailures >= this.STEP_UP_MAX_USER_FAILURES) {
+      throw new UnauthorizedException(
+        i18n.t('auth.errors.step_up_too_many_attempts')
+      )
+    }
+
     const attempts =
       await this.redisService.incrementStepUpAttempts(challengeId)
     if (attempts > this.STEP_UP_MAX_ATTEMPTS) {
@@ -416,8 +435,12 @@ export class LoginService {
     const passed = await this.verifyStepUpFactor(challenge, usedMethod, code)
 
     if (!passed) {
+      const cumulative = await this.redisService.incrementStepUpUserFailures(
+        challenge.userId,
+        this.STEP_UP_LOCKOUT_SECONDS
+      )
       const remaining = this.STEP_UP_MAX_ATTEMPTS - attempts
-      if (remaining <= 0) {
+      if (remaining <= 0 || cumulative >= this.STEP_UP_MAX_USER_FAILURES) {
         await this.failStepUp(challengeId, challenge, i18n)
       }
       throw new UnauthorizedException(
@@ -428,6 +451,7 @@ export class LoginService {
     }
 
     await this.voidStepUpChallenge(challengeId, challenge.userId)
+    await this.redisService.resetStepUpUserFailures(challenge.userId)
 
     if (usedMethod === 'recovery') {
       this.eventEmitter.emit(

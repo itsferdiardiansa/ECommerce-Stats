@@ -147,6 +147,35 @@ export class RedisService {
     ])
   }
 
+  private stepUpUserFailKey(userId: number): string {
+    return `stepup:fail:${userId}`
+  }
+
+  /**
+   * Cumulative failed step-up attempts for a user across every challenge, so
+   * spinning up fresh challenges can't reset the attempt budget. Fixed window
+   * from the first failure.
+   */
+  async incrementStepUpUserFailures(
+    userId: number,
+    ttl: number
+  ): Promise<number> {
+    const key = this.stepUpUserFailKey(userId)
+    const count = await this.redisClient.incr(key)
+    if (count === 1) {
+      await this.redisClient.expire(key, ttl)
+    }
+    return count
+  }
+
+  async getStepUpUserFailures(userId: number): Promise<number> {
+    return (await this.get<number>(this.stepUpUserFailKey(userId))) ?? 0
+  }
+
+  async resetStepUpUserFailures(userId: number): Promise<void> {
+    await this.del(this.stepUpUserFailKey(userId))
+  }
+
   async setVerificationLockout(
     email: string,
     ttl = 3600,

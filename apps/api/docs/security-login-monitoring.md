@@ -441,6 +441,27 @@ The **active-challenge reuse** rule stays email-only. It exists because email
 costs money and can flood an inbox; applying it to TOTP would strand a user who
 simply mistyped a code.
 
+### Two attempt caps: per-challenge and per-user
+
+A TOTP login mints a **fresh** challenge each time (unlike email, which reuses an
+active one). So a per-challenge cap alone is resettable: an attacker who already
+has the password could loop `POST /auth/login` to get a new attempt budget every
+time and brute-force the 6-digit code, bounded only by the per-IP login throttle
+-- which rotating IPs defeats.
+
+Two caps therefore apply together:
+
+- **Per challenge** (`STEP_UP_MAX_ATTEMPTS`, `stepup:attempts:{id}`): wrong codes
+  for a single challenge; voids that challenge when exhausted.
+- **Per user** (`STEP_UP_MAX_USER_FAILURES`, `stepup:fail:{userId}`): cumulative
+  wrong codes across **every** challenge in a fixed window. When it trips, step-up
+  is locked for `STEP_UP_LOCKOUT_SECONDS` -- a brand-new challenge is rejected up
+  front (the correct code is not even checked), so fresh logins cannot reset the
+  budget. The lockout is checked before verifying, emits a single blocked-attempt
+  alert at the crossing (no per-request spam), and does not leak whether the code
+  was right. A successful step-up clears the counter, so an honest mistype never
+  accumulates toward a future lockout.
+
 A trusted browser still skips the challenge, TOTP or not -- that is what makes
 "remember this browser" worth having. Two limits apply: trust is opt-in, and
 enabling 2FA revokes every trusted device that predates it. Trust never
@@ -493,7 +514,8 @@ true when a user has no settings row).
 | `bruteforce:ip:{ip}`                | zset   | 15m    | failure sliding window per IP               |
 | `notif:sec:{userId}:{kind}:{scope}` | string | 24h    | notification dedupe                         |
 | `stepup:challenge:{id}`             | string | 10m    | pending step-up login context + OTP         |
-| `stepup:attempts:{id}`              | string | 10m    | atomic step-up attempt counter              |
+| `stepup:attempts:{id}`              | string | 10m    | atomic step-up attempt counter (per challenge) |
+| `stepup:fail:{userId}`              | string | 15m    | cumulative step-up failures across challenges |
 | `trusted:{tokenHash}`               | string | 30-90d | trusted-device hot lookup -> userId         |
 | `sudo:{jti}`                        | string | 5m     | auth-freshness grant for the session        |
 | `sudo:attempts:{jti}`               | string | 5m     | atomic sudo attempt counter                 |
@@ -600,6 +622,8 @@ Providers (both plain SMTP, no code change):
 | `STEP_UP_CODE_TTL_SECONDS`        | `300`     | step-up OTP lifetime                                  |
 | `STEP_UP_MAX_ATTEMPTS`            | `5`       | step-up attempts before the challenge is voided       |
 | `STEP_UP_CHALLENGE_TTL_SECONDS`   | `600`     | how long a pending step-up challenge lives            |
+| `STEP_UP_MAX_USER_FAILURES`       | `10`      | cumulative step-up failures per user before lockout   |
+| `STEP_UP_LOCKOUT_SECONDS`         | `900`     | step-up lockout duration after cumulative failures    |
 | `TRUSTED_DEVICE_TTL_SECONDS`      | `2592000` | how long an opted-in trusted browser lasts (30d)      |
 | `SUDO_TTL_SECONDS`                | `300`     | how long a re-authentication covers sensitive actions |
 | `SUDO_MAX_ATTEMPTS`               | `5`       | failed elevations before the session is locked out    |
