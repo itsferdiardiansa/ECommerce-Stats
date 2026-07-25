@@ -18,6 +18,7 @@ import type { Request, Response, CookieOptions } from 'express'
 import { Throttle, SkipThrottle } from '@nestjs/throttler'
 import { I18n, I18nContext } from 'nestjs-i18n'
 import { AuthService } from './auth.service'
+import { TrustedDeviceService } from './services/trusted-device.service'
 import { RegisterDto } from './dto/register.dto'
 import { VerifyEmailDto } from './dto/verify-email.dto'
 import { ResendVerificationDto } from './dto/resend-verification.dto'
@@ -51,6 +52,7 @@ export class AuthController {
 
   constructor(
     private readonly authService: AuthService,
+    private readonly trustedDevices: TrustedDeviceService,
     private readonly redisService: RedisService,
     private readonly jwtService: JwtService
   ) {}
@@ -268,7 +270,7 @@ export class AuthController {
     @CurrentUser() user: CurrentUserPayload,
     @I18n() i18n: I18nContext
   ) {
-    const result = await this.authService.listTrustedDevices(user.id, i18n)
+    const result = await this.trustedDevices.list(user.id, i18n)
     return success(result.message, result.data)
   }
 
@@ -284,7 +286,7 @@ export class AuthController {
     @Ip() ipAddress: string,
     @Headers('user-agent') userAgent: string
   ) {
-    const result = await this.authService.revokeTrustedDevice(
+    const result = await this.trustedDevices.revoke(
       user.id,
       id,
       i18n,

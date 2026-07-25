@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common'
 import { I18nContext } from 'nestjs-i18n'
 import { ConfigService } from '@nestjs/config'
-import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
+import { EventEmitter2 } from '@nestjs/event-emitter'
 import * as argon2 from 'argon2'
 import { createHash, randomBytes, randomUUID } from 'crypto'
 import {
@@ -41,6 +41,7 @@ import {
 } from './services/login-anomaly.service'
 import { TotpService } from './services/totp.service'
 import { MfaService } from './services/mfa.service'
+import { TrustedDeviceService } from './services/trusted-device.service'
 import type { AccessTokenPayload } from '@/modules/jwt/jwt.service'
 import type { RegisterDto } from './dto/register.dto'
 import type { VerifyEmailDto } from './dto/verify-email.dto'
@@ -57,8 +58,6 @@ import {
   generateVerificationCode,
   generateOrgSlug,
   pickPrimaryMembership,
-  generateTrustedDeviceToken,
-  hashTrustedDeviceToken,
 } from '@/utils/auth'
 import { Prisma } from '@rufieltics/db'
 import {
@@ -69,9 +68,7 @@ import {
   StepUpVerifiedEvent,
   StepUpBlockedEvent,
   PasswordChangedEvent,
-  SecurityMethodChangedEvent,
   RecoveryCodeUsedEvent,
-  TwoFactorEnabledEvent,
 } from './events'
 
 interface StoredSession {
@@ -110,7 +107,6 @@ export class AuthService {
   private readonly STEP_UP_CODE_TTL_SECONDS: number
   private readonly STEP_UP_MAX_ATTEMPTS: number
   private readonly STEP_UP_CHALLENGE_TTL_SECONDS: number
-  private readonly TRUSTED_DEVICE_TTL_SECONDS: number
 
   constructor(
     private readonly redisService: RedisService,
@@ -121,6 +117,7 @@ export class AuthService {
     private readonly mailQueue: MailQueueService,
     private readonly totpService: TotpService,
     private readonly mfaService: MfaService,
+    private readonly trustedDevices: TrustedDeviceService,
     config: ConfigService
   ) {
     this.VERIFICATION_CODE_TTL_SECONDS = config.get<number>(
@@ -148,10 +145,6 @@ export class AuthService {
     this.STEP_UP_CHALLENGE_TTL_SECONDS = config.get<number>(
       'security.stepUp.challengeTtlSeconds',
       600
-    )
-    this.TRUSTED_DEVICE_TTL_SECONDS = config.get<number>(
-      'security.trustedDevice.ttlSeconds',
-      2592000
     )
   }
 
@@ -587,7 +580,7 @@ export class AuthService {
       userAgent,
       ipAddress
     )
-    const trusted = await this.verifyTrustedDevice(
+    const trusted = await this.trustedDevices.verify(
       user.id,
       trustedDeviceToken,
       fingerprint
@@ -648,168 +641,6 @@ export class AuthService {
     if (hasTotp) return true
 
     return risk.length > 0
-  }
-
-  @OnEvent(AUTH_EVENTS.TWO_FACTOR_ENABLED)
-  async handleTwoFactorEnabled(event: TwoFactorEnabledEvent) {
-    const revoked = await TrustedDevices.revokeAllByUser(event.userId)
-    await Promise.all(
-      revoked.map(r => this.redisService.evictTrustedDevice(r.tokenHash))
-    )
-
-    const activeSessions = await Sessions.findActiveByUserId(event.userId)
-    const otherJtis = activeSessions
-      .map(s => s.jti)
-      .filter(jti => jti !== event.currentJti)
-
-    if (otherJtis.length === 0) return
-
-    await this.tokenDenylist.denyMany(
-      otherJtis,
-      this.jwtService.getAccessExpiresIn()
-    )
-    await Promise.all(
-      otherJtis.map(jti => this.redisService.deleteSession(jti))
-    )
-    await Sessions.revokeAllExceptJti(event.userId, event.currentJti)
-  }
-
-  /** Valid trusted-device token for the user? Redis hot path, Postgres fallback. */
-  private async verifyTrustedDevice(
-    userId: number,
-    rawToken: string | undefined,
-    fingerprint: string
-  ): Promise<boolean> {
-    if (!rawToken) return false
-    const tokenHash = hashTrustedDeviceToken(rawToken)
-
-    const cachedUserId = await this.redisService.getTrustedDeviceUser(tokenHash)
-    if (cachedUserId !== null) return cachedUserId === userId
-
-    const record = await TrustedDevices.findValidByTokenHash(tokenHash)
-    if (
-      !record ||
-      record.userId !== userId ||
-      record.deviceFingerprint !== fingerprint
-    ) {
-      return false
-    }
-
-    const ttl = Math.floor((record.expiresAt.getTime() - Date.now()) / 1000)
-    await this.redisService.cacheTrustedDevice(tokenHash, userId, ttl)
-    return true
-  }
-
-  /** Remembers the browser after a passed step-up; returns the cookie token + TTL. */
-  private async issueTrustedDevice(
-    userId: number,
-    userAgent: string | null,
-    ipAddress: string | null
-  ): Promise<{ token: string; ttlSeconds: number }> {
-    const token = generateTrustedDeviceToken()
-    const tokenHash = hashTrustedDeviceToken(token)
-    const ttlSeconds = this.TRUSTED_DEVICE_TTL_SECONDS
-
-    const {
-      hash: fingerprint,
-      device,
-      geo,
-    } = generateDeviceFingerprint(
-      userId,
-      userAgent ?? undefined,
-      ipAddress ?? undefined
-    )
-    const label = `${device.browser ?? 'Unknown'} on ${device.os ?? 'Unknown'}`
-
-    await TrustedDevices.create({
-      userId,
-      tokenHash,
-      deviceFingerprint: fingerprint,
-      label,
-      userAgent,
-      ipAddress,
-      expiresAt: new Date(Date.now() + ttlSeconds * 1000),
-    })
-    await this.redisService.cacheTrustedDevice(tokenHash, userId, ttlSeconds)
-
-    this.eventEmitter.emit(
-      AUTH_EVENTS.SECURITY_METHOD_CHANGED,
-      new SecurityMethodChangedEvent(
-        userId,
-        'trusted_device',
-        true,
-        ipAddress,
-        formatLocation(geo),
-        formatDevice(userAgent)
-      )
-    )
-
-    return { token, ttlSeconds }
-  }
-
-  /** Untrust the devices behind the given fingerprints (on session revoke). */
-  private async untrustDevices(
-    userId: number,
-    fingerprints: string[]
-  ): Promise<void> {
-    const unique = [...new Set(fingerprints.filter(Boolean))]
-    if (unique.length === 0) return
-
-    const revoked = await TrustedDevices.revokeByFingerprints(userId, unique)
-    await Promise.all([
-      ...revoked.map(r => this.redisService.evictTrustedDevice(r.tokenHash)),
-      ...unique.map(fp => this.redisService.forgetFactor('device', userId, fp)),
-    ])
-  }
-
-  async listTrustedDevices(userId: number, i18n: I18nContext) {
-    const devices = await TrustedDevices.listByUser(userId)
-    return {
-      message: i18n.t('auth.trusted_devices.list_success', {
-        defaultValue: 'Trusted devices retrieved successfully.',
-      }),
-      data: devices.map(d => ({
-        id: d.id,
-        label: d.label,
-        ipAddress: d.ipAddress,
-        lastUsedAt: d.lastUsedAt,
-        createdAt: d.createdAt,
-        expiresAt: d.expiresAt,
-      })),
-    }
-  }
-
-  async revokeTrustedDevice(
-    userId: number,
-    id: string,
-    i18n: I18nContext,
-    ipAddress?: string,
-    userAgent?: string
-  ) {
-    const record = await TrustedDevices.revokeById(userId, id)
-    if (!record) {
-      throw new NotFoundException(i18n.t('auth.trusted_devices.not_found'))
-    }
-    await this.redisService.evictTrustedDevice(record.tokenHash)
-
-    const { geo } = generateDeviceFingerprint(userId, userAgent, ipAddress)
-    this.eventEmitter.emit(
-      AUTH_EVENTS.SECURITY_METHOD_CHANGED,
-      new SecurityMethodChangedEvent(
-        userId,
-        'trusted_device',
-        false,
-        ipAddress || null,
-        formatLocation(geo),
-        formatDevice(userAgent)
-      )
-    )
-
-    return {
-      message: i18n.t('auth.trusted_devices.revoke_success', {
-        defaultValue: 'Trusted device removed.',
-      }),
-    }
   }
 
   /**
@@ -1078,7 +909,7 @@ export class AuthService {
     )
 
     const trustedDevice = trustDevice
-      ? await this.issueTrustedDevice(
+      ? await this.trustedDevices.issue(
           challenge.userId,
           sessionUserAgent ?? null,
           sessionIpAddress ?? null
@@ -1333,7 +1164,7 @@ export class AuthService {
 
     await Sessions.revokeAllExceptJti(userId, currentJti)
 
-    await this.untrustDevices(
+    await this.trustedDevices.untrustByFingerprints(
       userId,
       activeSessions
         .filter(s => s.jti !== currentJti)
@@ -1392,7 +1223,7 @@ export class AuthService {
 
     await Sessions.revokeSessionsByJtis(userId, jtis)
 
-    await this.untrustDevices(
+    await this.trustedDevices.untrustByFingerprints(
       userId,
       activeSessions
         .filter(s => jtis.includes(s.jti))
