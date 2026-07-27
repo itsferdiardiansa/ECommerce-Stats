@@ -15,6 +15,7 @@ import { PasskeyService } from './services/passkey.service'
 import { TrustedDeviceService } from './services/trusted-device.service'
 import { RegistrationService } from './services/registration.service'
 import { LoginService } from './services/login.service'
+import { StepUpService } from './services/step-up.service'
 import { AuthAuditListener } from './listeners/auth-audit.listener'
 import { SecurityAlertListener } from './listeners/security-alert.listener'
 
@@ -35,6 +36,7 @@ import { SecurityAlertListener } from './listeners/security-alert.listener'
     TrustedDeviceService,
     RegistrationService,
     LoginService,
+    StepUpService,
     SessionCleanupService,
     LoginAnomalyService,
     AuthAuditListener,

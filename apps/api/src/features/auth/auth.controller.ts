@@ -21,6 +21,7 @@ import { AuthService } from './auth.service'
 import { TrustedDeviceService } from './services/trusted-device.service'
 import { RegistrationService } from './services/registration.service'
 import { LoginService } from './services/login.service'
+import { StepUpService } from './services/step-up.service'
 import { RegisterDto } from './dto/register.dto'
 import { VerifyEmailDto } from './dto/verify-email.dto'
 import { ResendVerificationDto } from './dto/resend-verification.dto'
@@ -53,6 +54,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly registration: RegistrationService,
     private readonly loginService: LoginService,
+    private readonly stepUpService: StepUpService,
     private readonly trustedDevices: TrustedDeviceService,
     private readonly redisService: RedisService,
     private readonly jwtService: JwtService
@@ -172,7 +174,7 @@ export class AuthController {
       trustedDeviceToken,
       trustedDeviceTtl,
       ...result
-    } = await this.loginService.verifyStepUp(
+    } = await this.stepUpService.verifyStepUp(
       dto.challengeId,
       dto.code,
       dto.method,
@@ -202,7 +204,7 @@ export class AuthController {
     @Body() dto: PasskeyOptionsDto,
     @I18n() i18n: I18nContext
   ) {
-    const options = await this.loginService.initiatePasskeyLoginOptions(
+    const options = await this.stepUpService.initiatePasskeyLoginOptions(
       dto.challengeId,
       i18n
     )
@@ -225,7 +227,7 @@ export class AuthController {
       trustedDeviceToken,
       trustedDeviceTtl,
       ...result
-    } = await this.loginService.verifyPasskeyLogin(
+    } = await this.stepUpService.verifyPasskeyLogin(
       dto.challengeId,
       dto.response as unknown as AuthenticationResponseJSON,
       i18n,
