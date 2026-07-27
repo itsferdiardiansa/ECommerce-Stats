@@ -1,6 +1,6 @@
 export * from './accounts'
-export * from './authenticators'
 export * from './login-history'
+export * from './passkey'
 export * from './password-history'
 export * from './recovery-code'
 export * from './sessions'

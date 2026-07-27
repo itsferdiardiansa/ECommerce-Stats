@@ -21,7 +21,7 @@ model User {
   
   sessions              Session[]
   accounts              Account[]
-  authenticators        Authenticator[]
+  passkeys              Passkey[]
   loginHistory          LoginHistory[]
   trustedDevices        TrustedDevice[]
   passwordHistory       PasswordHistory[]

@@ -81,19 +81,28 @@ model RecoveryCode {
   @@schema("auth")
 }
 
-model Authenticator {
-  credentialID         String  @unique
-  userId               Int
-  providerAccountId    String
-  credentialPublicKey  String
-  counter              Int
-  credentialDeviceType String
-  credentialBackedUp   Boolean
-  transports           String?
+// A WebAuthn credential (passkey). Phishing-resistant second factor: the private
+// key never leaves the authenticator, and the browser only signs for this app's
+// RP ID. counter/publicKey/credentialId are base64url. userHandle is stored so a
+// later passwordless-primary phase needs no re-enrolment.
+model Passkey {
+  id           String    @id @default(cuid())
+  userId       Int
+  credentialId String    @unique
+  publicKey    String
+  counter      BigInt     @default(0)
+  deviceType   String
+  backedUp     Boolean   @default(false)
+  transports   String[]
+  userHandle   String
+  name         String?
+  aaguid       String?
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@id([userId, credentialID])
+  @@index([userId])
   @@schema("auth")
 }
 
