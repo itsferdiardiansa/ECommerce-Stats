@@ -72,6 +72,9 @@ export type I18nTranslations = {
             "password_reused": string;
             "step_up_expects_totp": string;
             "step_up_expects_email": string;
+            "step_up_expects_passkey": string;
+            "step_up_invalid_passkey": string;
+            "passkey_login_failed": string;
         };
         "validation": {
             "code_length": string;
@@ -79,6 +82,7 @@ export type I18nTranslations = {
         };
         "step_up": {
             "success": string;
+            "passkey_options": string;
         };
         "trusted_devices": {
             "list_success": string;
@@ -92,6 +96,8 @@ export type I18nTranslations = {
             "invalid_password": string;
             "too_many_attempts": string;
             "invalid_code": string;
+            "invalid_passkey": string;
+            "passkey_options": string;
         };
         "password": {
             "change_success": string;
@@ -106,6 +112,16 @@ export type I18nTranslations = {
             "not_started": string;
             "not_enabled": string;
             "invalid_code": string;
+            "passkey": {
+                "list_success": string;
+                "enrolment_started": string;
+                "added": string;
+                "renamed": string;
+                "removed": string;
+                "not_started": string;
+                "invalid": string;
+                "not_found": string;
+            };
         };
     };
     "common": {

@@ -93,6 +93,22 @@ export default () => ({
         10
       ),
     },
+    webauthn: {
+      // RP ID is the credential's domain: `localhost` in dev, the registrable
+      // parent (e.g. `rufieltics.com`) in prod -- never the API subdomain.
+      rpId: process.env.WEBAUTHN_RP_ID || 'localhost',
+      rpName: process.env.WEBAUTHN_RP_NAME || 'Rufieltics',
+      // Exact origin(s) where the ceremony runs (the web app). Comma-separated
+      // to allow more than one (e.g. dev + preview).
+      origins: (process.env.WEBAUTHN_ORIGIN || 'http://localhost:6001')
+        .split(',')
+        .map(o => o.trim())
+        .filter(Boolean),
+      challengeTtlSeconds: parseInt(
+        process.env.WEBAUTHN_CHALLENGE_TTL_SECONDS || '120',
+        10
+      ),
+    },
   },
   geo: {
     ipinfoToken: process.env.IPINFO_TOKEN || '',

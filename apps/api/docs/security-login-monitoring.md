@@ -478,6 +478,86 @@ TOTP is also a sudo elevation method (`POST /auth/sudo` with
 `{ method: "totp", code }`), so every sudo-guarded route gains a real second
 factor without further change.
 
+## Passkeys (WebAuthn)
+
+TOTP closes password reuse and bulk attacks but leaves one gap: a real-time
+phishing proxy can relay a 6-digit code inside its window. Passkeys close it. A
+passkey is a key pair bound by the browser to the site's **RP ID**; the private
+key never leaves the authenticator, and the browser refuses to sign for any other
+origin. A proxied assertion is therefore rejected in hardware -- the factor is
+phishing-resistant by construction. Built with `@simplewebauthn/server`.
+
+Passkeys are a **second factor** today, but each credential is stored
+passwordless-ready (a stable `userHandle`, `residentKey: "preferred"`) so a later
+passwordless-primary phase needs no re-enrolment.
+
+### RP configuration (read this before deploying)
+
+Three env values, validated at boot (production refuses to start on dev values):
+
+| Env                | Meaning                                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------------------------- |
+| `WEBAUTHN_RP_ID`   | the credential's **domain** -- `localhost` in dev, the registrable parent (e.g. `rufieltics.com`) in prod |
+| `WEBAUTHN_RP_NAME` | user-visible name in the OS prompt                                                                        |
+| `WEBAUTHN_ORIGIN`  | the exact origin(s) where the ceremony runs, comma-separated                                              |
+
+The rules that break deployments if ignored:
+
+- **RP ID must be the origin's domain or a registrable parent of it** -- never a
+  bare TLD, never the API's own subdomain.
+- **The ceremony runs in the browser on the web app's origin**, but verification
+  runs in this API. So `WEBAUTHN_ORIGIN` is the **web app's** origin, not the
+  API's. In a split-subdomain setup (web `app.example.com`, API
+  `api.example.com`), set `WEBAUTHN_RP_ID=example.com` and
+  `WEBAUTHN_ORIGIN=https://app.example.com`.
+- `localhost` is exempt from the HTTPS requirement, so local dev needs no deploy.
+
+### The two ceremonies
+
+Both registration and authentication are: server issues options with a random
+challenge (stored single-use in Redis, ~2 min) -> the browser signs with the
+authenticator -> server verifies against the stored challenge.
+
+**Enrolment** (session + sudo, under `auth/mfa`):
+
+| Endpoint                          | Result                                                              |
+| --------------------------------- | ------------------------------------------------------------------- |
+| `POST /auth/mfa/passkeys/options` | registration options (+ Redis challenge)                            |
+| `POST /auth/mfa/passkeys/verify`  | verify + store; emits `SecurityMethodChangedEvent('passkey', true)` |
+| `GET /auth/mfa/passkeys`          | list (name, createdAt, lastUsedAt)                                  |
+| `PATCH /auth/mfa/passkeys/:id`    | rename                                                              |
+| `DELETE /auth/mfa/passkeys/:id`   | remove; emits `SecurityMethodChangedEvent('passkey', false)`        |
+
+Adding the **first** passkey resets the trust boundary (revokes trusted devices)
+exactly like enabling TOTP, and sets `isTwoFactorEnabled`. `isTwoFactorEnabled`
+means "holds at least one strong factor", recomputed across TOTP + passkeys on
+every add/remove.
+
+**Login.** A passkey assertion is a JSON object, not a 6-char code, so it cannot
+ride the `code`-based step-up route. Instead `initiateStepUp` advertises
+`passkey` in `availableMethods` (preferred over TOTP), and the client completes it
+via a dedicated pair:
+
+- `POST /auth/login/passkey/options` (`{ challengeId }`) -> assertion options
+- `POST /auth/login/passkey/verify` (`{ challengeId, response, trustDevice? }`) ->
+  verifies and issues the session through the same tail as `verifyStepUp`
+  (`completeStepUp`). The per-user cumulative failure cap and `STEP_UP_BLOCKED`
+  alert apply here too.
+
+**Sudo.** `POST /auth/sudo/passkey/options` then `POST /auth/sudo` with
+`{ method: "passkey", response }`, so sudo-guarded routes gain passkey elevation.
+
+The library handles counter-regression (clone) detection and correctly **skips it
+when the counter stays 0**, which is normal for synced/cloud passkeys.
+
+**User verification is required** on every path -- registration, second-factor
+authentication, and passwordless (`userVerification: 'required'` +
+`requireUserVerification: true`). The biometric/PIN is what makes a passkey a
+genuine second (or, passwordless, sole) factor, so a possession-only assertion is
+rejected. Platform authenticators (Touch ID, Windows Hello) always perform UV, so
+this is free for the common case; PIN-less roaming keys are excluded (the password
+remains the fallback).
+
 ## Location resolution
 
 Notification emails show "City, Region, Country" via `GeoService`
@@ -506,22 +586,25 @@ true when a user has no settings row).
 
 ## Redis keys
 
-| Key                                 | Type   | TTL    | Purpose                                     |
-| ----------------------------------- | ------ | ------ | ------------------------------------------- |
-| `known:device:{userId}`             | set    | 90d    | seen device fingerprints (new-device cache) |
-| `known:country:{userId}`            | set    | 90d    | seen countries (new-country cache)          |
-| `bruteforce:user:{userId}`          | zset   | 15m    | failure sliding window per user             |
-| `bruteforce:ip:{ip}`                | zset   | 15m    | failure sliding window per IP               |
-| `notif:sec:{userId}:{kind}:{scope}` | string | 24h    | notification dedupe                         |
-| `stepup:challenge:{id}`             | string | 10m    | pending step-up login context + OTP         |
+| Key                                 | Type   | TTL    | Purpose                                        |
+| ----------------------------------- | ------ | ------ | ---------------------------------------------- |
+| `known:device:{userId}`             | set    | 90d    | seen device fingerprints (new-device cache)    |
+| `known:country:{userId}`            | set    | 90d    | seen countries (new-country cache)             |
+| `bruteforce:user:{userId}`          | zset   | 15m    | failure sliding window per user                |
+| `bruteforce:ip:{ip}`                | zset   | 15m    | failure sliding window per IP                  |
+| `notif:sec:{userId}:{kind}:{scope}` | string | 24h    | notification dedupe                            |
+| `stepup:challenge:{id}`             | string | 10m    | pending step-up login context + OTP            |
 | `stepup:attempts:{id}`              | string | 10m    | atomic step-up attempt counter (per challenge) |
-| `stepup:fail:{userId}`              | string | 15m    | cumulative step-up failures across challenges |
-| `trusted:{tokenHash}`               | string | 30-90d | trusted-device hot lookup -> userId         |
-| `sudo:{jti}`                        | string | 5m     | auth-freshness grant for the session        |
-| `sudo:attempts:{jti}`               | string | 5m     | atomic sudo attempt counter                 |
-| `geo:loc:{ip}`                      | string | 24h    | resolved location cache                     |
-| `bull:security-notifications:*`     | bullmq | --     | delivery queue                              |
-| `bull:mail:*`                       | bullmq | --     | mail delivery queue                         |
+| `stepup:fail:{userId}`              | string | 15m    | cumulative step-up failures across challenges  |
+| `trusted:{tokenHash}`               | string | 30-90d | trusted-device hot lookup -> userId            |
+| `sudo:{jti}`                        | string | 5m     | auth-freshness grant for the session           |
+| `sudo:attempts:{jti}`               | string | 5m     | atomic sudo attempt counter                    |
+| `webauthn:reg:{userId}`             | string | 2m     | pending passkey registration challenge         |
+| `webauthn:auth:{challengeId}`       | string | 2m     | pending passkey login challenge                |
+| `webauthn:sudo:{jti}`               | string | 2m     | pending passkey sudo-elevation challenge       |
+| `geo:loc:{ip}`                      | string | 24h    | resolved location cache                        |
+| `bull:security-notifications:*`     | bullmq | --     | delivery queue                                 |
+| `bull:mail:*`                       | bullmq | --     | mail delivery queue                            |
 
 ## Project structure
 
@@ -609,25 +692,29 @@ Providers (both plain SMTP, no code change):
 
 **Detection & step-up tunables**
 
-| Env                               | Default   | Controls                                              |
-| --------------------------------- | --------- | ----------------------------------------------------- |
-| `BRUTE_FORCE_WINDOW_SECONDS`      | `900`     | sliding window for failure counting                   |
-| `BRUTE_FORCE_THRESHOLD`           | `5`       | failures (per user or IP) that trip `BRUTE_FORCE`     |
-| `IMPOSSIBLE_TRAVEL_KMH`           | `900`     | speed above which travel is "impossible"              |
-| `KNOWN_FACTOR_TTL_SECONDS`        | `7776000` | how long a device/location stays "known" (90d)        |
-| `NOTIFICATION_DEDUPE_TTL_SECONDS` | `86400`   | notification dedupe window (24h)                      |
-| `VERIFICATION_CODE_TTL_SECONDS`   | `300`     | email verification code lifetime                      |
-| `VERIFICATION_MAX_ATTEMPTS`       | `5`       | verification attempts before lockout                  |
-| `VERIFICATION_LOCKOUT_SECONDS`    | `3600`    | verification lockout duration                         |
-| `STEP_UP_CODE_TTL_SECONDS`        | `300`     | step-up OTP lifetime                                  |
-| `STEP_UP_MAX_ATTEMPTS`            | `5`       | step-up attempts before the challenge is voided       |
-| `STEP_UP_CHALLENGE_TTL_SECONDS`   | `600`     | how long a pending step-up challenge lives            |
-| `STEP_UP_MAX_USER_FAILURES`       | `10`      | cumulative step-up failures per user before lockout   |
-| `STEP_UP_LOCKOUT_SECONDS`         | `900`     | step-up lockout duration after cumulative failures    |
-| `TRUSTED_DEVICE_TTL_SECONDS`      | `2592000` | how long an opted-in trusted browser lasts (30d)      |
-| `SUDO_TTL_SECONDS`                | `300`     | how long a re-authentication covers sensitive actions |
-| `SUDO_MAX_ATTEMPTS`               | `5`       | failed elevations before the session is locked out    |
-| `IPINFO_TOKEN`                    | (unset)   | ipinfo.io token for city/region in email location     |
+| Env                               | Default                 | Controls                                              |
+| --------------------------------- | ----------------------- | ----------------------------------------------------- |
+| `BRUTE_FORCE_WINDOW_SECONDS`      | `900`                   | sliding window for failure counting                   |
+| `BRUTE_FORCE_THRESHOLD`           | `5`                     | failures (per user or IP) that trip `BRUTE_FORCE`     |
+| `IMPOSSIBLE_TRAVEL_KMH`           | `900`                   | speed above which travel is "impossible"              |
+| `KNOWN_FACTOR_TTL_SECONDS`        | `7776000`               | how long a device/location stays "known" (90d)        |
+| `NOTIFICATION_DEDUPE_TTL_SECONDS` | `86400`                 | notification dedupe window (24h)                      |
+| `VERIFICATION_CODE_TTL_SECONDS`   | `300`                   | email verification code lifetime                      |
+| `VERIFICATION_MAX_ATTEMPTS`       | `5`                     | verification attempts before lockout                  |
+| `VERIFICATION_LOCKOUT_SECONDS`    | `3600`                  | verification lockout duration                         |
+| `STEP_UP_CODE_TTL_SECONDS`        | `300`                   | step-up OTP lifetime                                  |
+| `STEP_UP_MAX_ATTEMPTS`            | `5`                     | step-up attempts before the challenge is voided       |
+| `STEP_UP_CHALLENGE_TTL_SECONDS`   | `600`                   | how long a pending step-up challenge lives            |
+| `STEP_UP_MAX_USER_FAILURES`       | `10`                    | cumulative step-up failures per user before lockout   |
+| `STEP_UP_LOCKOUT_SECONDS`         | `900`                   | step-up lockout duration after cumulative failures    |
+| `TRUSTED_DEVICE_TTL_SECONDS`      | `2592000`               | how long an opted-in trusted browser lasts (30d)      |
+| `SUDO_TTL_SECONDS`                | `300`                   | how long a re-authentication covers sensitive actions |
+| `SUDO_MAX_ATTEMPTS`               | `5`                     | failed elevations before the session is locked out    |
+| `WEBAUTHN_RP_ID`                  | `localhost`             | passkey RP ID (domain); real domain required in prod  |
+| `WEBAUTHN_RP_NAME`                | `Rufieltics`            | passkey display name in the OS prompt                 |
+| `WEBAUTHN_ORIGIN`                 | `http://localhost:6001` | web-app origin(s) where the ceremony runs             |
+| `WEBAUTHN_CHALLENGE_TTL_SECONDS`  | `120`                   | passkey challenge lifetime                            |
+| `IPINFO_TOKEN`                    | (unset)                 | ipinfo.io token for city/region in email location     |
 
 BullMQ and the Redis caches reuse the existing `REDIS_HOST` / `REDIS_PORT` /
 `REDIS_PASSWORD` / `REDIS_DB` connection.

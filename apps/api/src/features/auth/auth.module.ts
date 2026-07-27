@@ -11,6 +11,7 @@ import { LoginAnomalyService } from './services/login-anomaly.service'
 import { SudoService } from './services/sudo.service'
 import { TotpService } from './services/totp.service'
 import { MfaService } from './services/mfa.service'
+import { PasskeyService } from './services/passkey.service'
 import { TrustedDeviceService } from './services/trusted-device.service'
 import { RegistrationService } from './services/registration.service'
 import { LoginService } from './services/login.service'
@@ -30,6 +31,7 @@ import { SecurityAlertListener } from './listeners/security-alert.listener'
     SudoService,
     TotpService,
     MfaService,
+    PasskeyService,
     TrustedDeviceService,
     RegistrationService,
     LoginService,

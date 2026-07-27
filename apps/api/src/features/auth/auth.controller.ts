@@ -26,6 +26,9 @@ import { VerifyEmailDto } from './dto/verify-email.dto'
 import { ResendVerificationDto } from './dto/resend-verification.dto'
 import { LoginDto } from './dto/login.dto'
 import { StepUpDto } from './dto/step-up.dto'
+import { PasskeyOptionsDto, VerifyPasskeyLoginDto } from './dto/passkey.dto'
+import { PasswordlessAuthDto } from './dto/passwordless.dto'
+import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
 import { RevokeSessionsDto } from './dto/revoke-sessions.dto'
 import { ChangePasswordDto } from './dto/change-password.dto'
 import { created, success } from '@/common/helpers/api-response.helper'
@@ -190,6 +193,91 @@ export class AuthController {
     }
 
     return success(i18n.t('auth.step_up.success'), result)
+  }
+
+  @Post('login/passkey/options')
+  @Throttle(authThrottle())
+  @HttpCode(HttpStatus.OK)
+  async passkeyLoginOptions(
+    @Body() dto: PasskeyOptionsDto,
+    @I18n() i18n: I18nContext
+  ) {
+    const options = await this.loginService.initiatePasskeyLoginOptions(
+      dto.challengeId,
+      i18n
+    )
+    return success(i18n.t('auth.step_up.passkey_options'), options)
+  }
+
+  @Post('login/passkey/verify')
+  @Throttle(authThrottle())
+  @HttpCode(HttpStatus.OK)
+  async passkeyLoginVerify(
+    @Body() dto: VerifyPasskeyLoginDto,
+    @I18n() i18n: I18nContext,
+    @Ip() ipAddress: string,
+    @Headers('user-agent') userAgent: string,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const {
+      refreshToken,
+      rawDeviceSecret,
+      trustedDeviceToken,
+      trustedDeviceTtl,
+      ...result
+    } = await this.loginService.verifyPasskeyLogin(
+      dto.challengeId,
+      dto.response as unknown as AuthenticationResponseJSON,
+      i18n,
+      ipAddress,
+      userAgent,
+      dto.trustDevice
+    )
+
+    res.cookie('refreshToken', refreshToken, this.getCookieOptions())
+    res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
+    if (trustedDeviceToken) {
+      res.cookie(
+        'trustedDevice',
+        trustedDeviceToken,
+        this.getTrustedCookieOptions(trustedDeviceTtl)
+      )
+    }
+
+    return success(i18n.t('auth.step_up.success'), result)
+  }
+
+  @Post('login/passkey/discover')
+  @Throttle(authThrottle())
+  @HttpCode(HttpStatus.OK)
+  async passkeyDiscover(@I18n() i18n: I18nContext) {
+    const result = await this.loginService.beginPasskeyDiscovery()
+    return success(i18n.t('auth.step_up.passkey_options'), result)
+  }
+
+  @Post('login/passkey/authenticate')
+  @Throttle(authThrottle())
+  @HttpCode(HttpStatus.OK)
+  async passkeyAuthenticate(
+    @Body() dto: PasswordlessAuthDto,
+    @I18n() i18n: I18nContext,
+    @Ip() ipAddress: string,
+    @Headers('user-agent') userAgent: string,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const { refreshToken, rawDeviceSecret, ...result } =
+      await this.loginService.finishPasskeyDiscovery(
+        dto.challengeId,
+        dto.response as unknown as AuthenticationResponseJSON,
+        i18n,
+        ipAddress,
+        userAgent
+      )
+
+    res.cookie('refreshToken', refreshToken, this.getCookieOptions())
+    res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
+
+    return success(i18n.t('auth.login.success'), result)
   }
 
   @Post('refresh')

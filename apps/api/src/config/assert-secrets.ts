@@ -36,6 +36,17 @@ export function assertProductionSecrets(env: NodeJS.ProcessEnv = process.env) {
     }
   }
 
+  // WebAuthn RP config is not secret, but a wrong/dev value silently breaks every
+  // passkey ceremony, so production must set real values.
+  const rpId = env.WEBAUTHN_RP_ID
+  const origin = env.WEBAUTHN_ORIGIN
+  if (!rpId || rpId === 'localhost') {
+    problems.push('WEBAUTHN_RP_ID is not set to a production domain')
+  }
+  if (!origin || origin.includes('localhost')) {
+    problems.push('WEBAUTHN_ORIGIN is not set to a production origin')
+  }
+
   if (problems.length > 0) {
     throw new Error(
       `Refusing to start in production: ${problems.join('; ')}. ` +

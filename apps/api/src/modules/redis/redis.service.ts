@@ -176,6 +176,34 @@ export class RedisService {
     await this.del(this.stepUpUserFailKey(userId))
   }
 
+  private webauthnChallengeKey(scope: string, id: string | number): string {
+    return `webauthn:${scope}:${id}`
+  }
+
+  /** Short-lived WebAuthn challenge (single-use); scope is reg | auth | sudo. */
+  async setWebauthnChallenge(
+    scope: string,
+    id: string | number,
+    data: object,
+    ttl: number
+  ): Promise<void> {
+    await this.set(this.webauthnChallengeKey(scope, id), data, ttl)
+  }
+
+  async getWebauthnChallenge<T = Record<string, unknown>>(
+    scope: string,
+    id: string | number
+  ): Promise<T | null> {
+    return this.get<T>(this.webauthnChallengeKey(scope, id))
+  }
+
+  async deleteWebauthnChallenge(
+    scope: string,
+    id: string | number
+  ): Promise<void> {
+    await this.del(this.webauthnChallengeKey(scope, id))
+  }
+
   async setVerificationLockout(
     email: string,
     ttl = 3600,

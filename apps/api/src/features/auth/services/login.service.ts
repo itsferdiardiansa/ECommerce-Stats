@@ -8,16 +8,21 @@ import { I18nContext } from 'nestjs-i18n'
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import * as argon2 from 'argon2'
 import { randomUUID, randomBytes } from 'crypto'
-import { getUserByEmail } from '@rufieltics/db/domains/identity/user'
+import {
+  getUserByEmail,
+  getSessionUser,
+} from '@rufieltics/db/domains/identity/user'
 import { OrganizationMembers } from '@rufieltics/db/domains/identity/organization'
 import { Totp, RecoveryCodes } from '@rufieltics/db/domains/auth'
 import { RedisService } from '@/modules/redis/redis.service'
 import { MailQueueService } from '@/modules/mail/mail-queue.service'
 import { MailPriority } from '@/modules/mail/mail.constants'
 import { renderEmail } from '@rufieltics/emails'
+import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
 import { LoginAnomalyService, RiskSignal } from './login-anomaly.service'
 import { TotpService } from './totp.service'
 import { MfaService } from './mfa.service'
+import { PasskeyService } from './passkey.service'
 import { TrustedDeviceService } from './trusted-device.service'
 import { AuthService } from '../auth.service'
 import {
@@ -37,7 +42,7 @@ import {
 } from '../events'
 import type { LoginDto } from '../dto/login.dto'
 
-export type StepUpMethod = 'email' | 'totp' | 'recovery'
+export type StepUpMethod = 'email' | 'totp' | 'recovery' | 'passkey'
 
 interface StepUpChallenge {
   userId: number
@@ -47,6 +52,7 @@ interface StepUpChallenge {
   orgId: string | null
   code: string | null
   method: StepUpMethod
+  availableMethods: StepUpMethod[]
   userAgent: string | null
   ipAddress: string | null
 }
@@ -67,6 +73,7 @@ export class LoginService {
     private readonly mailQueue: MailQueueService,
     private readonly totpService: TotpService,
     private readonly mfaService: MfaService,
+    private readonly passkeyService: PasskeyService,
     private readonly trustedDevices: TrustedDeviceService,
     config: ConfigService
   ) {
@@ -181,15 +188,20 @@ export class LoginService {
       longitude: previewGeo.longitude,
     })
 
-    const hasTotp = (await Totp.findConfirmed(user.id)) !== null
+    const [hasTotp, passkeyCount] = await Promise.all([
+      Totp.findConfirmed(user.id).then(t => t !== null),
+      this.passkeyService.count(user.id),
+    ])
+    const hasPasskey = passkeyCount > 0
 
-    if (this.shouldChallenge(hasTotp, trusted, risk)) {
+    if (this.shouldChallenge(hasTotp || hasPasskey, trusted, risk)) {
       return this.initiateStepUp(
         user,
         role,
         orgId,
         i18n.lang,
         hasTotp,
+        hasPasskey,
         userAgent,
         ipAddress
       )
@@ -219,13 +231,13 @@ export class LoginService {
   }
 
   private shouldChallenge(
-    hasTotp: boolean,
+    has2fa: boolean,
     trusted: boolean,
     risk: RiskSignal[]
   ): boolean {
     if (risk.includes(RiskSignal.IMPOSSIBLE_TRAVEL)) return true
     if (trusted) return false
-    if (hasTotp) return true
+    if (has2fa) return true
 
     return risk.length > 0
   }
@@ -282,11 +294,16 @@ export class LoginService {
     orgId: string | null,
     locale: string,
     hasTotp: boolean,
+    hasPasskey: boolean,
     userAgent?: string,
     ipAddress?: string
   ) {
-    const method: StepUpMethod = hasTotp ? 'totp' : 'email'
-    const availableMethods = hasTotp ? ['totp', 'recovery'] : ['email']
+    // Prefer the strongest factor available: passkey > totp > email.
+    const availableMethods: StepUpMethod[] = []
+    if (hasPasskey) availableMethods.push('passkey')
+    if (hasTotp) availableMethods.push('totp', 'recovery')
+    if (availableMethods.length === 0) availableMethods.push('email')
+    const method = availableMethods[0]
 
     const userKey = this.stepUpUserKey(user.id)
     if (method === 'email') {
@@ -316,6 +333,7 @@ export class LoginService {
       orgId,
       code,
       method,
+      availableMethods,
       userAgent: userAgent ?? null,
       ipAddress: ipAddress ?? null,
     }
@@ -362,11 +380,12 @@ export class LoginService {
     method: StepUpMethod,
     code: string
   ): Promise<boolean> {
+    // Which factor is allowed is already gated by challenge.availableMethods;
+    // here each factor is verified against the user's real credentials (email
+    // is the exception: it matches the code minted into this challenge).
     if (method === 'email') {
       return challenge.method === 'email' && challenge.code === code
     }
-
-    if (challenge.method !== 'totp') return false
 
     if (method === 'recovery') {
       return this.mfaService.consumeRecoveryCode(challenge.userId, code)
@@ -406,16 +425,13 @@ export class LoginService {
     }
 
     const usedMethod = method
-    const allowedMethods: StepUpMethod[] =
-      challenge.method === 'email' ? ['email'] : ['totp', 'recovery']
+    // Passkey is answered through its own /login/passkey/verify route, so it is
+    // not a code-based method here.
+    const allowedMethods: StepUpMethod[] = challenge.availableMethods.filter(
+      m => m !== 'passkey'
+    )
     if (!allowedMethods.includes(usedMethod)) {
-      throw new BadRequestException(
-        i18n.t(
-          challenge.method === 'totp'
-            ? 'auth.errors.step_up_expects_totp'
-            : 'auth.errors.step_up_expects_email'
-        )
-      )
+      throw new BadRequestException(i18n.t(this.stepUpExpectsKey(challenge)))
     }
 
     const userFailures = await this.redisService.getStepUpUserFailures(
@@ -464,7 +480,152 @@ export class LoginService {
       )
     }
 
-    // Issue the session for the device that was challenged at login.
+    return this.completeStepUp(challenge, ipAddress, userAgent, trustDevice)
+  }
+
+  /** Issues assertion options for a passkey step-up already under way. */
+  async initiatePasskeyLoginOptions(challengeId: string, i18n: I18nContext) {
+    const challenge =
+      await this.redisService.getStepUpChallenge<StepUpChallenge>(challengeId)
+    if (!challenge) {
+      throw new UnauthorizedException(i18n.t('auth.errors.step_up_expired'))
+    }
+    if (!challenge.availableMethods.includes('passkey')) {
+      throw new BadRequestException(i18n.t(this.stepUpExpectsKey(challenge)))
+    }
+    return this.passkeyService.beginAuthentication(
+      'login',
+      challengeId,
+      challenge.userId
+    )
+  }
+
+  /** Completes a passkey step-up: verifies the assertion, then issues a session. */
+  async verifyPasskeyLogin(
+    challengeId: string,
+    response: AuthenticationResponseJSON,
+    i18n: I18nContext,
+    ipAddress?: string,
+    userAgent?: string,
+    trustDevice = false
+  ) {
+    const challenge =
+      await this.redisService.getStepUpChallenge<StepUpChallenge>(challengeId)
+    if (!challenge) {
+      throw new UnauthorizedException(i18n.t('auth.errors.step_up_expired'))
+    }
+    if (!challenge.availableMethods.includes('passkey')) {
+      throw new BadRequestException(i18n.t(this.stepUpExpectsKey(challenge)))
+    }
+
+    const userFailures = await this.redisService.getStepUpUserFailures(
+      challenge.userId
+    )
+    if (userFailures >= this.STEP_UP_MAX_USER_FAILURES) {
+      throw new UnauthorizedException(
+        i18n.t('auth.errors.step_up_too_many_attempts')
+      )
+    }
+
+    const verifiedUserId = await this.passkeyService.finishAuthentication(
+      'login',
+      challengeId,
+      response
+    )
+
+    if (verifiedUserId !== challenge.userId) {
+      const cumulative = await this.redisService.incrementStepUpUserFailures(
+        challenge.userId,
+        this.STEP_UP_LOCKOUT_SECONDS
+      )
+      if (cumulative >= this.STEP_UP_MAX_USER_FAILURES) {
+        await this.failStepUp(challengeId, challenge, i18n)
+      }
+      throw new UnauthorizedException(
+        i18n.t('auth.errors.step_up_invalid_passkey')
+      )
+    }
+
+    await this.voidStepUpChallenge(challengeId, challenge.userId)
+    await this.redisService.resetStepUpUserFailures(challenge.userId)
+
+    return this.completeStepUp(challenge, ipAddress, userAgent, trustDevice)
+  }
+
+  /** Passwordless: issues discoverable-credential options for conditional UI. */
+  async beginPasskeyDiscovery() {
+    const challengeId = randomUUID()
+    const options =
+      await this.passkeyService.beginDiscoverableAuthentication(challengeId)
+    return { challengeId, options }
+  }
+
+  /**
+   * Passwordless: verifies the assertion and issues a session directly. The
+   * passkey (with user verification) is the sole factor -- no password, no
+   * step-up.
+   */
+  async finishPasskeyDiscovery(
+    challengeId: string,
+    response: AuthenticationResponseJSON,
+    i18n: I18nContext,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
+    const userId = await this.passkeyService.finishDiscoverableAuthentication(
+      challengeId,
+      response
+    )
+    const user = userId ? await getSessionUser(userId) : null
+    if (!user) {
+      throw new UnauthorizedException(
+        i18n.t('auth.errors.passkey_login_failed')
+      )
+    }
+
+    const memberships = await OrganizationMembers.listByUser(user.id)
+    const primary = pickPrimaryMembership(memberships)
+
+    const { geo, deviceFingerprint, ...session } =
+      await this.authService.initiateSession(
+        user,
+        primary?.role ?? null,
+        primary?.organizationId ?? null,
+        userAgent,
+        ipAddress
+      )
+
+    this.eventEmitter.emit(
+      AUTH_EVENTS.LOGIN_SUCCESS,
+      new LoginSuccessEvent(
+        user.id,
+        ipAddress || null,
+        userAgent || null,
+        deviceFingerprint,
+        geo
+      )
+    )
+
+    return session
+  }
+
+  private stepUpExpectsKey(challenge: StepUpChallenge): string {
+    if (challenge.availableMethods.includes('passkey')) {
+      return 'auth.errors.step_up_expects_passkey'
+    }
+    if (challenge.availableMethods.includes('totp')) {
+      return 'auth.errors.step_up_expects_totp'
+    }
+    return 'auth.errors.step_up_expects_email'
+  }
+
+  /** Shared tail: issue the session for the challenged device and fire events. */
+  private async completeStepUp(
+    challenge: StepUpChallenge,
+    ipAddress: string | undefined,
+    userAgent: string | undefined,
+    trustDevice: boolean
+  ) {
     const sessionUserAgent = challenge.userAgent ?? userAgent
     const sessionIpAddress = challenge.ipAddress ?? ipAddress
 

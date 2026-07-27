@@ -7,15 +7,18 @@ import { ConfigService } from '@nestjs/config'
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import { I18nContext } from 'nestjs-i18n'
 import * as argon2 from 'argon2'
-import { Totp, RecoveryCodes } from '@rufieltics/db/domains/auth'
+import { Totp, RecoveryCodes, Passkeys } from '@rufieltics/db/domains/auth'
 import {
   getUserCredentials,
   updateUser,
 } from '@rufieltics/db/domains/identity/user'
+import type { RegistrationResponseJSON } from '@simplewebauthn/server'
 import { TotpService } from './totp.service'
+import { PasskeyService } from './passkey.service'
 import { RedisService } from '@/modules/redis/redis.service'
 import { generateRecoveryCode, normalizeRecoveryCode } from '@/utils/auth'
 import { generateDeviceFingerprint } from '@/utils/fingerprint'
+import type { SecurityMethod } from '@/modules/notifications/notification.types'
 import {
   AUTH_EVENTS,
   SecurityMethodChangedEvent,
@@ -29,6 +32,7 @@ export class MfaService {
 
   constructor(
     private readonly totpService: TotpService,
+    private readonly passkeyService: PasskeyService,
     private readonly redisService: RedisService,
     private readonly eventEmitter: EventEmitter2,
     config: ConfigService
@@ -44,11 +48,13 @@ export class MfaService {
   }
 
   async status(userId: number) {
-    const [totp, pending, recoveryCodesRemaining] = await Promise.all([
-      Totp.findConfirmed(userId),
-      this.redisService.getPendingTotp(userId),
-      RecoveryCodes.countUnused(userId),
-    ])
+    const [totp, pending, recoveryCodesRemaining, passkeyCount] =
+      await Promise.all([
+        Totp.findConfirmed(userId),
+        this.redisService.getPendingTotp(userId),
+        RecoveryCodes.countUnused(userId),
+        Passkeys.countByUser(userId),
+      ])
 
     return {
       totp: {
@@ -57,6 +63,7 @@ export class MfaService {
         confirmedAt: totp?.confirmedAt ?? null,
         lastUsedAt: totp?.lastUsedAt ?? null,
       },
+      passkeys: { enabled: passkeyCount > 0, count: passkeyCount },
       recoveryCodesRemaining,
     }
   }
@@ -117,7 +124,7 @@ export class MfaService {
       AUTH_EVENTS.TWO_FACTOR_ENABLED,
       new TwoFactorEnabledEvent(userId, currentJti)
     )
-    this.emitMethodChange(userId, true, ipAddress, userAgent)
+    this.emitMethodChange(userId, 'totp', true, ipAddress, userAgent)
 
     return { recoveryCodes }
   }
@@ -136,9 +143,80 @@ export class MfaService {
     await Totp.deleteByUser(userId)
     await this.redisService.deletePendingTotp(userId)
     await RecoveryCodes.deleteByUser(userId)
-    await updateUser(userId, { isTwoFactorEnabled: false })
+    await this.recomputeTwoFactorEnabled(userId)
 
-    this.emitMethodChange(userId, false, ipAddress, userAgent)
+    this.emitMethodChange(userId, 'totp', false, ipAddress, userAgent)
+  }
+
+  async beginPasskeyEnrolment(userId: number, i18n: I18nContext) {
+    return this.passkeyService.beginRegistration(userId, i18n)
+  }
+
+  async confirmPasskeyEnrolment(
+    userId: number,
+    currentJti: string,
+    response: RegistrationResponseJSON,
+    i18n: I18nContext,
+    name?: string,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
+    const firstFactor = (await Passkeys.countByUser(userId)) === 0
+
+    const passkey = await this.passkeyService.finishRegistration(
+      userId,
+      response,
+      i18n,
+      name
+    )
+    await updateUser(userId, { isTwoFactorEnabled: true })
+
+    // The first strong factor added resets the trust boundary, exactly like TOTP.
+    if (firstFactor) {
+      await this.eventEmitter.emitAsync(
+        AUTH_EVENTS.TWO_FACTOR_ENABLED,
+        new TwoFactorEnabledEvent(userId, currentJti)
+      )
+    }
+    this.emitMethodChange(userId, 'passkey', true, ipAddress, userAgent)
+
+    return { id: passkey.id, name: passkey.name }
+  }
+
+  async listPasskeys(userId: number) {
+    return this.passkeyService.list(userId)
+  }
+
+  async renamePasskey(
+    id: string,
+    userId: number,
+    name: string,
+    i18n: I18nContext
+  ) {
+    await this.passkeyService.rename(id, userId, name, i18n)
+  }
+
+  async removePasskey(
+    id: string,
+    userId: number,
+    i18n: I18nContext,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
+    await this.passkeyService.remove(id, userId, i18n)
+    await this.recomputeTwoFactorEnabled(userId)
+    this.emitMethodChange(userId, 'passkey', false, ipAddress, userAgent)
+  }
+
+  /** isTwoFactorEnabled reflects "holds at least one strong factor". */
+  private async recomputeTwoFactorEnabled(userId: number) {
+    const [totp, passkeyCount] = await Promise.all([
+      Totp.findConfirmed(userId),
+      Passkeys.countByUser(userId),
+    ])
+    await updateUser(userId, {
+      isTwoFactorEnabled: totp != null || passkeyCount > 0,
+    })
   }
 
   async regenerateRecoveryCodes(userId: number): Promise<string[]> {
@@ -166,6 +244,7 @@ export class MfaService {
 
   private emitMethodChange(
     userId: number,
+    method: SecurityMethod,
     enabled: boolean,
     ipAddress?: string,
     userAgent?: string
@@ -175,7 +254,7 @@ export class MfaService {
       AUTH_EVENTS.SECURITY_METHOD_CHANGED,
       SecurityMethodChangedEvent.from(
         userId,
-        'totp',
+        method,
         enabled,
         geo,
         ipAddress,
