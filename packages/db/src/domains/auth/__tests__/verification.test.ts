@@ -5,48 +5,65 @@ import type { Prisma } from '@prisma/generated'
 
 vi.mock('@/libs/prisma', () => ({
   db: {
-    verificationToken: {
+    verificationLockout: {
       create: vi.fn(),
-      findUnique: vi.fn(),
-      delete: vi.fn(),
+      findFirst: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      deleteMany: vi.fn(),
     },
   },
 }))
 
-describe('Verification', () => {
+describe('Verification (lockouts)', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('createToken should call create', async () => {
-    // @ts-expect-error mocked
-    db.verificationToken.create.mockResolvedValue({ id: 't1' })
+  it('createVerificationLockout should call create', async () => {
+    vi.mocked(db.verificationLockout.create).mockResolvedValue({
+      id: 1,
+    } as never)
 
-    const res = await Verification.createToken({
-      identifier: 'a',
-      token: 'b',
-    } as Prisma.VerificationTokenUncheckedCreateInput)
-    expect(db.verificationToken.create).toHaveBeenCalled()
-    expect(res).toEqual({ id: 't1' })
+    const res = await Verification.createVerificationLockout({
+      email: 'a@b.com',
+      reason: 'TOO_MANY_ATTEMPTS',
+      lockedAt: new Date(),
+      expires: new Date(),
+    } as Prisma.VerificationLockoutUncheckedCreateInput)
+    expect(db.verificationLockout.create).toHaveBeenCalled()
+    expect(res).toEqual({ id: 1 })
   })
 
-  it('findToken should find by compound key', async () => {
-    // @ts-expect-error mocked
-    db.verificationToken.findUnique.mockResolvedValue({ id: 't2' })
+  it('findActiveVerificationLockout filters active + lowercases email', async () => {
+    vi.mocked(db.verificationLockout.findFirst).mockResolvedValue({
+      id: 2,
+    } as never)
 
-    const res = await Verification.findToken('a', 'b')
-    expect(db.verificationToken.findUnique).toHaveBeenCalledWith({
-      where: { identifier_token: { identifier: 'a', token: 'b' } },
-    })
-    expect(res).toEqual({ id: 't2' })
+    const res = await Verification.findActiveVerificationLockout('A@B.com')
+    const arg = vi.mocked(db.verificationLockout.findFirst).mock.calls[0][0]
+    expect(arg?.where?.email).toBe('a@b.com')
+    expect(arg?.where?.clearedAt).toBeNull()
+    expect(res).toEqual({ id: 2 })
   })
 
-  it('deleteToken should call delete', async () => {
-    // @ts-expect-error mocked
-    db.verificationToken.delete.mockResolvedValue({ id: 't3' })
+  it('clearVerificationLockout sets clearedAt + clearedBy', async () => {
+    vi.mocked(db.verificationLockout.update).mockResolvedValue({
+      id: 3,
+    } as never)
 
-    const d = await Verification.deleteToken('a', 'b')
-    expect(db.verificationToken.delete).toHaveBeenCalledWith({
-      where: { identifier_token: { identifier: 'a', token: 'b' } },
-    })
-    expect(d).toEqual({ id: 't3' })
+    await Verification.clearVerificationLockout(3, 99)
+    const arg = vi.mocked(db.verificationLockout.update).mock.calls[0][0]
+    expect(arg.where).toEqual({ id: 3 })
+    expect(arg.data.clearedBy).toBe(99)
+    expect(arg.data.clearedAt).toBeInstanceOf(Date)
+  })
+
+  it('deleteExpiredVerificationLockouts prunes expired rows', async () => {
+    vi.mocked(db.verificationLockout.deleteMany).mockResolvedValue({
+      count: 4,
+    } as never)
+
+    const res = await Verification.deleteExpiredVerificationLockouts()
+    expect(db.verificationLockout.deleteMany).toHaveBeenCalled()
+    expect(res).toEqual({ count: 4 })
   })
 })

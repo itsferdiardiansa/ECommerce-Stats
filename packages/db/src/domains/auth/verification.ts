@@ -3,32 +3,6 @@ import type { VerificationLockoutReason } from '@prisma/generated'
 import { db } from '@/libs/prisma'
 
 export const Verification = {
-  async createToken(data: Prisma.VerificationTokenUncheckedCreateInput) {
-    return db.verificationToken.create({ data })
-  },
-
-  async findToken(identifier: string, token: string) {
-    return db.verificationToken.findUnique({
-      where: {
-        identifier_token: {
-          identifier,
-          token,
-        },
-      },
-    })
-  },
-
-  async deleteToken(identifier: string, token: string) {
-    return db.verificationToken.delete({
-      where: {
-        identifier_token: {
-          identifier,
-          token,
-        },
-      },
-    })
-  },
-
   async createVerificationLockout(
     data: Prisma.VerificationLockoutUncheckedCreateInput
   ) {
