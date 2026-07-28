@@ -1,31 +1,37 @@
 # Rufieltics API - Postman Collection
 
-Complete API collection for Rufieltics application including Authentication and User Management endpoints.
+API collection for Rufieltics authentication: registration, login, OAuth (Google), two-factor, sessions, and lockout management.
 
 ## Import Instructions
 
 1. Open Postman
 2. Click **Import** button (top left)
-3. Drag & drop `Rufieltics_API.postman_collection.json` or click **Upload Files**
-4. Collection will appear in your sidebar with organized folders
+3. Drag & drop `Auth_API.postman_collection.json` or click **Upload Files**
+4. Import `Development.postman_environment.json` for the local environment
+5. Collection will appear in your sidebar with organized folders
 
 ## Collection Structure
 
-The collection is organized into three main folders:
+The collection is organized into these folders:
 
-1. **Authentication** - Registration, login, email verification
-2. **User Management** - CRUD operations for users (admin/self access)
-3. **Testing** - Test scenarios for validation and edge cases
+1. **Authentication** - Registration, login, email verification, sessions, sudo
+2. **OAuth (Google)** - Sign in / sign up with Google (OpenID Connect)
+3. **Two-Factor (TOTP)** - Authenticator enrolment, step-up, recovery codes
+4. **Admin - Lockout Management** - View and clear verification lockouts
+5. **Testing** - Test scenarios for validation and edge cases
 
 ## Variables
 
 The collection uses these variables (already configured):
 
 - `base_url`: `http://localhost:6001/api/v1` (API base URL)
-- `user_id`: `1` (used in user management endpoints)
 - `verification_code`: `123456` (used in email verification)
 - `access_token`: (auto-populated after login)
+- `refresh_token`: (auto-populated after login)
+- `step_up_challenge_id`: (auto-populated when a login requires step-up)
+- `device_secret`: (auto-populated after login)
 - `trusted_device_id`: (paste from `GET /auth/trusted-devices`)
+- `oauth_code`, `oauth_state`: (only for manually replaying the Google callback)
 
 Authenticated requests must send the **same `User-Agent`** the session was issued for, plus the `deviceSecret` cookie (or `X-Device-Secret` header) -- tokens are bound to the device fingerprint.
 
@@ -202,7 +208,7 @@ Proves identity again before a destructive action. Sensitive routes reject with 
 
 The grant lasts `SUDO_TTL_SECONDS` (default 300) and is bound to the **current session only** -- elevating on one device does not elevate another. It is dropped when the session is revoked. Five failed attempts lock elevation for that session. `GET /auth/sudo` returns `{ active, expiresIn }` so the UI can prompt before showing a risky form.
 
-Sudo-guarded routes: `POST /auth/password`, `DELETE /auth/trusted-devices/:id`, `DELETE /auth/sessions`, `DELETE /auth/sessions/others`, `DELETE /users/:id`.
+Sudo-guarded routes: `POST /auth/password`, `DELETE /auth/trusted-devices/:id`, `DELETE /auth/sessions`, `DELETE /auth/sessions/others`.
 
 ---
 
@@ -230,185 +236,28 @@ Logout and invalidate current session/token.
 
 ---
 
-## 👥 User Management Endpoints
+## 🟢 OAuth (Google) Endpoints
 
-These endpoints are typically restricted to admin users or the user themselves (self-access).
+Sign in / sign up with Google using OpenID Connect (**authorization-code + PKCE**, verified server-side). These are **browser-driven redirects**, not JSON APIs — trigger them from a real browser, not from Postman's request runner. One button serves both sign-in and sign-up; the callback decides create-vs-login.
 
-### 1. **List All Users (Basic)** (GET `/users`)
+**Setup:** set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` on the API, and register `GOOGLE_REDIRECT_URI` (`http://localhost:6001/api/v1/auth/oauth/google/callback`) as an authorized redirect URI in the Google Cloud console. When `GOOGLE_CLIENT_ID` is unset the endpoints are disabled.
 
-List users with pagination.
+### 1. **Google Sign-in (Redirect)** (GET `/auth/oauth/google`)
 
-**Query params:**
+Starts the login. Responds `302` to Google's consent screen and stores a short-lived CSRF `state` + PKCE verifier in Redis. Open this URL in a browser.
 
-- `page` (default: 1)
-- `limit` (default: 10, max: 100)
+### 2. **Google Callback** (GET `/auth/oauth/google/callback`)
 
-**Response:**
+Google redirects here after consent. The server verifies `state`, exchanges the code, then **resolves or creates** the user:
 
-```json
-{
-  "status": 200,
-  "version": "v1",
-  "timestamp": "2026-03-15T10:30:45.123Z",
-  "message": "Success",
-  "data": {
-    "items": [...],
-    "pagination": {
-      "total": 100,
-      "page": 1,
-      "limit": 10,
-      "totalPages": 10
-    }
-  }
-}
-```
+- **New user** → creates a `User` (no password, email pre-verified) + an `OAuthAccount` link, then a session.
+- **Returning user** → finds the `OAuthAccount` by Google's subject id and issues a session.
+- **Collision** (email already has a password account) → auto-links Google **only when `email_verified` is true**. If that local account had never verified its email, its unproven password is discarded to prevent pre-registration takeover.
+- **Unverified Google email** → refused.
 
----
+On success it sets httpOnly `refreshToken` + `deviceSecret` cookies and `302`s to the web app (`OAUTH_SUCCESS_REDIRECT`); on failure it `302`s to `OAUTH_FAILURE_REDIRECT`. The web callback page trades the refresh cookie for an access token via `POST /auth/refresh`.
 
-### 2. **List Users (With Search)** (GET `/users?search=john`)
-
-Search across name, email, and username fields.
-
-**Query params:**
-
-- `search` (searches in name/email/username fields)
-- Standard pagination params
-
----
-
-### 3. **List Users (With Filters)** (GET `/users`)
-
-Filter by multiple user attributes.
-
-**Available filters:**
-
-- `email` (partial match, case-insensitive)
-- `name` (partial match, case-insensitive)
-- `isActive` (`true`/`false`)
-- `isStaff` (`true`/`false`)
-- `isTwoFactorEnabled` (`true`/`false`)
-- `marketingOptIn` (`true`/`false`)
-- `tierLevel` (`BASIC`, `PRO`, `PREMIUM`)
-
-**Example:**
-
-```
-GET /users?isActive=true&tierLevel=PRO&page=1&limit=10
-```
-
----
-
-### 4. **List Users (With Sorting)** (GET `/users`)
-
-Sort results by specific fields.
-
-**Query params:**
-
-- `sortBy`: `createdAt`, `updatedAt`, `email`, `name`, `username`, `lastLoginAt`
-- `sortOrder`: `asc` or `desc`
-
-**Example:**
-
-```
-GET /users?sortBy=createdAt&sortOrder=desc
-```
-
----
-
-### 5. **List Users (Include Deleted)** (GET `/users?includeDeleted=true`)
-
-By default, the list endpoint excludes soft-deleted users. Use this query parameter to include them in results.
-
-**Query params:**
-
-- `includeDeleted`: `true` (includes soft-deleted users)
-- All other filters and pagination params work as normal
-
-**Example:**
-
-```
-GET /users?includeDeleted=true&page=1&limit=10
-```
-
-**Response includes deleted users:**
-
-```json
-{
-  "status": 200,
-  "data": {
-    "items": [
-      {
-        "id": 2,
-        "email": "deleted@example.com",
-        "isActive": false,
-        "deletedAt": "2026-03-15T16:04:31.610Z",
-        ...
-      }
-    ]
-  }
-}
-```
-
-**How to identify deleted users:** Check if `deletedAt` field is not `null`.
-
----
-
-### 6. **Get User by ID** (GET `/users/:id`)
-
-Retrieve detailed information for a specific user.
-
-**Note:** This endpoint only returns active (non-deleted) users. Deleted users will return 404.
-
----
-
-### 7. **Update User** (PUT `/users/:id`)
-
-Update user information. All fields are optional.
-
-**Updatable fields:**
-
-- `email`, `username`, `name`, `password`
-- `avatar`, `phone`
-- `isActive`, `isStaff`, `isTwoFactorEnabled`
-
-**Note:** When updating password, `passwordChangedAt` is automatically set.
-
----
-
-### 8. **Delete User** (DELETE `/users/:id`)
-
-**Soft delete** - Sets `deletedAt` timestamp and deactivates the user. The record remains in the database for audit and referential integrity.
-
-**Behavior:**
-
-- User's `deletedAt` is set to current timestamp
-- User's `isActive` is set to `false`
-- User is excluded from default list/search queries
-- Related data (orders, reviews) remains intact
-- Operation is **idempotent** - calling DELETE multiple times returns success
-
-**Response:**
-
-```json
-{
-  "status": 200,
-  "message": "User deleted successfully",
-  "data": {
-    "id": 2,
-    "deletedAt": "2026-03-15T16:04:31.610Z",
-    "isActive": false,
-    ...
-  }
-}
-```
-
-**To view deleted users:** Use `GET /users?includeDeleted=true`
-
----
-
-### 9. **Create User (Admin)** (POST `/users`)
-
-Admin endpoint to create users directly, bypassing the registration flow. User will still be created with `isActive=false` unless explicitly set.
+**Note:** a Google-only user has no password. Submitting the password login form for that email returns the generic `invalid_credentials` (by design, to avoid leaking the account's existence or provider).
 
 ---
 
@@ -462,14 +311,14 @@ All endpoints support internationalization via:
 
 ```json
 {
-  "status": 404,
+  "status": 401,
   "version": "v1",
   "timestamp": "2026-03-15T10:30:45.123Z",
   "error": {
-    "message": "User not found",
+    "message": "Invalid credentials",
     "details": { ... }
   },
-  "path": "/api/v1/users/999"
+  "path": "/api/v1/auth/login"
 }
 ```
 
@@ -501,8 +350,7 @@ All endpoints support internationalization via:
 ### Complete Registration & Verification Flow
 
 1. **Register User** → POST `/auth/register`
-   - Save the `user_id` from response
-   - Check your email for 6-digit code
+   - Check your email (Mailpit at `http://localhost:8025`) for the 6-digit code
 
 2. **Verify Email** → POST `/auth/verify-email`
    - Use email and code from step 1
@@ -510,10 +358,16 @@ All endpoints support internationalization via:
 
 3. **Login** → POST `/auth/login`
    - Use email and password
-   - Access token is saved automatically
+   - Access token is saved automatically (or complete step-up if prompted)
 
 4. **Access Protected Resources** → Any authenticated endpoint
    - Token is automatically included in requests
+
+### Google Sign-in Flow
+
+1. Open `{{base_url}}/auth/oauth/google` in a browser
+2. Complete the Google consent screen
+3. You are redirected to the web app, signed in (no password)
 
 ### Testing Different Scenarios
 
@@ -523,127 +377,6 @@ All endpoints support internationalization via:
 - **Resend code** → Use "Resend Verification Code" after registration
 
 ---
-
-## API Architecture
-
-### Authentication vs User Management
-
-**`/auth/*` endpoints** (Public or authenticated):
-
-- Registration, login, logout
-- Email verification (public)
-- Password reset (public)
-- Token refresh
-
-**`/users/*` endpoints** (Admin or self-only):
-
-- User CRUD operations
-- List/search/filter users (admin)
-- Update user details (admin or self)
-- Admin user creation
-
-This separation provides:
-
-- ✅ Clear security boundaries
-- ✅ Different rate limiting per namespace
-- ✅ Better API organization
-- ✅ Easier permission management
-- `?lang=en` query parameter
-
-## Example Responses
-
-### Success (Create User)
-
-```json
-{
-  "message": "User created successfully",
-  "data": {
-    "id": 1,
-    "email": "john.doe@example.com",
-    "username": "johndoe",
-    "name": "John Doe",
-    "isActive": true,
-    "createdAt": "2026-03-15T10:30:00.000Z"
-  }
-}
-```
-
-### Success (List Users)
-
-```json
-{
-  "message": "Success",
-  "data": [...],
-  "meta": {
-    "total": 42,
-    "page": 1,
-    "limit": 10,
-    "totalPages": 5
-  }
-}
-```
-
-### Validation Error (422)
-
-```json
-{
-  "statusCode": 422,
-  "timestamp": "2026-03-15T10:35:00.123Z",
-  "path": "/api/v1/users",
-  "error": "Unprocessable Entity",
-  "message": [
-    {
-      "code": "invalid_format",
-      "message": "Email Address must be a valid email address",
-      "path": ["email"]
-    },
-    {
-      "code": "too_small",
-      "message": "Password must be at least 8 characters long",
-      "path": ["password"]
-    }
-  ]
-}
-```
-
-### Not Found (404)
-
-```json
-{
-  "statusCode": 404,
-  "timestamp": "2026-03-15T10:40:00.123Z",
-  "path": "/api/v1/users/999",
-  "error": "Resource not found",
-  "message": "Resource not found"
-}
-```
-
-## Tips
-
-1. **Create a user first** before testing GET/PUT/DELETE by ID
-2. **Save the returned user ID** to the `user_id` collection variable
-3. **Try different languages** by changing the `Accept-Language` header
-4. **Combine filters** for advanced queries (e.g., `?isActive=true&tierLevel=PRO&sortBy=createdAt`)
-5. **Use search OR specific filters**, not both (search uses OR logic across fields, filters use AND)
-
-## Testing Workflow
-
-### Registration & Verification Flow
-
-1. **POST** `/users` → Create new user (starts with `isActive: false`)
-2. **(Future)** User receives 6-digit verification code via email
-3. **(Future)** **POST** `/auth/verify-email` → Verify code, sets `isActive: true` and `emailVerifiedAt: now()`
-4. User can now log in and access the system
-
-### Standard CRUD Testing
-
-1. **POST** `/users` → Create test users
-2. **GET** `/users` → List all users, note pagination
-3. **GET** `/users?search=john` → Test search
-4. **GET** `/users?isActive=true&tierLevel=PRO` → Test filters
-5. **GET** `/users/:id` → Get specific user details
-6. **PUT** `/users/:id` → Update user data
-7. **DELETE** `/users/:id` → Remove user
 
 ## Validation Rules
 
@@ -659,10 +392,10 @@ This separation provides:
 
 ## Database
 
-Ensure PostgreSQL is running before testing:
+Ensure PostgreSQL and Redis are running before testing:
 
 ```bash
-docker compose up -d postgres
+docker compose up -d postgres redis
 ```
 
 Default connection: `postgresql://root:root123@localhost:5432/rufieltics_db`

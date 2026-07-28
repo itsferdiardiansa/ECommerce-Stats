@@ -47,6 +47,24 @@ export function assertProductionSecrets(env: NodeJS.ProcessEnv = process.env) {
     problems.push('WEBAUTHN_ORIGIN is not set to a production origin')
   }
 
+  if (env.GOOGLE_CLIENT_ID) {
+    if (!env.GOOGLE_CLIENT_SECRET) {
+      problems.push(
+        'GOOGLE_CLIENT_SECRET is not set while Google OAuth is enabled'
+      )
+    }
+    const redirect = env.GOOGLE_REDIRECT_URI
+    if (!redirect || redirect.includes('localhost')) {
+      problems.push('GOOGLE_REDIRECT_URI is not set to a production URL')
+    }
+    for (const key of ['OAUTH_SUCCESS_REDIRECT', 'OAUTH_FAILURE_REDIRECT']) {
+      const value = env[key]
+      if (!value || value.includes('localhost')) {
+        problems.push(`${key} is not set to a production URL`)
+      }
+    }
+  }
+
   if (problems.length > 0) {
     throw new Error(
       `Refusing to start in production: ${problems.join('; ')}. ` +

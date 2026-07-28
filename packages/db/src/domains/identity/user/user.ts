@@ -87,7 +87,7 @@ export async function getSecurityNotificationTarget(userId: number) {
 export async function getSessionUser(userId: number) {
   return db.user.findFirst({
     where: { id: userId, deletedAt: null },
-    select: { id: true, email: true, isStaff: true },
+    select: { id: true, email: true, isStaff: true, isActive: true },
   })
 }
 

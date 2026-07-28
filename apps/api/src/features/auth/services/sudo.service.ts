@@ -109,6 +109,7 @@ export class SudoService {
     if (!user) {
       throw new UnauthorizedException(i18n.t('common.errors.unauthorized'))
     }
+    if (!user.passwordHash) return false
     return argon2.verify(user.passwordHash, password)
   }
 

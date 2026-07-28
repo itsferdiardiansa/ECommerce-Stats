@@ -1,4 +1,4 @@
-export * from './accounts'
+export * from './oauth-account'
 export * from './login-history'
 export * from './passkey'
 export * from './password-history'

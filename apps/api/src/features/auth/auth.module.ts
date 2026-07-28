@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { ScheduleModule } from '@nestjs/schedule'
 import { AuthController } from './auth.controller'
+import { OAuthController } from './oauth.controller'
 import { AuthAdminController } from './auth-admin.controller'
 import { SudoController } from './sudo.controller'
 import { MfaController } from './mfa.controller'
@@ -16,6 +17,7 @@ import { TrustedDeviceService } from './services/trusted-device.service'
 import { RegistrationService } from './services/registration.service'
 import { LoginService } from './services/login.service'
 import { StepUpService } from './services/step-up.service'
+import { OAuthService } from './services/oauth.service'
 import { AuthAuditListener } from './listeners/auth-audit.listener'
 import { SecurityAlertListener } from './listeners/security-alert.listener'
 
@@ -23,6 +25,7 @@ import { SecurityAlertListener } from './listeners/security-alert.listener'
   imports: [RedisModule, ScheduleModule.forRoot()],
   controllers: [
     AuthController,
+    OAuthController,
     AuthAdminController,
     SudoController,
     MfaController,
@@ -37,6 +40,7 @@ import { SecurityAlertListener } from './listeners/security-alert.listener'
     RegistrationService,
     LoginService,
     StepUpService,
+    OAuthService,
     SessionCleanupService,
     LoginAnomalyService,
     AuthAuditListener,

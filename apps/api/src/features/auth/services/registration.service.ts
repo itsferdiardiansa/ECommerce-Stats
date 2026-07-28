@@ -13,16 +13,13 @@ import {
   getUserByEmailIncludingDeleted,
   getUserByUsernameIncludingDeleted,
 } from '@rufieltics/db/domains/identity/user'
-import {
-  Organizations,
-  OrganizationMembers,
-} from '@rufieltics/db/domains/identity/organization'
+import { provisionPersonalWorkspace } from '@/utils/workspace'
 import { RedisService } from '@/modules/redis/redis.service'
 import { MailQueueService } from '@/modules/mail/mail-queue.service'
 import { MailPriority } from '@/modules/mail/mail.constants'
 import { renderEmail } from '@rufieltics/emails'
 import { formatRemainingTime } from '@/utils/datetime'
-import { generateVerificationCode, generateOrgSlug } from '@/utils/auth'
+import { generateVerificationCode } from '@/utils/auth'
 import type { RegisterDto } from '../dto/register.dto'
 import type { VerifyEmailDto } from '../dto/verify-email.dto'
 import type { ResendVerificationDto } from '../dto/resend-verification.dto'
@@ -234,30 +231,10 @@ export class RegistrationService {
         emailVerifiedAt: new Date(),
       }),
       this.redisService.deleteVerificationCode(email),
-      this.provisionPersonalWorkspace(user.id, user.name, user.username),
+      provisionPersonalWorkspace(user.id, user.name, user.username),
     ])
 
     return updatedUser
-  }
-
-  private async provisionPersonalWorkspace(
-    userId: number,
-    name: string,
-    username: string
-  ) {
-    const existing = await OrganizationMembers.listByUser(userId)
-    if (existing.length > 0) return
-
-    const org = await Organizations.create({
-      name: `${name}'s Workspace`,
-      slug: generateOrgSlug(username),
-    })
-
-    await OrganizationMembers.addMember({
-      organizationId: org.id,
-      userId,
-      role: 'OWNER',
-    })
   }
 
   async resendVerification(data: ResendVerificationDto, i18n: I18nContext) {

@@ -1,4 +1,4 @@
-model Account {
+model OAuthAccount {
   id                String  @id @default(cuid())
   userId            Int
   type              String

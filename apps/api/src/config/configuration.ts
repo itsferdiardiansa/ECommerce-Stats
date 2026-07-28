@@ -109,6 +109,25 @@ export default () => ({
         10
       ),
     },
+    oauth: {
+      successRedirect:
+        process.env.OAUTH_SUCCESS_REDIRECT ||
+        'http://localhost:3000/auth/callback',
+      failureRedirect:
+        process.env.OAUTH_FAILURE_REDIRECT ||
+        'http://localhost:3000/sign-in?error=oauth',
+      stateTtlSeconds: parseInt(
+        process.env.OAUTH_STATE_TTL_SECONDS || '600',
+        10
+      ),
+      google: {
+        clientId: process.env.GOOGLE_CLIENT_ID || '',
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+        redirectUri:
+          process.env.GOOGLE_REDIRECT_URI ||
+          'http://localhost:6001/api/v1/auth/oauth/google/callback',
+      },
+    },
   },
   geo: {
     ipinfoToken: process.env.IPINFO_TOKEN || '',

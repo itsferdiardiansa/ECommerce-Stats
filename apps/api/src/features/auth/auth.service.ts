@@ -295,7 +295,10 @@ export class AuthService {
       throw new NotFoundException(i18n.t('users.errors.user_not_found'))
     }
 
-    if (await argon2.verify(user.passwordHash, newPassword)) {
+    if (
+      user.passwordHash &&
+      (await argon2.verify(user.passwordHash, newPassword))
+    ) {
       throw new BadRequestException(i18n.t('auth.errors.password_reused'))
     }
 
@@ -306,7 +309,9 @@ export class AuthService {
       }
     }
 
-    await PasswordSecurity.archivePassword(userId, user.passwordHash)
+    if (user.passwordHash) {
+      await PasswordSecurity.archivePassword(userId, user.passwordHash)
+    }
 
     await updateUser(userId, {
       passwordHash: await argon2.hash(newPassword),

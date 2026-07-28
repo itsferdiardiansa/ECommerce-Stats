@@ -204,6 +204,32 @@ export class RedisService {
     await this.del(this.webauthnChallengeKey(scope, id))
   }
 
+  private oauthStateKey(provider: string, state: string): string {
+    return `oauth:state:${provider}:${state}`
+  }
+
+  async setOAuthState(
+    provider: string,
+    state: string,
+    data: { codeVerifier: string },
+    ttl: number
+  ): Promise<void> {
+    await this.set(this.oauthStateKey(provider, state), data, ttl)
+  }
+
+  async getOAuthState(
+    provider: string,
+    state: string
+  ): Promise<{ codeVerifier: string } | null> {
+    return this.get<{ codeVerifier: string }>(
+      this.oauthStateKey(provider, state)
+    )
+  }
+
+  async deleteOAuthState(provider: string, state: string): Promise<void> {
+    await this.del(this.oauthStateKey(provider, state))
+  }
+
   async setVerificationLockout(
     email: string,
     ttl = 3600,

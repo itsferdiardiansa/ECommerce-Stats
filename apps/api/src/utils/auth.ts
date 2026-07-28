@@ -46,6 +46,15 @@ export function generateOrgSlug(username: string): string {
   return `${base}-${suffix}`
 }
 
+export function generateOAuthUsername(email: string): string {
+  const base =
+    email
+      .split('@')[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '') || 'user'
+  return `${base}-${randomUUID().slice(0, 8)}`
+}
+
 export function pickPrimaryMembership(
   memberships: Array<{ organizationId: string; role: string; joinedAt: Date }>
 ) {

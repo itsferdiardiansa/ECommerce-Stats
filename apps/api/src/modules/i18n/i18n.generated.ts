@@ -75,6 +75,10 @@ export type I18nTranslations = {
             "step_up_expects_passkey": string;
             "step_up_invalid_passkey": string;
             "passkey_login_failed": string;
+            "oauth_disabled": string;
+            "oauth_failed": string;
+            "oauth_email_not_verified": string;
+            "oauth_account_unavailable": string;
         };
         "validation": {
             "code_length": string;

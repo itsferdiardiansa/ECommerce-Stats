@@ -1,13 +1,13 @@
 import { Prisma } from '@prisma/generated'
 import { db } from '@/libs/prisma'
 
-export const Accounts = {
-  async create(data: Prisma.AccountUncheckedCreateInput) {
-    return db.account.create({ data })
+export const OAuthAccounts = {
+  async create(data: Prisma.OAuthAccountUncheckedCreateInput) {
+    return db.oAuthAccount.create({ data })
   },
 
   async findByProvider(provider: string, providerAccountId: string) {
-    return db.account.findUnique({
+    return db.oAuthAccount.findUnique({
       where: {
         provider_providerAccountId: {
           provider,
@@ -20,12 +20,12 @@ export const Accounts = {
   async findMany(params: {
     skip?: number
     take?: number
-    cursor?: Prisma.AccountWhereUniqueInput
-    where?: Prisma.AccountWhereInput
-    orderBy?: Prisma.AccountOrderByWithRelationInput
+    cursor?: Prisma.OAuthAccountWhereUniqueInput
+    where?: Prisma.OAuthAccountWhereInput
+    orderBy?: Prisma.OAuthAccountOrderByWithRelationInput
   }) {
     const { skip, take, cursor, where, orderBy } = params
-    return db.account.findMany({
+    return db.oAuthAccount.findMany({
       skip,
       take,
       cursor,
@@ -35,22 +35,22 @@ export const Accounts = {
   },
 
   async update(params: {
-    where: Prisma.AccountWhereUniqueInput
-    data: Prisma.AccountUpdateInput
+    where: Prisma.OAuthAccountWhereUniqueInput
+    data: Prisma.OAuthAccountUpdateInput
   }) {
     const { where, data } = params
-    return db.account.update({
+    return db.oAuthAccount.update({
       data,
       where,
     })
   },
 
-  async delete(where: Prisma.AccountWhereUniqueInput) {
-    return db.account.delete({ where })
+  async delete(where: Prisma.OAuthAccountWhereUniqueInput) {
+    return db.oAuthAccount.delete({ where })
   },
 
   async unlinkProvider(userId: number, provider: string) {
-    const account = await db.account.findFirst({
+    const account = await db.oAuthAccount.findFirst({
       where: {
         userId,
         provider,
@@ -59,7 +59,7 @@ export const Accounts = {
 
     if (!account) return null
 
-    return db.account.delete({
+    return db.oAuthAccount.delete({
       where: { id: account.id },
     })
   },

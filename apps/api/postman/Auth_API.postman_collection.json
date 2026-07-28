@@ -2,7 +2,7 @@
   "info": {
     "name": "Auth",
     "_postman_id": "rufieltics-api-collection",
-    "description": "Complete API collection for Rufieltics application including Authentication and User Management",
+    "description": "API collection for Rufieltics authentication: registration, login, OAuth (Google), two-factor, sessions, and lockout management.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -60,6 +60,16 @@
       "key": "recovery_code",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "oauth_code",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "oauth_state",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -88,13 +98,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/register",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "register"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
             },
             "description": "Register a new user account. User will be created with isActive=false and requires email verification. A 6-digit verification code will be sent to the provided email address."
           },
@@ -137,13 +142,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/verify-email",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "verify-email"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify-email"]
             },
             "description": "Verify email address with the 6-digit code received via email. Upon successful verification, the user's isActive will be set to true and emailVerifiedAt will be updated."
           },
@@ -169,13 +169,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/resend-verification",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "resend-verification"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "resend-verification"]
             },
             "description": "Resend verification code to the email address. The previous code will be invalidated and a new 6-digit code will be sent. Rate limited to 3 requests per hour per email."
           },
@@ -201,13 +196,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
             },
             "description": "Login with email and password. Returns access + refresh tokens for a trusted sign-in. If the sign-in looks risky (new device/location), returns { stepUpRequired: true, challengeId } instead and emails a one-time code — complete it via 'Step Up (Verify OTP)'. The test script auto-saves either access_token or step_up_challenge_id."
           },
@@ -260,14 +250,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/login/step-up",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "login",
-                "step-up"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "step-up"]
             },
             "description": "Completes a step-up challenge. Set trustDevice: true to be remembered on this browser - trust is opt-in, so leaving it out means the next sign-in from a new device or location is challenged again. The method field is required: use \"email\" here, \"totp\" or \"recovery\" for a 2FA account."
           },
@@ -320,13 +304,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/refresh",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "refresh"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
             },
             "description": "Exchange a valid refresh token for a new access + refresh token pair. The used refresh token is immediately invalidated (single-use rotation). If the same refresh token is used twice, both are revoked."
           },
@@ -371,13 +350,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/logout",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "logout"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
             },
             "description": "Revokes the current session. Deletes the refresh token from Redis and marks the DB session as isRevoked=true. Subsequent /auth/refresh calls with the same token will return 401."
           },
@@ -416,14 +390,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/sessions/others",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "sessions",
-                "others"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sessions", "others"]
             }
           },
           "response": []
@@ -455,13 +423,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/sessions",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "sessions"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sessions"]
             }
           },
           "response": []
@@ -484,13 +447,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/sessions",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "sessions"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sessions"]
             }
           },
           "response": []
@@ -534,13 +492,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/sudo",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "sudo"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sudo"]
             },
             "description": "Proves identity again before a destructive action. Guarded routes return 403 with error.code=SUDO_REQUIRED until this succeeds."
           },
@@ -564,13 +517,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/sudo",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "sudo"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sudo"]
             },
             "description": "Returns { active, expiresIn } so the client can prompt before showing a risky form."
           },
@@ -603,13 +551,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/password",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "password"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "password"]
             },
             "description": "Requires sudo. Rejects reuse of the last 5 passwords, signs out all other devices, untrusts their browsers, and emails the owner."
           },
@@ -633,13 +576,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/trusted-devices",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "trusted-devices"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "trusted-devices"]
             }
           },
           "response": []
@@ -662,16 +600,54 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/trusted-devices/{{trusted_device_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "trusted-devices",
-                "{{trusted_device_id}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "trusted-devices", "{{trusted_device_id}}"]
             },
             "description": "Requires sudo. Emails the owner that a security method was removed."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "OAuth (Google)",
+      "description": "Sign in / sign up with Google (OpenID Connect, authorization-code + PKCE). These endpoints are browser-driven redirects, not JSON APIs — trigger the sign-in from a real browser. They are documented here for reference. Requires GOOGLE_CLIENT_ID/SECRET set on the API.",
+      "item": [
+        {
+          "name": "Google Sign-in (Redirect)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/oauth/google",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "oauth", "google"]
+            },
+            "description": "Starts the Google login. Responds 302 to Google's consent screen (sets a short-lived CSRF state + PKCE verifier in Redis). Open this URL in a browser — one button serves both sign-in and sign-up; the callback decides create-vs-login."
+          },
+          "response": []
+        },
+        {
+          "name": "Google Callback",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/oauth/google/callback?code={{oauth_code}}&state={{oauth_state}}",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "oauth", "google", "callback"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "{{oauth_code}}"
+                },
+                {
+                  "key": "state",
+                  "value": "{{oauth_state}}"
+                }
+              ]
+            },
+            "description": "Google redirects here after consent. Verifies state, exchanges the code, resolves-or-creates the user, sets httpOnly refreshToken + deviceSecret cookies, then 302s to the web app (OAUTH_SUCCESS_REDIRECT). On failure it 302s to OAUTH_FAILURE_REDIRECT. Invoked by Google automatically — not called by hand."
           },
           "response": []
         }
@@ -698,13 +674,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/mfa",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "mfa"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa"]
             },
             "description": "Shows whether TOTP is enabled/pending and how many recovery codes remain."
           },
@@ -743,14 +714,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/mfa/totp",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "mfa",
-                "totp"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "totp"]
             },
             "description": "Requires sudo. Returns the base32 secret and an otpauth:// URI. Two-factor is NOT enabled yet - confirm a code first. Paste the URI into any QR generator, or type the secret into your authenticator app manually."
           },
@@ -794,15 +759,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/mfa/totp/confirm",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "mfa",
-                "totp",
-                "confirm"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "totp", "confirm"]
             },
             "body": {
               "mode": "raw",
@@ -830,14 +788,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/mfa/recovery-codes",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "mfa",
-                "recovery-codes"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "recovery-codes"]
             },
             "description": "Requires sudo. Issues a new set and invalidates every previous code."
           },
@@ -861,14 +813,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/mfa/totp",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "mfa",
-                "totp"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "totp"]
             },
             "description": "Requires sudo. Removes the authenticator and all recovery codes, and emails the owner."
           },
@@ -913,14 +859,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/login/step-up",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "login",
-                "step-up"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "step-up"]
             },
             "body": {
               "mode": "raw",
@@ -953,14 +893,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/login/step-up",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "login",
-                "step-up"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "step-up"]
             },
             "body": {
               "mode": "raw",
@@ -993,13 +927,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/sudo",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "sudo"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sudo"]
             },
             "body": {
               "mode": "raw",
@@ -1032,13 +961,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/admin/lockouts?page=1&limit=10&status=active",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "admin",
-                "lockouts"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["admin", "lockouts"],
               "query": [
                 {
                   "key": "page",
@@ -1101,13 +1025,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/admin/lockouts?status=cleared&page=1&limit=10",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "admin",
-                "lockouts"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["admin", "lockouts"],
               "query": [
                 {
                   "key": "status",
@@ -1143,13 +1062,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/admin/lockouts?email=john.doe@example.com&status=all",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "admin",
-                "lockouts"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["admin", "lockouts"],
               "query": [
                 {
                   "key": "email",
@@ -1183,14 +1097,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/admin/lockouts/1",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "admin",
-                "lockouts",
-                "1"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["admin", "lockouts", "1"]
             },
             "description": "Get detailed information about a specific lockout by ID. Admin privileges required."
           },
@@ -1212,14 +1120,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/admin/lockouts/1",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "admin",
-                "lockouts",
-                "1"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["admin", "lockouts", "1"]
             },
             "description": "Manually clear a lockout to allow the user to attempt verification again. Admin privileges required. Records the admin ID who cleared the lockout and removes it from both database and Redis."
           },
@@ -1242,465 +1144,10 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/my-lockout",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "my-lockout"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "my-lockout"]
             },
             "description": "Check your own verification lockout status. Returns whether you're locked, the reason, expiry time, and remaining seconds/minutes. Authenticated users only."
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "User Management",
-      "description": "User CRUD operations and management endpoints (typically admin or self-only)",
-      "item": [
-        {
-          "name": "List All Users (Basic)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept-Language",
-                "value": "en"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/users?page=1&limit=10",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "users"
-              ],
-              "query": [
-                {
-                  "key": "page",
-                  "value": "1"
-                },
-                {
-                  "key": "limit",
-                  "value": "10"
-                }
-              ]
-            },
-            "description": "List all users with basic pagination."
-          },
-          "response": []
-        },
-        {
-          "name": "List Users (With Search)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept-Language",
-                "value": "en"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/users?search=john&page=1&limit=10",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "users"
-              ],
-              "query": [
-                {
-                  "key": "search",
-                  "value": "john",
-                  "description": "Searches in name, email, and username fields"
-                },
-                {
-                  "key": "page",
-                  "value": "1"
-                },
-                {
-                  "key": "limit",
-                  "value": "10"
-                }
-              ]
-            },
-            "description": "Search users by name, email, or username."
-          },
-          "response": []
-        },
-        {
-          "name": "List Users (With Filters)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept-Language",
-                "value": "en"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/users?isActive=true&isStaff=false&isTwoFactorEnabled=false&tierLevel=BASIC&page=1&limit=10",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "users"
-              ],
-              "query": [
-                {
-                  "key": "isActive",
-                  "value": "true",
-                  "description": "Filter by active status"
-                },
-                {
-                  "key": "isStaff",
-                  "value": "false",
-                  "description": "Filter by staff status"
-                },
-                {
-                  "key": "isTwoFactorEnabled",
-                  "value": "false",
-                  "description": "Filter by 2FA status"
-                },
-                {
-                  "key": "tierLevel",
-                  "value": "BASIC",
-                  "description": "Filter by tier level: BASIC, PRO, or PREMIUM"
-                },
-                {
-                  "key": "page",
-                  "value": "1"
-                },
-                {
-                  "key": "limit",
-                  "value": "10"
-                }
-              ]
-            },
-            "description": "Filter users by multiple criteria including active status, staff status, 2FA, and tier level."
-          },
-          "response": []
-        },
-        {
-          "name": "List Users (With Email/Name Filter)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept-Language",
-                "value": "en"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/users?email=john.doe@example.com&name=John&page=1&limit=10",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "users"
-              ],
-              "query": [
-                {
-                  "key": "email",
-                  "value": "john.doe@example.com",
-                  "description": "Filter by exact email"
-                },
-                {
-                  "key": "name",
-                  "value": "John",
-                  "description": "Filter by exact name"
-                },
-                {
-                  "key": "page",
-                  "value": "1"
-                },
-                {
-                  "key": "limit",
-                  "value": "10"
-                }
-              ]
-            },
-            "description": "Filter users by specific email or name fields."
-          },
-          "response": []
-        },
-        {
-          "name": "List Users (Include Deleted)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept-Language",
-                "value": "en"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/users?includeDeleted=true&page=1&limit=10",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "users"
-              ],
-              "query": [
-                {
-                  "key": "includeDeleted",
-                  "value": "true",
-                  "description": "Set to 'true' to include soft-deleted users in results"
-                },
-                {
-                  "key": "page",
-                  "value": "1"
-                },
-                {
-                  "key": "limit",
-                  "value": "10"
-                }
-              ]
-            },
-            "description": "Get all users including soft-deleted ones. Check the 'deletedAt' field to identify deleted users."
-          },
-          "response": []
-        },
-        {
-          "name": "List Users (With Sorting)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept-Language",
-                "value": "en"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/users?sortBy=createdAt&sortOrder=desc&page=1&limit=10",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "users"
-              ],
-              "query": [
-                {
-                  "key": "sortBy",
-                  "value": "createdAt",
-                  "description": "Sort by: createdAt, updatedAt, email, name, username, lastLoginAt"
-                },
-                {
-                  "key": "sortOrder",
-                  "value": "desc",
-                  "description": "Sort order: asc or desc"
-                },
-                {
-                  "key": "page",
-                  "value": "1"
-                },
-                {
-                  "key": "limit",
-                  "value": "10"
-                }
-              ]
-            },
-            "description": "Sort users by various fields in ascending or descending order."
-          },
-          "response": []
-        },
-        {
-          "name": "Get User by ID",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept-Language",
-                "value": "en"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/users/{{user_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "users",
-                "{{user_id}}"
-              ]
-            },
-            "description": "Get detailed information for a specific user by ID."
-          },
-          "response": []
-        },
-        {
-          "name": "Update User (Own Profile)",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}",
-                "description": "Required — must be the token of the user being updated"
-              },
-              {
-                "key": "Accept-Language",
-                "value": "en"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"John Doe Updated\",\n  \"username\": \"johndoe_new\",\n  \"avatar\": \"https://example.com/new-avatar.jpg\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/users/{{user_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "users",
-                "{{user_id}}"
-              ]
-            },
-            "description": "Update own profile. Requires a valid access token. Only name, username, password, and avatar can be updated here. Privilege fields (isActive, isStaff, isTwoFactorEnabled) are intentionally excluded — use the admin endpoint for those."
-          },
-          "response": []
-        },
-        {
-          "name": "Admin Update User (Privilege Fields)",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}",
-                "description": "Required — must be a staff (isStaff=true) access token"
-              },
-              {
-                "key": "Accept-Language",
-                "value": "en"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"isActive\": true,\n  \"isStaff\": false,\n  \"isTwoFactorEnabled\": false\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/admin/users/{{user_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "admin",
-                "users",
-                "{{user_id}}"
-              ]
-            },
-            "description": "Admin-only endpoint to update privilege fields (isActive, isStaff, isTwoFactorEnabled). Requires a Bearer token from a user with isStaff=true. Returns 403 for non-staff callers."
-          },
-          "response": []
-        },
-        {
-          "name": "Update User Password",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Accept-Language",
-                "value": "en"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"password\": \"NewSecurePass456!\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/users/{{user_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "users",
-                "{{user_id}}"
-              ]
-            },
-            "description": "Update user password. Password must be at least 8 characters with complexity requirements. passwordChangedAt will be automatically updated."
-          },
-          "response": []
-        },
-        {
-          "name": "Delete User",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Accept-Language",
-                "value": "en"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}",
-                "type": "text"
-              },
-              {
-                "key": "X-Device-Secret",
-                "value": "{{device_secret}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/users/{{user_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "users",
-                "{{user_id}}"
-              ]
-            },
-            "description": "Delete a user by ID."
-          },
-          "response": []
-        },
-        {
-          "name": "Create User (Admin)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Accept-Language",
-                "value": "en"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"admin.user@example.com\",\n  \"username\": \"adminuser\",\n  \"password\": \"SecurePass123!\",\n  \"name\": \"Admin User\",\n  \"phone\": \"+1234567890\",\n  \"avatar\": \"https://example.com/avatar.jpg\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/users",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "users"
-              ]
-            },
-            "description": "Admin endpoint to create a user directly (bypass registration flow). User will still be created with isActive=false unless explicitly set."
           },
           "response": []
         }
@@ -1731,13 +1178,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/register",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "register"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
             },
             "description": "Test validation error messages in Indonesian. Should return all validation errors translated to Bahasa Indonesia."
           },
@@ -1763,13 +1205,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/verify-email",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "verify-email"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify-email"]
             },
             "description": "Test verification with invalid code. Should return error message."
           },
@@ -1795,13 +1232,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
             },
             "description": "Test login with unverified account (isActive=false). Should return error indicating account needs verification."
           },
