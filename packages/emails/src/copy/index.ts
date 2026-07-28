@@ -67,7 +67,11 @@ export interface MethodStrings {
   footer: string
 }
 
-type CodeName = 'verification-code' | 'step-up-otp'
+type CodeName =
+  | 'verification-code'
+  | 'step-up-otp'
+  | 'password-reset'
+  | 'email-change'
 type MethodName = 'security-method-enabled' | 'security-method-disabled'
 type AlertName =
   | 'new-sign-in'
@@ -156,6 +160,25 @@ const en: CodeBuilders & AlertBuilders = {
     expiry: `This code expires in ${v.minutes} minutes.`,
     footer: "If this wasn't you, change your password immediately.",
   }),
+  'password-reset': v => ({
+    subject: 'Reset your password',
+    preview: 'Your password reset code',
+    heading: 'Reset your password',
+    greeting: `Hi ${v.name},`,
+    body: 'Use this code to set a new password:',
+    expiry: `This code expires in ${v.minutes} minutes.`,
+    footer:
+      "If you didn't request this, you can safely ignore this email — your password won't change.",
+  }),
+  'email-change': v => ({
+    subject: 'Confirm your new email address',
+    preview: 'Confirm your new email',
+    heading: 'Confirm your new email address',
+    greeting: `Hi ${v.name},`,
+    body: 'Use this code to confirm this email address for your account:',
+    expiry: `This code expires in ${v.minutes} minutes.`,
+    footer: "If you didn't request this change, you can ignore this email.",
+  }),
   'new-sign-in': v => ({
     subject: 'New sign-in to your account',
     preview: 'A new device signed in',
@@ -241,6 +264,25 @@ const id: CodeBuilders & AlertBuilders = {
     body: 'Kami mendeteksi proses masuk yang memerlukan pemeriksaan tambahan. Masukkan kode ini untuk melanjutkan:',
     expiry: `Kode ini kedaluwarsa dalam ${v.minutes} menit.`,
     footer: 'Jika ini bukan Anda, segera ubah kata sandi Anda.',
+  }),
+  'password-reset': v => ({
+    subject: 'Atur ulang kata sandi Anda',
+    preview: 'Kode atur ulang kata sandi Anda',
+    heading: 'Atur ulang kata sandi Anda',
+    greeting: `Hai ${v.name},`,
+    body: 'Gunakan kode ini untuk mengatur kata sandi baru:',
+    expiry: `Kode ini kedaluwarsa dalam ${v.minutes} menit.`,
+    footer:
+      'Jika Anda tidak meminta ini, abaikan email ini — kata sandi Anda tidak akan berubah.',
+  }),
+  'email-change': v => ({
+    subject: 'Konfirmasi alamat email baru Anda',
+    preview: 'Konfirmasi email baru Anda',
+    heading: 'Konfirmasi alamat email baru Anda',
+    greeting: `Hai ${v.name},`,
+    body: 'Gunakan kode ini untuk mengonfirmasi alamat email ini untuk akun Anda:',
+    expiry: `Kode ini kedaluwarsa dalam ${v.minutes} menit.`,
+    footer: 'Jika Anda tidak meminta perubahan ini, abaikan email ini.',
   }),
   'new-sign-in': v => ({
     subject: 'Masuk baru ke akun Anda',

@@ -3,7 +3,11 @@ import { ConfigService } from '@nestjs/config'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import { I18nContext } from 'nestjs-i18n'
 import { Sessions, TrustedDevices } from '@rufieltics/db/domains/auth'
-import { RedisService } from '@/modules/redis/redis.service'
+import {
+  TrustedDeviceStore,
+  SessionStore,
+  AnomalyStore,
+} from '@/modules/redis/stores'
 import { JwtService } from '@/modules/jwt/jwt.service'
 import { TokenDenylistService } from '@/modules/jwt/token-denylist.service'
 import { generateDeviceFingerprint } from '@/utils/fingerprint'
@@ -22,7 +26,9 @@ export class TrustedDeviceService {
   private readonly ttlSeconds: number
 
   constructor(
-    private readonly redisService: RedisService,
+    private readonly trustedDeviceStore: TrustedDeviceStore,
+    private readonly sessionStore: SessionStore,
+    private readonly anomalyStore: AnomalyStore,
     private readonly jwtService: JwtService,
     private readonly tokenDenylist: TokenDenylistService,
     private readonly eventEmitter: EventEmitter2,
@@ -43,7 +49,7 @@ export class TrustedDeviceService {
     if (!rawToken) return false
     const tokenHash = hashTrustedDeviceToken(rawToken)
 
-    const cachedUserId = await this.redisService.getTrustedDeviceUser(tokenHash)
+    const cachedUserId = await this.trustedDeviceStore.getUser(tokenHash)
     if (cachedUserId !== null) return cachedUserId === userId
 
     const record = await TrustedDevices.findValidByTokenHash(tokenHash)
@@ -56,7 +62,7 @@ export class TrustedDeviceService {
     }
 
     const ttl = Math.floor((record.expiresAt.getTime() - Date.now()) / 1000)
-    await this.redisService.cacheTrustedDevice(tokenHash, userId, ttl)
+    await this.trustedDeviceStore.cache(tokenHash, userId, ttl)
     return true
   }
 
@@ -90,7 +96,7 @@ export class TrustedDeviceService {
       ipAddress,
       expiresAt: new Date(Date.now() + ttlSeconds * 1000),
     })
-    await this.redisService.cacheTrustedDevice(tokenHash, userId, ttlSeconds)
+    await this.trustedDeviceStore.cache(tokenHash, userId, ttlSeconds)
 
     this.eventEmitter.emit(
       AUTH_EVENTS.SECURITY_METHOD_CHANGED,
@@ -117,8 +123,8 @@ export class TrustedDeviceService {
 
     const revoked = await TrustedDevices.revokeByFingerprints(userId, unique)
     await Promise.all([
-      ...revoked.map(r => this.redisService.evictTrustedDevice(r.tokenHash)),
-      ...unique.map(fp => this.redisService.forgetFactor('device', userId, fp)),
+      ...revoked.map(r => this.trustedDeviceStore.evict(r.tokenHash)),
+      ...unique.map(fp => this.anomalyStore.forgetFactor('device', userId, fp)),
     ])
   }
 
@@ -150,7 +156,7 @@ export class TrustedDeviceService {
     if (!record) {
       throw new NotFoundException(i18n.t('auth.trusted_devices.not_found'))
     }
-    await this.redisService.evictTrustedDevice(record.tokenHash)
+    await this.trustedDeviceStore.evict(record.tokenHash)
 
     const { geo } = generateDeviceFingerprint(userId, userAgent, ipAddress)
     this.eventEmitter.emit(
@@ -182,7 +188,7 @@ export class TrustedDeviceService {
   async handleTwoFactorEnabled(event: TwoFactorEnabledEvent) {
     const revoked = await TrustedDevices.revokeAllByUser(event.userId)
     await Promise.all(
-      revoked.map(r => this.redisService.evictTrustedDevice(r.tokenHash))
+      revoked.map(r => this.trustedDeviceStore.evict(r.tokenHash))
     )
 
     const activeSessions = await Sessions.findActiveByUserId(event.userId)
@@ -196,9 +202,7 @@ export class TrustedDeviceService {
       otherJtis,
       this.jwtService.getAccessExpiresIn()
     )
-    await Promise.all(
-      otherJtis.map(jti => this.redisService.deleteSession(jti))
-    )
+    await Promise.all(otherJtis.map(jti => this.sessionStore.delete(jti)))
     await Sessions.revokeAllExceptJti(event.userId, event.currentJti)
   }
 }

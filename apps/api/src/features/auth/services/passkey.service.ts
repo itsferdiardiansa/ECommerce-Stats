@@ -19,7 +19,7 @@ import type {
 } from '@simplewebauthn/server'
 import { Passkeys } from '@rufieltics/db/domains/auth'
 import { getUserCredentials } from '@rufieltics/db/domains/identity/user'
-import { RedisService } from '@/modules/redis/redis.service'
+import { WebauthnStore } from '@/modules/redis/stores'
 
 interface RegChallenge {
   challenge: string
@@ -51,7 +51,7 @@ export class PasskeyService {
   private readonly challengeTtl: number
 
   constructor(
-    private readonly redisService: RedisService,
+    private readonly webauthnStore: WebauthnStore,
     config: ConfigService
   ) {
     this.rpId = config.get<string>('security.webauthn.rpId', 'localhost')
@@ -91,7 +91,7 @@ export class PasskeyService {
       },
     })
 
-    await this.redisService.setWebauthnChallenge(
+    await this.webauthnStore.setChallenge(
       'reg',
       userId,
       { challenge: options.challenge, userHandle } satisfies RegChallenge,
@@ -107,7 +107,7 @@ export class PasskeyService {
     i18n: I18nContext,
     name?: string
   ) {
-    const pending = await this.redisService.getWebauthnChallenge<RegChallenge>(
+    const pending = await this.webauthnStore.getChallenge<RegChallenge>(
       'reg',
       userId
     )
@@ -143,7 +143,7 @@ export class PasskeyService {
       name: name?.trim() || null,
     })
 
-    await this.redisService.deleteWebauthnChallenge('reg', userId)
+    await this.webauthnStore.deleteChallenge('reg', userId)
     return passkey
   }
 
@@ -163,7 +163,7 @@ export class PasskeyService {
       })),
     })
 
-    await this.redisService.setWebauthnChallenge(
+    await this.webauthnStore.setChallenge(
       scope,
       id,
       { challenge: options.challenge, userId } satisfies AuthChallenge,
@@ -183,7 +183,7 @@ export class PasskeyService {
     id: string | number,
     response: AuthenticationResponseJSON
   ): Promise<number | null> {
-    const pending = await this.redisService.getWebauthnChallenge<AuthChallenge>(
+    const pending = await this.webauthnStore.getChallenge<AuthChallenge>(
       scope,
       id
     )
@@ -212,7 +212,7 @@ export class PasskeyService {
       passkey.credentialId,
       BigInt(verification.authenticationInfo.newCounter)
     )
-    await this.redisService.deleteWebauthnChallenge(scope, id)
+    await this.webauthnStore.deleteChallenge(scope, id)
     return passkey.userId
   }
 
@@ -228,7 +228,7 @@ export class PasskeyService {
       allowCredentials: [],
     })
 
-    await this.redisService.setWebauthnChallenge(
+    await this.webauthnStore.setChallenge(
       'discover',
       id,
       { challenge: options.challenge } satisfies DiscoverChallenge,
@@ -247,11 +247,10 @@ export class PasskeyService {
     id: string,
     response: AuthenticationResponseJSON
   ): Promise<number | null> {
-    const pending =
-      await this.redisService.getWebauthnChallenge<DiscoverChallenge>(
-        'discover',
-        id
-      )
+    const pending = await this.webauthnStore.getChallenge<DiscoverChallenge>(
+      'discover',
+      id
+    )
     if (!pending) return null
 
     const passkey = await Passkeys.findByCredentialId(response.id)
@@ -277,7 +276,7 @@ export class PasskeyService {
       passkey.credentialId,
       BigInt(verification.authenticationInfo.newCounter)
     )
-    await this.redisService.deleteWebauthnChallenge('discover', id)
+    await this.webauthnStore.deleteChallenge('discover', id)
     return passkey.userId
   }
 

@@ -16,6 +16,8 @@ import {
 export interface EmailVars {
   'verification-code': CodeVars
   'step-up-otp': CodeVars
+  'password-reset': CodeVars
+  'email-change': CodeVars
   'new-sign-in': AlertVars
   'blocked-attempt': AlertVars
   'suspicious-login': AlertVars
@@ -39,6 +41,8 @@ type AnyComponent = ComponentType<Record<string, unknown>>
 const COMPONENTS: Record<EmailName, AnyComponent> = {
   'verification-code': CodeEmail as unknown as AnyComponent,
   'step-up-otp': CodeEmail as unknown as AnyComponent,
+  'password-reset': CodeEmail as unknown as AnyComponent,
+  'email-change': CodeEmail as unknown as AnyComponent,
   'new-sign-in': AlertEmail as unknown as AnyComponent,
   'blocked-attempt': AlertEmail as unknown as AnyComponent,
   'suspicious-login': AlertEmail as unknown as AnyComponent,
@@ -51,8 +55,17 @@ const COMPONENTS: Record<EmailName, AnyComponent> = {
 
 function isCodeEmail(
   name: EmailName
-): name is 'verification-code' | 'step-up-otp' {
-  return name === 'verification-code' || name === 'step-up-otp'
+): name is
+  | 'verification-code'
+  | 'step-up-otp'
+  | 'password-reset'
+  | 'email-change' {
+  return (
+    name === 'verification-code' ||
+    name === 'step-up-otp' ||
+    name === 'password-reset' ||
+    name === 'email-change'
+  )
 }
 
 type MethodEmailName = 'security-method-enabled' | 'security-method-disabled'

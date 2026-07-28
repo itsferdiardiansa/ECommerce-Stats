@@ -19,6 +19,11 @@ import {
   PasswordSecurity,
 } from '@rufieltics/db/domains/auth'
 import { RedisService } from '@/modules/redis/redis.service'
+import {
+  SessionStore,
+  TrustedDeviceStore,
+  SudoStore,
+} from '@/modules/redis/stores'
 import { JwtService } from '@/modules/jwt/jwt.service'
 import { TokenDenylistService } from '@/modules/jwt/token-denylist.service'
 import { TrustedDeviceService } from './services/trusted-device.service'
@@ -49,6 +54,9 @@ interface StoredSession {
 export class AuthService {
   constructor(
     private readonly redisService: RedisService,
+    private readonly sessionStore: SessionStore,
+    private readonly trustedDeviceStore: TrustedDeviceStore,
+    private readonly sudoStore: SudoStore,
     private readonly jwtService: JwtService,
     private readonly eventEmitter: EventEmitter2,
     private readonly tokenDenylist: TokenDenylistService,
@@ -101,7 +109,7 @@ export class AuthService {
     )
 
     if (existingSession && existingSession.jti !== jti) {
-      await this.redisService.deleteSession(existingSession.jti)
+      await this.sessionStore.delete(existingSession.jti)
     }
 
     await Promise.all([
@@ -116,7 +124,7 @@ export class AuthService {
         deviceFingerprint,
         expires,
       }),
-      this.redisService.setSession(
+      this.sessionStore.set(
         jti,
         {
           userId: user.id,
@@ -167,7 +175,7 @@ export class AuthService {
       )
     }
 
-    const sessionData = (await this.redisService.getSession(
+    const sessionData = (await this.sessionStore.get(
       jti
     )) as StoredSession | null
 
@@ -242,14 +250,14 @@ export class AuthService {
 
     if (storedFingerprint && storedFingerprint !== currentFingerprint) {
       await Promise.all([
-        this.redisService.deleteSession(jti),
+        this.sessionStore.delete(jti),
         Sessions.revokeByJti(jti),
       ])
       throw new UnauthorizedException(i18n.t('auth.errors.invalid_client'))
     }
 
     await Promise.all([
-      this.redisService.deleteSession(jti),
+      this.sessionStore.delete(jti),
       Sessions.revokeByJti(jti),
       this.redisService.set(
         `revoked_jti:${jti}`,
@@ -319,7 +327,7 @@ export class AuthService {
     })
 
     await this.revokeOtherSessions(userId, currentJti, i18n)
-    await this.redisService.revokeSudo(currentJti)
+    await this.sudoStore.revoke(currentJti)
 
     const { geo } = generateDeviceFingerprint(userId, userAgent, ipAddress)
     this.eventEmitter.emit(
@@ -339,14 +347,14 @@ export class AuthService {
 
   async logout(jti: string) {
     const sessionData =
-      ((await this.redisService.getSession(jti)) as StoredSession | null) ||
+      ((await this.sessionStore.get(jti)) as StoredSession | null) ||
       (await Sessions.findByJti(jti))
     const userId = sessionData?.userId
 
     await this.tokenDenylist.deny(jti, this.jwtService.getAccessExpiresIn())
 
     await Promise.all([
-      this.redisService.deleteSession(jti),
+      this.sessionStore.delete(jti),
       Sessions.revokeByJti(jti),
       userId
         ? this.redisService.set(
@@ -381,9 +389,7 @@ export class AuthService {
       this.jwtService.getAccessExpiresIn()
     )
 
-    await Promise.all(
-      otherJtis.map(jti => this.redisService.deleteSession(jti))
-    )
+    await Promise.all(otherJtis.map(jti => this.sessionStore.delete(jti)))
 
     await Sessions.revokeAllExceptJti(userId, currentJti)
 
@@ -442,7 +448,7 @@ export class AuthService {
       this.jwtService.getAccessExpiresIn()
     )
 
-    await Promise.all(jtis.map(jti => this.redisService.deleteSession(jti)))
+    await Promise.all(jtis.map(jti => this.sessionStore.delete(jti)))
 
     await Sessions.revokeSessionsByJtis(userId, jtis)
 
@@ -460,7 +466,7 @@ export class AuthService {
     }
   }
 
-  private async revokeAllSessions(userId: number) {
+  async revokeAllSessions(userId: number) {
     const activeSessions = await Sessions.findActiveByUserId(userId)
     const jtis = activeSessions.map(session => session.jti)
 
@@ -469,14 +475,14 @@ export class AuthService {
         jtis,
         this.jwtService.getAccessExpiresIn()
       )
-      await Promise.all(jtis.map(jti => this.redisService.deleteSession(jti)))
+      await Promise.all(jtis.map(jti => this.sessionStore.delete(jti)))
     }
 
     await Sessions.revokeAllByUserId(userId)
 
     const revoked = await TrustedDevices.revokeAllByUser(userId)
     await Promise.all(
-      revoked.map(r => this.redisService.evictTrustedDevice(r.tokenHash))
+      revoked.map(r => this.trustedDeviceStore.evict(r.tokenHash))
     )
   }
 }

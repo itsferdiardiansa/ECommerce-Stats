@@ -7,7 +7,12 @@ import { ConfigService } from '@nestjs/config'
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import { I18nContext } from 'nestjs-i18n'
 import * as argon2 from 'argon2'
-import { Totp, RecoveryCodes, Passkeys } from '@rufieltics/db/domains/auth'
+import {
+  Totp,
+  RecoveryCodes,
+  Passkeys,
+  OAuthAccounts,
+} from '@rufieltics/db/domains/auth'
 import {
   getUserCredentials,
   updateUser,
@@ -15,7 +20,7 @@ import {
 import type { RegistrationResponseJSON } from '@simplewebauthn/server'
 import { TotpService } from './totp.service'
 import { PasskeyService } from './passkey.service'
-import { RedisService } from '@/modules/redis/redis.service'
+import { MfaEnrolmentStore } from '@/modules/redis/stores'
 import { generateRecoveryCode, normalizeRecoveryCode } from '@/utils/auth'
 import { generateDeviceFingerprint } from '@/utils/fingerprint'
 import type { SecurityMethod } from '@/modules/notifications/notification.types'
@@ -33,7 +38,7 @@ export class MfaService {
   constructor(
     private readonly totpService: TotpService,
     private readonly passkeyService: PasskeyService,
-    private readonly redisService: RedisService,
+    private readonly mfaEnrolment: MfaEnrolmentStore,
     private readonly eventEmitter: EventEmitter2,
     config: ConfigService
   ) {
@@ -51,7 +56,7 @@ export class MfaService {
     const [totp, pending, recoveryCodesRemaining, passkeyCount] =
       await Promise.all([
         Totp.findConfirmed(userId),
-        this.redisService.getPendingTotp(userId),
+        this.mfaEnrolment.getPendingTotp(userId),
         RecoveryCodes.countUnused(userId),
         Passkeys.countByUser(userId),
       ])
@@ -80,7 +85,7 @@ export class MfaService {
     }
 
     const secret = this.totpService.generateSecret()
-    await this.redisService.setPendingTotp(
+    await this.mfaEnrolment.setPendingTotp(
       userId,
       this.totpService.encryptSecret(secret),
       this.enrolmentTtlSeconds
@@ -104,7 +109,7 @@ export class MfaService {
       throw new BadRequestException(i18n.t('auth.mfa.already_enabled'))
     }
 
-    const encrypted = await this.redisService.getPendingTotp(userId)
+    const encrypted = await this.mfaEnrolment.getPendingTotp(userId)
     if (!encrypted) {
       throw new BadRequestException(i18n.t('auth.mfa.not_started'))
     }
@@ -115,7 +120,7 @@ export class MfaService {
     }
 
     await Totp.enrol(userId, encrypted)
-    await this.redisService.deletePendingTotp(userId)
+    await this.mfaEnrolment.deletePendingTotp(userId)
     await updateUser(userId, { isTwoFactorEnabled: true })
 
     const recoveryCodes = await this.regenerateRecoveryCodes(userId)
@@ -141,8 +146,10 @@ export class MfaService {
     }
 
     await Totp.deleteByUser(userId)
-    await this.redisService.deletePendingTotp(userId)
-    await RecoveryCodes.deleteByUser(userId)
+    await this.mfaEnrolment.deletePendingTotp(userId)
+    if ((await Passkeys.countByUser(userId)) === 0) {
+      await RecoveryCodes.deleteByUser(userId)
+    }
     await this.recomputeTwoFactorEnabled(userId)
 
     this.emitMethodChange(userId, 'totp', false, ipAddress, userAgent)
@@ -171,16 +178,20 @@ export class MfaService {
     )
     await updateUser(userId, { isTwoFactorEnabled: true })
 
+    let recoveryCodes: string[] | undefined
     // The first strong factor added resets the trust boundary, exactly like TOTP.
     if (firstFactor) {
       await this.eventEmitter.emitAsync(
         AUTH_EVENTS.TWO_FACTOR_ENABLED,
         new TwoFactorEnabledEvent(userId, currentJti)
       )
+      if (!(await Totp.findConfirmed(userId))) {
+        recoveryCodes = await this.regenerateRecoveryCodes(userId)
+      }
     }
     this.emitMethodChange(userId, 'passkey', true, ipAddress, userAgent)
 
-    return { id: passkey.id, name: passkey.name }
+    return { id: passkey.id, name: passkey.name, recoveryCodes }
   }
 
   async listPasskeys(userId: number) {
@@ -203,6 +214,16 @@ export class MfaService {
     ipAddress?: string,
     userAgent?: string
   ) {
+    const [user, passkeyCount, oauthAccounts] = await Promise.all([
+      getUserCredentials(userId),
+      Passkeys.countByUser(userId),
+      OAuthAccounts.findMany({ where: { userId } }),
+    ])
+    const hasOtherLogin = !!user?.passwordHash || oauthAccounts.length > 0
+    if (passkeyCount <= 1 && !hasOtherLogin) {
+      throw new BadRequestException(i18n.t('auth.mfa.last_factor'))
+    }
+
     await this.passkeyService.remove(id, userId, i18n)
     await this.recomputeTwoFactorEnabled(userId)
     this.emitMethodChange(userId, 'passkey', false, ipAddress, userAgent)

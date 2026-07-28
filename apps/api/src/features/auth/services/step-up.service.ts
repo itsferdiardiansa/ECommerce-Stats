@@ -9,6 +9,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter'
 import { randomUUID } from 'crypto'
 import { Totp, RecoveryCodes } from '@rufieltics/db/domains/auth'
 import { RedisService } from '@/modules/redis/redis.service'
+import { StepUpStore } from '@/modules/redis/stores'
 import { MailQueueService } from '@/modules/mail/mail-queue.service'
 import { MailPriority } from '@/modules/mail/mail.constants'
 import { renderEmail } from '@rufieltics/emails'
@@ -63,6 +64,7 @@ export class StepUpService {
   constructor(
     private readonly authService: AuthService,
     private readonly redisService: RedisService,
+    private readonly stepUpStore: StepUpStore,
     private readonly eventEmitter: EventEmitter2,
     private readonly mailQueue: MailQueueService,
     private readonly totpService: TotpService,
@@ -102,7 +104,7 @@ export class StepUpService {
     userId: number
   ): Promise<void> {
     await Promise.all([
-      this.redisService.deleteStepUpChallenge(challengeId),
+      this.stepUpStore.deleteChallenge(challengeId),
       this.redisService.del(this.stepUpUserKey(userId)),
     ])
   }
@@ -156,8 +158,7 @@ export class StepUpService {
     if (method === 'email') {
       const activeChallengeId = await this.redisService.get<string>(userKey)
       if (activeChallengeId) {
-        const active =
-          await this.redisService.getStepUpChallenge(activeChallengeId)
+        const active = await this.stepUpStore.getChallenge(activeChallengeId)
         if (active) {
           return {
             stepUpRequired: true as const,
@@ -185,7 +186,7 @@ export class StepUpService {
       ipAddress: ipAddress ?? null,
     }
 
-    await this.redisService.setStepUpChallenge(
+    await this.stepUpStore.setChallenge(
       challengeId,
       challenge,
       this.STEP_UP_CHALLENGE_TTL_SECONDS
@@ -257,7 +258,7 @@ export class StepUpService {
     trustDevice = false
   ) {
     const challenge =
-      await this.redisService.getStepUpChallenge<StepUpChallenge>(challengeId)
+      await this.stepUpStore.getChallenge<StepUpChallenge>(challengeId)
     if (!challenge) {
       throw new UnauthorizedException(i18n.t('auth.errors.step_up_expired'))
     }
@@ -272,7 +273,7 @@ export class StepUpService {
       throw new BadRequestException(i18n.t(this.stepUpExpectsKey(challenge)))
     }
 
-    const userFailures = await this.redisService.getStepUpUserFailures(
+    const userFailures = await this.stepUpStore.getUserFailures(
       challenge.userId
     )
     if (userFailures >= this.STEP_UP_MAX_USER_FAILURES) {
@@ -281,15 +282,14 @@ export class StepUpService {
       )
     }
 
-    const attempts =
-      await this.redisService.incrementStepUpAttempts(challengeId)
+    const attempts = await this.stepUpStore.incrementAttempts(challengeId)
     if (attempts > this.STEP_UP_MAX_ATTEMPTS) {
       await this.failStepUp(challengeId, challenge, i18n)
     }
     const passed = await this.verifyStepUpFactor(challenge, usedMethod, code)
 
     if (!passed) {
-      const cumulative = await this.redisService.incrementStepUpUserFailures(
+      const cumulative = await this.stepUpStore.incrementUserFailures(
         challenge.userId,
         this.STEP_UP_LOCKOUT_SECONDS
       )
@@ -305,7 +305,7 @@ export class StepUpService {
     }
 
     await this.voidStepUpChallenge(challengeId, challenge.userId)
-    await this.redisService.resetStepUpUserFailures(challenge.userId)
+    await this.stepUpStore.resetUserFailures(challenge.userId)
 
     if (usedMethod === 'recovery') {
       this.eventEmitter.emit(
@@ -324,7 +324,7 @@ export class StepUpService {
   /** Issues assertion options for a passkey step-up already under way. */
   async initiatePasskeyLoginOptions(challengeId: string, i18n: I18nContext) {
     const challenge =
-      await this.redisService.getStepUpChallenge<StepUpChallenge>(challengeId)
+      await this.stepUpStore.getChallenge<StepUpChallenge>(challengeId)
     if (!challenge) {
       throw new UnauthorizedException(i18n.t('auth.errors.step_up_expired'))
     }
@@ -348,7 +348,7 @@ export class StepUpService {
     trustDevice = false
   ) {
     const challenge =
-      await this.redisService.getStepUpChallenge<StepUpChallenge>(challengeId)
+      await this.stepUpStore.getChallenge<StepUpChallenge>(challengeId)
     if (!challenge) {
       throw new UnauthorizedException(i18n.t('auth.errors.step_up_expired'))
     }
@@ -356,7 +356,7 @@ export class StepUpService {
       throw new BadRequestException(i18n.t(this.stepUpExpectsKey(challenge)))
     }
 
-    const userFailures = await this.redisService.getStepUpUserFailures(
+    const userFailures = await this.stepUpStore.getUserFailures(
       challenge.userId
     )
     if (userFailures >= this.STEP_UP_MAX_USER_FAILURES) {
@@ -372,7 +372,7 @@ export class StepUpService {
     )
 
     if (verifiedUserId !== challenge.userId) {
-      const cumulative = await this.redisService.incrementStepUpUserFailures(
+      const cumulative = await this.stepUpStore.incrementUserFailures(
         challenge.userId,
         this.STEP_UP_LOCKOUT_SECONDS
       )
@@ -385,7 +385,7 @@ export class StepUpService {
     }
 
     await this.voidStepUpChallenge(challengeId, challenge.userId)
-    await this.redisService.resetStepUpUserFailures(challenge.userId)
+    await this.stepUpStore.resetUserFailures(challenge.userId)
 
     return this.completeStepUp(challenge, ipAddress, userAgent, trustDevice)
   }

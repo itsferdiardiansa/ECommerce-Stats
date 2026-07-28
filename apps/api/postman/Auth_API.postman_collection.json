@@ -70,6 +70,11 @@
       "key": "oauth_state",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "reset_token",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -555,6 +560,130 @@
               "path": ["auth", "password"]
             },
             "description": "Requires sudo. Rejects reuse of the last 5 passwords, signs out all other devices, untrusts their browsers, and emails the owner."
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "description": "Public. Always returns the same generic success (enumeration-safe). If the email exists, a single-use cryptographic reset token is emailed (view in Mailpit at http://localhost:8025) — copy it into {{reset_token}} for \"Reset Password\". Rate-limited like login."
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{reset_token}}\",\n  \"password\": \"NewSecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "reset-password"]
+            },
+            "description": "Public. Consumes the single-use token from the reset email, sets the new password, and revokes ALL sessions. Works for OAuth-only users setting a first password. Invalid/expired token returns a generic error."
+          },
+          "response": []
+        },
+        {
+          "name": "Request Email Change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newEmail\": \"new.address@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/email/change",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "email", "change"]
+            },
+            "description": "Requires sudo. Sends a 6-digit confirmation code to the NEW email address (Mailpit). Rejects an address already in use. Run \"Sudo (Re-authenticate)\" first."
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm Email Change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{verification_code}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/email/change/confirm",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "email", "change", "confirm"]
+            },
+            "description": "Confirms the code sent to the new email and updates the account email (marks it verified). Attempt-capped and single-use."
           },
           "response": []
         },

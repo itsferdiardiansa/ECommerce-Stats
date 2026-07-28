@@ -7,7 +7,7 @@ import {
 import { Reflector } from '@nestjs/core'
 import { I18nContext } from 'nestjs-i18n'
 import { REQUIRE_SUDO_KEY } from '@/common/decorators/require-sudo.decorator'
-import { RedisService } from '@/modules/redis/redis.service'
+import { SudoStore } from '@/modules/redis/stores'
 import type { CurrentUserPayload } from '@/common/decorators/current-user.decorator'
 
 interface RequestWithUser {
@@ -19,7 +19,7 @@ interface RequestWithUser {
 export class SudoGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly redisService: RedisService
+    private readonly sudoStore: SudoStore
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -34,7 +34,7 @@ export class SudoGuard implements CanActivate {
     const i18n = I18nContext.current(context)
     const jti = request.user?.jti
 
-    if (!jti || (await this.redisService.getSudoTtl(jti)) === null) {
+    if (!jti || (await this.sudoStore.getTtl(jti)) === null) {
       throw new ForbiddenException({
         message: i18n?.t('auth.sudo.required') || 'Re-authentication required',
         code: 'SUDO_REQUIRED',

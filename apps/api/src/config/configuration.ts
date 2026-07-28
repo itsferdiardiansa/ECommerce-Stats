@@ -49,6 +49,26 @@ export default () => ({
         10
       ),
     },
+    passwordReset: {
+      codeTtlSeconds: parseInt(
+        process.env.PASSWORD_RESET_CODE_TTL_SECONDS || '900',
+        10
+      ),
+      maxAttempts: parseInt(process.env.PASSWORD_RESET_MAX_ATTEMPTS || '5', 10),
+    },
+    emailChange: {
+      codeTtlSeconds: parseInt(
+        process.env.EMAIL_CHANGE_CODE_TTL_SECONDS || '900',
+        10
+      ),
+      maxAttempts: parseInt(process.env.EMAIL_CHANGE_MAX_ATTEMPTS || '5', 10),
+    },
+    loginHistory: {
+      retentionDays: parseInt(
+        process.env.LOGIN_HISTORY_RETENTION_DAYS || '90',
+        10
+      ),
+    },
     stepUp: {
       codeTtlSeconds: parseInt(
         process.env.STEP_UP_CODE_TTL_SECONDS || '300',

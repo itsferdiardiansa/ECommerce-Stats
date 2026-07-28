@@ -14,7 +14,7 @@ import {
   getUserByUsernameIncludingDeleted,
 } from '@rufieltics/db/domains/identity/user'
 import { provisionPersonalWorkspace } from '@/utils/workspace'
-import { RedisService } from '@/modules/redis/redis.service'
+import { VerificationStore } from '@/modules/redis/stores'
 import { MailQueueService } from '@/modules/mail/mail-queue.service'
 import { MailPriority } from '@/modules/mail/mail.constants'
 import { renderEmail } from '@rufieltics/emails'
@@ -32,7 +32,7 @@ export class RegistrationService {
   private readonly lockoutSeconds: number
 
   constructor(
-    private readonly redisService: RedisService,
+    private readonly verification: VerificationStore,
     private readonly mailQueue: MailQueueService,
     config: ConfigService
   ) {
@@ -78,14 +78,14 @@ export class RegistrationService {
     ipAddress?: string,
     userAgent?: string
   ): Promise<never> {
-    await this.redisService.setVerificationLockout(
+    await this.verification.setLockout(
       email,
       this.lockoutSeconds,
       'TOO_MANY_ATTEMPTS',
       ipAddress,
       userAgent
     )
-    await this.redisService.deleteVerificationCode(email)
+    await this.verification.deleteCode(email)
     throw this.lockoutException(this.lockoutSeconds, i18n)
   }
 
@@ -121,7 +121,7 @@ export class RegistrationService {
 
         const fullUser = await getUserByEmail(email)
         if (fullUser && !fullUser.isActive && !fullUser.emailVerifiedAt) {
-          const lockout = await this.redisService.getVerificationLockout(email)
+          const lockout = await this.verification.getLockout(email)
           this.assertNotLockedOut(lockout, i18n)
         }
 
@@ -152,11 +152,7 @@ export class RegistrationService {
       })
 
       const code = generateVerificationCode()
-      await this.redisService.setVerificationCode(
-        email,
-        code,
-        this.codeTtlSeconds
-      )
+      await this.verification.setCode(email, code, this.codeTtlSeconds)
 
       await this.sendVerificationEmail(email, user.name, code, i18n)
 
@@ -186,10 +182,10 @@ export class RegistrationService {
       throw new BadRequestException(i18n.t('auth.errors.already_verified'))
     }
 
-    const lockout = await this.redisService.getVerificationLockout(email)
+    const lockout = await this.verification.getLockout(email)
     this.assertNotLockedOut(lockout, i18n)
 
-    const storedData = await this.redisService.getVerificationCode(email)
+    const storedData = await this.verification.getCode(email)
 
     if (!storedData) {
       throw new BadRequestException(i18n.t('auth.errors.code_expired'))
@@ -198,12 +194,11 @@ export class RegistrationService {
     const codeAge = Date.now() - new Date(storedData.createdAt).getTime()
 
     if (codeAge > this.codeMaxAgeMs) {
-      await this.redisService.deleteVerificationCode(email)
+      await this.verification.deleteCode(email)
       throw new BadRequestException(i18n.t('auth.errors.code_expired'))
     }
 
-    const attemptNo =
-      await this.redisService.incrementVerificationAttempts(email)
+    const attemptNo = await this.verification.incrementAttempts(email)
 
     if (attemptNo > this.maxAttempts) {
       await this.triggerVerificationLockout(email, i18n, ipAddress, userAgent)
@@ -230,7 +225,7 @@ export class RegistrationService {
         isActive: true,
         emailVerifiedAt: new Date(),
       }),
-      this.redisService.deleteVerificationCode(email),
+      this.verification.deleteCode(email),
       provisionPersonalWorkspace(user.id, user.name, user.username),
     ])
 
@@ -249,10 +244,10 @@ export class RegistrationService {
       throw new BadRequestException(i18n.t('auth.errors.already_verified'))
     }
 
-    const lockout = await this.redisService.getVerificationLockout(email)
+    const lockout = await this.verification.getLockout(email)
     this.assertNotLockedOut(lockout, i18n)
 
-    const existingCode = await this.redisService.getVerificationCode(email)
+    const existingCode = await this.verification.getCode(email)
 
     if (existingCode) {
       const codeAge = Date.now() - new Date(existingCode.createdAt).getTime()
@@ -270,11 +265,7 @@ export class RegistrationService {
     }
 
     const code = generateVerificationCode()
-    await this.redisService.setVerificationCode(
-      email,
-      code,
-      this.codeTtlSeconds
-    )
+    await this.verification.setCode(email, code, this.codeTtlSeconds)
 
     await this.sendVerificationEmail(email, user.name, code, i18n)
 

@@ -9,6 +9,7 @@ vi.mock('@/libs/prisma', () => ({
     loginHistory: {
       create: vi.fn(),
       findMany: vi.fn(),
+      deleteMany: vi.fn(),
     },
   },
 }))
@@ -72,5 +73,24 @@ describe('LoginLogs', () => {
       orderBy: undefined,
     })
     expect(res).toEqual(many)
+  })
+
+  it('deleteOlderThan prunes rows before the cutoff', async () => {
+    // @ts-expect-error mocked
+    db.loginHistory.deleteMany.mockResolvedValue({ count: 7 })
+
+    const before = Date.now() - 90 * 24 * 60 * 60 * 1000
+    const res = await LoginLogs.deleteOlderThan(90)
+
+    const arg = (
+      db.loginHistory.deleteMany as unknown as {
+        mock: { calls: Array<[{ where: { createdAt: { lt: Date } } }]> }
+      }
+    ).mock.calls[0][0]
+    expect(arg.where.createdAt.lt.getTime()).toBeGreaterThanOrEqual(
+      before - 5000
+    )
+    expect(arg.where.createdAt.lt.getTime()).toBeLessThanOrEqual(Date.now())
+    expect(res).toEqual({ count: 7 })
   })
 })

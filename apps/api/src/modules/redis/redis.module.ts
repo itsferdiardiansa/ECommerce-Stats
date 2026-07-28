@@ -3,6 +3,33 @@ import { ConfigModule, ConfigService } from '@nestjs/config'
 import Redis from 'ioredis'
 import { RedisService } from './redis.service'
 import { REDIS_CLIENT } from './redis.constants'
+import {
+  VerificationStore,
+  PasswordResetStore,
+  EmailChangeStore,
+  StepUpStore,
+  WebauthnStore,
+  OAuthStateStore,
+  AnomalyStore,
+  TrustedDeviceStore,
+  SudoStore,
+  SessionStore,
+  MfaEnrolmentStore,
+} from './stores'
+
+const STORES = [
+  VerificationStore,
+  PasswordResetStore,
+  EmailChangeStore,
+  StepUpStore,
+  WebauthnStore,
+  OAuthStateStore,
+  AnomalyStore,
+  TrustedDeviceStore,
+  SudoStore,
+  SessionStore,
+  MfaEnrolmentStore,
+]
 
 @Global()
 @Module({
@@ -35,7 +62,8 @@ import { REDIS_CLIENT } from './redis.constants'
       inject: [ConfigService],
     },
     RedisService,
+    ...STORES,
   ],
-  exports: [RedisService, REDIS_CLIENT],
+  exports: [RedisService, REDIS_CLIENT, ...STORES],
 })
 export class RedisModule {}

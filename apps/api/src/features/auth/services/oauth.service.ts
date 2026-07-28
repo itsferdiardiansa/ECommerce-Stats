@@ -18,7 +18,7 @@ import { OAuthAccounts } from '@rufieltics/db/domains/auth'
 import { OrganizationMembers } from '@rufieltics/db/domains/identity/organization'
 import { Prisma } from '@rufieltics/db'
 import { AuthService } from '../auth.service'
-import { RedisService } from '@/modules/redis/redis.service'
+import { OAuthStateStore } from '@/modules/redis/stores'
 import { AUTH_EVENTS, LoginSuccessEvent, LoginFailedEvent } from '../events'
 import { pickPrimaryMembership, generateOAuthUsername } from '@/utils/auth'
 import { provisionPersonalWorkspace } from '@/utils/workspace'
@@ -51,7 +51,7 @@ export class OAuthService {
 
   constructor(
     private readonly authService: AuthService,
-    private readonly redisService: RedisService,
+    private readonly oauthStateStore: OAuthStateStore,
     private readonly eventEmitter: EventEmitter2,
     config: ConfigService
   ) {
@@ -84,7 +84,7 @@ export class OAuthService {
     }
     const state = generateState()
     const codeVerifier = generateCodeVerifier()
-    await this.redisService.setOAuthState(
+    await this.oauthStateStore.set(
       GOOGLE_PROVIDER,
       state,
       { codeVerifier },
@@ -112,11 +112,11 @@ export class OAuthService {
       throw new UnauthorizedException(i18n.t('auth.errors.oauth_failed'))
     }
 
-    const stored = await this.redisService.getOAuthState(GOOGLE_PROVIDER, state)
+    const stored = await this.oauthStateStore.get(GOOGLE_PROVIDER, state)
     if (!stored) {
       throw new UnauthorizedException(i18n.t('auth.errors.oauth_failed'))
     }
-    await this.redisService.deleteOAuthState(GOOGLE_PROVIDER, state)
+    await this.oauthStateStore.delete(GOOGLE_PROVIDER, state)
 
     const tokens = await this.google
       .validateAuthorizationCode(code, stored.codeVerifier)

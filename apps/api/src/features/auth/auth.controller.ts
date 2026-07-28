@@ -39,7 +39,7 @@ import { CurrentUser } from '@/common/decorators/current-user.decorator'
 import { RequireSudo } from '@/common/decorators/require-sudo.decorator'
 import type { CurrentUserPayload } from '@/common/decorators/current-user.decorator'
 import { MyLockoutResponseDto } from './dto/my-lockout-response.dto'
-import { RedisService } from '@/modules/redis/redis.service'
+import { VerificationStore } from '@/modules/redis/stores'
 import { JwtService } from '@/modules/jwt/jwt.service'
 import configuration from '@/config/configuration'
 import { authThrottle } from '@/common/helpers/throttle.helper'
@@ -56,7 +56,7 @@ export class AuthController {
     private readonly loginService: LoginService,
     private readonly stepUpService: StepUpService,
     private readonly trustedDevices: TrustedDeviceService,
-    private readonly redisService: RedisService,
+    private readonly verificationStore: VerificationStore,
     private readonly jwtService: JwtService
   ) {}
 
@@ -448,7 +448,7 @@ export class AuthController {
     @CurrentUser() user: CurrentUserPayload,
     @I18n() i18n: I18nContext
   ) {
-    const lockout = await this.redisService.getVerificationLockout(user.email)
+    const lockout = await this.verificationStore.getLockout(user.email)
 
     const response: MyLockoutResponseDto = {
       isLocked: lockout !== null,

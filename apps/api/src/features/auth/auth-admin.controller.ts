@@ -22,12 +22,12 @@ import {
   LockoutResponseDto,
 } from './dto/lockout-response.dto'
 import { Verification } from '@rufieltics/db/domains/auth'
-import { RedisService } from '@/modules/redis/redis.service'
+import { VerificationStore } from '@/modules/redis/stores'
 
 @Controller('admin')
 @UseGuards(ActiveUserGuard, AdminGuard)
 export class AuthAdminController {
-  constructor(private readonly redisService: RedisService) {}
+  constructor(private readonly verificationStore: VerificationStore) {}
 
   @Get('lockouts')
   @HttpCode(HttpStatus.OK)
@@ -131,8 +131,7 @@ export class AuthAdminController {
 
     await Verification.clearAllActiveLocksForEmail(lockout.email, user.id)
 
-    const redisKey = `verification:lockout:${lockout.email.toLowerCase()}`
-    await this.redisService.del(redisKey)
+    await this.verificationStore.deleteLockout(lockout.email)
 
     return success(i18n.t('admin.lockouts.cleared_success'), {
       id,

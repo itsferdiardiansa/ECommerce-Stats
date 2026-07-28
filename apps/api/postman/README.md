@@ -43,7 +43,7 @@ To change variables:
 
 ---
 
-## 🔐 Authentication Endpoints
+## Authentication Endpoints
 
 ### 1. **Register** (POST `/auth/register`)
 
@@ -236,7 +236,57 @@ Logout and invalidate current session/token.
 
 ---
 
-## 🟢 OAuth (Google) Endpoints
+### 9. **Forgot Password** (POST `/auth/forgot-password`)
+
+Public. Starts account recovery. **Enumeration-safe** — always returns the same generic success whether or not the email exists. When it does, a **single-use cryptographic token** (256-bit, stored only as a SHA-256 hash, short TTL) is emailed. In dev, read it from **Mailpit** (`http://localhost:8025`) and copy into `{{reset_token}}`. Rate-limited like login.
+
+**Request body:**
+
+```json
+{ "email": "john.doe@example.com" }
+```
+
+---
+
+### 10. **Reset Password** (POST `/auth/reset-password`)
+
+Public. Consumes the token from the reset email, sets the new password, and **revokes all sessions**. Also lets an OAuth-only user set a first password. Reuse of a recent password is rejected; an invalid/expired token returns a generic error.
+
+**Request body:**
+
+```json
+{ "token": "{{reset_token}}", "password": "NewSecurePass123!" }
+```
+
+---
+
+### 11. **Request Email Change** (POST `/auth/email/change`)
+
+Requires **sudo**. Emails a 6-digit confirmation code to the **new** address (Mailpit) and rejects an address already in use. Run **Sudo (Re-authenticate)** first.
+
+**Headers:** `Authorization: Bearer {access_token}`, `X-Device-Secret: {device_secret}`
+
+**Request body:**
+
+```json
+{ "newEmail": "new.address@example.com" }
+```
+
+---
+
+### 12. **Confirm Email Change** (POST `/auth/email/change/confirm`)
+
+Confirms the code sent to the new address and updates the account email (marked verified). Attempt-capped and single-use.
+
+**Request body:**
+
+```json
+{ "code": "123456" }
+```
+
+---
+
+## OAuth (Google) Endpoints
 
 Sign in / sign up with Google using OpenID Connect (**authorization-code + PKCE**, verified server-side). These are **browser-driven redirects**, not JSON APIs — trigger them from a real browser, not from Postman's request runner. One button serves both sign-in and sign-up; the callback decides create-vs-login.
 
@@ -261,7 +311,7 @@ On success it sets httpOnly `refreshToken` + `deviceSecret` cookies and `302`s t
 
 ---
 
-## 🧪 Testing Endpoints
+## Testing Endpoints
 
 ### 1. **Test Indonesian Language (Validation Error)**
 

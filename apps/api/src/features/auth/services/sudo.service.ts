@@ -9,7 +9,7 @@ import * as argon2 from 'argon2'
 import { getUserCredentials } from '@rufieltics/db/domains/identity/user'
 import { Totp } from '@rufieltics/db/domains/auth'
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
-import { RedisService } from '@/modules/redis/redis.service'
+import { SudoStore } from '@/modules/redis/stores'
 import { TotpService } from './totp.service'
 import { PasskeyService } from './passkey.service'
 
@@ -27,7 +27,7 @@ export class SudoService {
   private readonly MAX_ATTEMPTS: number
 
   constructor(
-    private readonly redisService: RedisService,
+    private readonly sudoStore: SudoStore,
     private readonly totpService: TotpService,
     private readonly passkeyService: PasskeyService,
     config: ConfigService
@@ -47,10 +47,10 @@ export class SudoService {
     input: SudoInput,
     i18n: I18nContext
   ): Promise<{ expiresIn: number }> {
-    const active = await this.redisService.getSudoTtl(jti)
+    const active = await this.sudoStore.getTtl(jti)
     if (active !== null) return { expiresIn: active }
 
-    const attempts = await this.redisService.incrementSudoAttempts(
+    const attempts = await this.sudoStore.incrementAttempts(
       jti,
       this.TTL_SECONDS
     )
@@ -75,7 +75,7 @@ export class SudoService {
       )
     }
 
-    await this.redisService.grantSudo(jti, this.TTL_SECONDS)
+    await this.sudoStore.grant(jti, this.TTL_SECONDS)
 
     return { expiresIn: this.TTL_SECONDS }
   }
@@ -122,7 +122,7 @@ export class SudoService {
   }
 
   async status(jti: string): Promise<{ active: boolean; expiresIn: number }> {
-    const ttl = await this.redisService.getSudoTtl(jti)
+    const ttl = await this.sudoStore.getTtl(jti)
     return { active: ttl !== null, expiresIn: ttl ?? 0 }
   }
 }

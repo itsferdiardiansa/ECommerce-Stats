@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { LoginLogs } from '@rufieltics/db/domains/auth'
-import { RedisService } from '@/modules/redis/redis.service'
+import { AnomalyStore } from '@/modules/redis/stores'
 
 /**
  * A single anomaly signal detected for a login. Emitted with the alert so
@@ -44,7 +44,7 @@ export class LoginAnomalyService {
   private readonly knownFactorTtlSeconds: number
 
   constructor(
-    private readonly redis: RedisService,
+    private readonly redis: AnomalyStore,
     config: ConfigService
   ) {
     this.bruteForceWindowSeconds = config.get<number>(

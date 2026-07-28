@@ -7,6 +7,7 @@ vi.mock('@/libs/prisma', () => ({
     user: {
       create: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
       count: vi.fn(),
@@ -34,7 +35,9 @@ describe('User Domain', () => {
       }
       const result = await createUser(input)
 
-      expect(db.user.create).toHaveBeenCalledWith({ data: input })
+      expect(db.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: input })
+      )
       expect(result).toEqual(mockUser)
     })
 
@@ -52,20 +55,21 @@ describe('User Domain', () => {
   })
 
   describe('getUserById', () => {
-    it('should return user with relations', async () => {
+    it('should return user with relations (excluding soft-deleted)', async () => {
       const mockUser = { id: 1, email: 'test@example.com' }
       // @ts-expect-error - Mock implementation
-      db.user.findUnique.mockResolvedValue(mockUser)
+      db.user.findFirst.mockResolvedValue(mockUser)
 
       const result = await getUserById(1)
 
-      expect(db.user.findUnique).toHaveBeenCalledWith({
-        where: { id: 1 },
-        include: {
+      const arg = vi.mocked(db.user.findFirst).mock.calls[0][0]
+      expect(arg?.where).toEqual({ id: 1, deletedAt: null })
+      expect(arg?.select).toEqual(
+        expect.objectContaining({
           addresses: true,
           orders: { take: 5, orderBy: { createdAt: 'desc' } },
-        },
-      })
+        })
+      )
       expect(result).toEqual(mockUser)
     })
   })
@@ -78,22 +82,34 @@ describe('User Domain', () => {
 
       const result = await updateUser(10, { name: 'Updated' })
 
-      expect(db.user.update).toHaveBeenCalledWith({
-        where: { id: 10 },
-        data: { name: 'Updated' },
-      })
+      expect(db.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 10 },
+          data: { name: 'Updated' },
+        })
+      )
       expect(result).toEqual(mockUser)
     })
 
-    it('should delete a user', async () => {
-      const mockUser = { id: 11 }
+    it('should soft-delete a user (set deletedAt + deactivate)', async () => {
       // @ts-expect-error - Mock implementation
-      db.user.delete.mockResolvedValue(mockUser)
+      db.user.findUnique.mockResolvedValue({ id: 11, deletedAt: null })
+      const softDeleted = { id: 11, isActive: false, deletedAt: new Date() }
+      // @ts-expect-error - Mock implementation
+      db.user.update.mockResolvedValue(softDeleted)
 
       const result = await deleteUser(11)
 
-      expect(db.user.delete).toHaveBeenCalledWith({ where: { id: 11 } })
-      expect(result).toEqual(mockUser)
+      const arg = vi.mocked(db.user.update).mock.calls[0][0]
+      expect(arg.where).toEqual({ id: 11 })
+      expect(arg.data).toEqual(
+        expect.objectContaining({
+          isActive: false,
+          deletedAt: expect.any(Date),
+        })
+      )
+      expect(db.user.delete).not.toHaveBeenCalled()
+      expect(result).toEqual(softDeleted)
     })
   })
 

@@ -79,6 +79,9 @@ export type I18nTranslations = {
             "oauth_failed": string;
             "oauth_email_not_verified": string;
             "oauth_account_unavailable": string;
+            "too_many_attempts": string;
+            "email_taken": string;
+            "reset_token_invalid": string;
         };
         "validation": {
             "code_length": string;
@@ -106,6 +109,16 @@ export type I18nTranslations = {
         "password": {
             "change_success": string;
         };
+        "forgot_password": {
+            "success": string;
+        };
+        "reset_password": {
+            "success": string;
+        };
+        "email_change": {
+            "requested": string;
+            "success": string;
+        };
         "mfa": {
             "status_success": string;
             "enrolment_started": string;
@@ -116,6 +129,7 @@ export type I18nTranslations = {
             "not_started": string;
             "not_enabled": string;
             "invalid_code": string;
+            "last_factor": string;
             "passkey": {
                 "list_success": string;
                 "enrolment_started": string;
