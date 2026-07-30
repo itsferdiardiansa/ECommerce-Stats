@@ -52,6 +52,15 @@ export default async function SignInPage({
           We couldn&apos;t complete Google sign-in. Please try again.
         </p>
       ) : null}
+      {error === 'locked' ? (
+        <p
+          role="alert"
+          className="mb-4 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-400"
+        >
+          This account has been locked for security. Check your email for a link
+          to reset your password and sign back in.
+        </p>
+      ) : null}
       <SignInForm />
     </AuthCard>
   )

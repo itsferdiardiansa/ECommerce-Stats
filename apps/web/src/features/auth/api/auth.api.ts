@@ -60,6 +60,12 @@ export const authApi = {
       body: JSON.stringify(body),
     }),
 
+  secureAccount: (body: { token: string }) =>
+    apiFetch<null>('/auth/secure-account', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
   // --- step-up (second factor) completion ---
   stepUp: (body: StepUpRequest) =>
     apiFetch<SessionResponse>('/auth/login/step-up', {
