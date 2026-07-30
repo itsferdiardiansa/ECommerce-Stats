@@ -17,6 +17,14 @@ export class StepUpStore {
     return `stepup:fail:${userId}`
   }
 
+  private lockKey(userId: number): string {
+    return `stepup:lock:${userId}`
+  }
+
+  private lockLevelKey(userId: number): string {
+    return `stepup:locklevel:${userId}`
+  }
+
   async setChallenge(id: string, data: object, ttl: number): Promise<void> {
     await Promise.all([
       this.redis.set(this.challengeKey(id), data, ttl),
@@ -66,5 +74,23 @@ export class StepUpStore {
 
   async resetUserFailures(userId: number): Promise<void> {
     await this.redis.del(this.userFailKey(userId))
+  }
+
+  /** Seconds left on the active lockout, or 0 when not locked. */
+  async getLockRemaining(userId: number): Promise<number> {
+    const ttl = await this.redis.ttl(this.lockKey(userId))
+    return ttl > 0 ? ttl : 0
+  }
+
+  async lock(userId: number, seconds: number): Promise<void> {
+    await this.redis.set(this.lockKey(userId), 1, seconds)
+  }
+
+  /** Recent lockout count driving the escalation; window refreshed each time. */
+  async incrementLockLevel(userId: number, ttl: number): Promise<number> {
+    const key = this.lockLevelKey(userId)
+    const count = await this.redis.incr(key)
+    await this.redis.expire(key, ttl)
+    return count
   }
 }

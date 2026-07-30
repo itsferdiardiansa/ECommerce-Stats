@@ -71,6 +71,14 @@ export class LoginAnomalyService {
   async previewSuccessRisk(ctx: SuccessContext): Promise<RiskSignal[]> {
     const signals: RiskSignal[] = []
 
+    const recentFailures = await this.redis.recentFailures(
+      `user:${ctx.userId}`,
+      this.bruteForceWindowSeconds
+    )
+    if (recentFailures >= this.bruteForceThreshold) {
+      signals.push(RiskSignal.BRUTE_FORCE)
+    }
+
     if (await this.isNewFactor('device', ctx.userId, ctx.deviceFingerprint)) {
       signals.push(RiskSignal.NEW_DEVICE)
     }

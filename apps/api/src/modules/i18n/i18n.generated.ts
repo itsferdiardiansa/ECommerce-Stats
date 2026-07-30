@@ -69,6 +69,8 @@ export type I18nTranslations = {
             "step_up_expired": string;
             "step_up_invalid_code": string;
             "step_up_too_many_attempts": string;
+            "step_up_locked_minutes": string;
+            "step_up_locked_hours": string;
             "password_reused": string;
             "password_too_recent": string;
             "step_up_expects_totp": string;

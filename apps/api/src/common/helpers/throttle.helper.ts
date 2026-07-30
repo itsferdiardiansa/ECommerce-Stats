@@ -9,3 +9,11 @@ export const authThrottle = () => ({
     ttl: config.throttle.auth.ttl,
   },
 })
+
+/** Flood-only ceiling for step-up; brute force is handled by the lockout. */
+export const stepUpThrottle = () => ({
+  default: {
+    limit: config.throttle.stepUp.limit,
+    ttl: config.throttle.stepUp.ttl,
+  },
+})

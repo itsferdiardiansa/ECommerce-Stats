@@ -36,6 +36,18 @@ export class AnomalyStore {
     return typeof card === 'number' ? card : 0
   }
 
+  async recentFailures(scope: string, windowSeconds = 900): Promise<number> {
+    const key = `bruteforce:${scope}`
+    const cutoff = Date.now() - windowSeconds * 1000
+    const results = await this.redisClient
+      .multi()
+      .zremrangebyscore(key, 0, cutoff)
+      .zcard(key)
+      .exec()
+    const card = results?.[1]?.[1]
+    return typeof card === 'number' ? card : 0
+  }
+
   async isKnownFactor(
     kind: 'device' | 'country',
     userId: number,

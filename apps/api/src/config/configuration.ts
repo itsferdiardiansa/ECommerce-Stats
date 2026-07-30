@@ -17,6 +17,10 @@ export default () => ({
       ttl: parseInt(process.env.THROTTLE_AUTH_TTL || '60000', 10),
       limit: parseInt(process.env.THROTTLE_AUTH_LIMIT || '5', 10),
     },
+    stepUp: {
+      ttl: parseInt(process.env.THROTTLE_STEP_UP_TTL || '60000', 10),
+      limit: parseInt(process.env.THROTTLE_STEP_UP_LIMIT || '60', 10),
+    },
   },
   security: {
     bruteForce: {
@@ -94,6 +98,16 @@ export default () => ({
       ),
       lockoutSeconds: parseInt(
         process.env.STEP_UP_LOCKOUT_SECONDS || '900',
+        10
+      ),
+      lockoutLadderSeconds: (
+        process.env.STEP_UP_LOCKOUT_LADDER || '900,3600,21600,86400'
+      )
+        .split(',')
+        .map(s => parseInt(s.trim(), 10))
+        .filter(n => n > 0),
+      lockLevelTtlSeconds: parseInt(
+        process.env.STEP_UP_LOCK_LEVEL_TTL_SECONDS || '86400',
         10
       ),
     },

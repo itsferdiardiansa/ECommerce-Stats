@@ -42,7 +42,7 @@ import { MyLockoutResponseDto } from './dto/my-lockout-response.dto'
 import { VerificationStore } from '@/modules/redis/stores'
 import { JwtService } from '@/modules/jwt/jwt.service'
 import configuration from '@/config/configuration'
-import { authThrottle } from '@/common/helpers/throttle.helper'
+import { authThrottle, stepUpThrottle } from '@/common/helpers/throttle.helper'
 
 const config = configuration()
 
@@ -159,7 +159,7 @@ export class AuthController {
   }
 
   @Post('login/step-up')
-  @Throttle(authThrottle())
+  @Throttle(stepUpThrottle())
   @HttpCode(HttpStatus.OK)
   async stepUp(
     @Body() dto: StepUpDto,

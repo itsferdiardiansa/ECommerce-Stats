@@ -56,15 +56,26 @@ describe('VerificationStore', () => {
 })
 
 describe('PasswordResetStore', () => {
-  it('stores under the token-hash key', async () => {
+  it('issue stores the token + user pointer and invalidates the previous token', async () => {
     const redis = makeRedis()
+    redis.get.mockResolvedValueOnce('oldhash')
     const store = new PasswordResetStore(asRedis(redis))
-    await store.set('deadbeef', 42, 900)
+    await store.issue(42, 'newhash', 900)
+    expect(redis.del).toHaveBeenCalledWith('pwreset:token:oldhash')
     expect(redis.set).toHaveBeenCalledWith(
-      'pwreset:token:deadbeef',
+      'pwreset:token:newhash',
       { userId: 42 },
       900
     )
+    expect(redis.set).toHaveBeenCalledWith('pwreset:user:42', 'newhash', 900)
+  })
+
+  it('clear removes both the token and the user pointer', async () => {
+    const redis = makeRedis()
+    const store = new PasswordResetStore(asRedis(redis))
+    await store.clear(42, 'newhash')
+    expect(redis.del).toHaveBeenCalledWith('pwreset:token:newhash')
+    expect(redis.del).toHaveBeenCalledWith('pwreset:user:42')
   })
 })
 
@@ -95,6 +106,28 @@ describe('StepUpStore', () => {
     redis.incr.mockResolvedValueOnce(1)
     await store.incrementUserFailures(1, 900)
     expect(redis.expire).toHaveBeenCalledWith('stepup:fail:1', 900)
+  })
+
+  it('getLockRemaining returns 0 when the lock has no TTL', async () => {
+    const redis = makeRedis()
+    redis.ttl.mockResolvedValueOnce(-2)
+    const store = new StepUpStore(asRedis(redis))
+    await expect(store.getLockRemaining(1)).resolves.toBe(0)
+  })
+
+  it('getLockRemaining returns the seconds left on the lock', async () => {
+    const redis = makeRedis()
+    redis.ttl.mockResolvedValueOnce(3600)
+    const store = new StepUpStore(asRedis(redis))
+    await expect(store.getLockRemaining(1)).resolves.toBe(3600)
+  })
+
+  it('incrementLockLevel refreshes the decay window on every lockout', async () => {
+    const redis = makeRedis()
+    const store = new StepUpStore(asRedis(redis))
+    redis.incr.mockResolvedValueOnce(2)
+    await store.incrementLockLevel(1, 86400)
+    expect(redis.expire).toHaveBeenCalledWith('stepup:locklevel:1', 86400)
   })
 })
 

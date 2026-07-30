@@ -60,6 +60,8 @@ export class StepUpService {
   private readonly STEP_UP_CHALLENGE_TTL_SECONDS: number
   private readonly STEP_UP_MAX_USER_FAILURES: number
   private readonly STEP_UP_LOCKOUT_SECONDS: number
+  private readonly STEP_UP_LOCKOUT_LADDER: number[]
+  private readonly STEP_UP_LOCK_LEVEL_TTL: number
 
   constructor(
     private readonly authService: AuthService,
@@ -93,6 +95,14 @@ export class StepUpService {
       'security.stepUp.lockoutSeconds',
       900
     )
+    this.STEP_UP_LOCKOUT_LADDER = config.get<number[]>(
+      'security.stepUp.lockoutLadderSeconds',
+      [900, 3600, 21600, 86400]
+    )
+    this.STEP_UP_LOCK_LEVEL_TTL = config.get<number>(
+      'security.stepUp.lockLevelTtlSeconds',
+      86400
+    )
   }
 
   private stepUpUserKey(userId: number): string {
@@ -109,14 +119,7 @@ export class StepUpService {
     ])
   }
 
-  /** Voids an attempts-exhausted challenge, alerts the owner, and throws. */
-  private async failStepUp(
-    challengeId: string,
-    challenge: StepUpChallenge,
-    i18n: I18nContext
-  ): Promise<never> {
-    await this.voidStepUpChallenge(challengeId, challenge.userId)
-
+  private emitStepUpBlocked(challenge: StepUpChallenge): void {
     const { geo } = generateDeviceFingerprint(
       challenge.userId,
       challenge.userAgent ?? undefined,
@@ -131,9 +134,48 @@ export class StepUpService {
         formatDevice(challenge.userAgent)
       )
     )
+  }
 
+  /** Voids an attempts-exhausted challenge, alerts the owner, and throws. */
+  private async failStepUp(
+    challengeId: string,
+    challenge: StepUpChallenge,
+    i18n: I18nContext
+  ): Promise<never> {
+    await this.voidStepUpChallenge(challengeId, challenge.userId)
+    this.emitStepUpBlocked(challenge)
     throw new UnauthorizedException(
       i18n.t('auth.errors.step_up_too_many_attempts')
+    )
+  }
+
+  /** Escalating lockout: each successive lock lasts longer. Returns seconds. */
+  private async escalateLock(userId: number): Promise<number> {
+    const level = await this.stepUpStore.incrementLockLevel(
+      userId,
+      this.STEP_UP_LOCK_LEVEL_TTL
+    )
+    const idx = Math.min(level - 1, this.STEP_UP_LOCKOUT_LADDER.length - 1)
+    const seconds = this.STEP_UP_LOCKOUT_LADDER[idx]
+    await this.stepUpStore.lock(userId, seconds)
+    await this.stepUpStore.resetUserFailures(userId)
+    return seconds
+  }
+
+  /** Rounded retry time; the escalation level is never exposed. */
+  private stepUpLockedException(
+    seconds: number,
+    i18n: I18nContext
+  ): UnauthorizedException {
+    if (seconds >= 3600) {
+      const hours = Math.max(1, Math.round(seconds / 3600))
+      return new UnauthorizedException(
+        i18n.t('auth.errors.step_up_locked_hours', { args: { hours } })
+      )
+    }
+    const minutes = Math.max(1, Math.round(seconds / 60))
+    return new UnauthorizedException(
+      i18n.t('auth.errors.step_up_locked_minutes', { args: { minutes } })
     )
   }
 
@@ -273,13 +315,11 @@ export class StepUpService {
       throw new BadRequestException(i18n.t(this.stepUpExpectsKey(challenge)))
     }
 
-    const userFailures = await this.stepUpStore.getUserFailures(
+    const lockRemaining = await this.stepUpStore.getLockRemaining(
       challenge.userId
     )
-    if (userFailures >= this.STEP_UP_MAX_USER_FAILURES) {
-      throw new UnauthorizedException(
-        i18n.t('auth.errors.step_up_too_many_attempts')
-      )
+    if (lockRemaining > 0) {
+      throw this.stepUpLockedException(lockRemaining, i18n)
     }
 
     const attempts = await this.stepUpStore.incrementAttempts(challengeId)
@@ -293,8 +333,14 @@ export class StepUpService {
         challenge.userId,
         this.STEP_UP_LOCKOUT_SECONDS
       )
+      if (cumulative >= this.STEP_UP_MAX_USER_FAILURES) {
+        const seconds = await this.escalateLock(challenge.userId)
+        await this.voidStepUpChallenge(challengeId, challenge.userId)
+        this.emitStepUpBlocked(challenge)
+        throw this.stepUpLockedException(seconds, i18n)
+      }
       const remaining = this.STEP_UP_MAX_ATTEMPTS - attempts
-      if (remaining <= 0 || cumulative >= this.STEP_UP_MAX_USER_FAILURES) {
+      if (remaining <= 0) {
         await this.failStepUp(challengeId, challenge, i18n)
       }
       throw new UnauthorizedException(
@@ -356,13 +402,11 @@ export class StepUpService {
       throw new BadRequestException(i18n.t(this.stepUpExpectsKey(challenge)))
     }
 
-    const userFailures = await this.stepUpStore.getUserFailures(
+    const lockRemaining = await this.stepUpStore.getLockRemaining(
       challenge.userId
     )
-    if (userFailures >= this.STEP_UP_MAX_USER_FAILURES) {
-      throw new UnauthorizedException(
-        i18n.t('auth.errors.step_up_too_many_attempts')
-      )
+    if (lockRemaining > 0) {
+      throw this.stepUpLockedException(lockRemaining, i18n)
     }
 
     const verifiedUserId = await this.passkeyService.finishAuthentication(
@@ -377,7 +421,10 @@ export class StepUpService {
         this.STEP_UP_LOCKOUT_SECONDS
       )
       if (cumulative >= this.STEP_UP_MAX_USER_FAILURES) {
-        await this.failStepUp(challengeId, challenge, i18n)
+        const seconds = await this.escalateLock(challenge.userId)
+        await this.voidStepUpChallenge(challengeId, challenge.userId)
+        this.emitStepUpBlocked(challenge)
+        throw this.stepUpLockedException(seconds, i18n)
       }
       throw new UnauthorizedException(
         i18n.t('auth.errors.step_up_invalid_passkey')
