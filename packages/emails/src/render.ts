@@ -107,7 +107,7 @@ export async function renderEmail<N extends EmailName>(
     ? { ...strings, code: (vars as CodeVars).code }
     : isLinkEmail(name)
       ? { ...strings, url: (vars as LinkVars).url }
-      : strings
+      : { ...strings, secureUrl: (vars as AlertVars).secureUrl }
 
   const element = createElement(COMPONENTS[name], props)
 

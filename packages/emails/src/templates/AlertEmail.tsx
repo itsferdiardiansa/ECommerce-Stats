@@ -1,4 +1,4 @@
-import { Text, Section, Row, Column } from '@react-email/components'
+import { Text, Section, Row, Column, Button } from '@react-email/components'
 import { Layout } from '../components/Layout'
 
 export interface AlertEmailProps {
@@ -13,6 +13,8 @@ export interface AlertEmailProps {
   ipLabel: string
   ip: string | null
   action: string
+  secureLabel?: string
+  secureUrl?: string
   footer: string
 }
 
@@ -62,6 +64,24 @@ export function AlertEmail(props: AlertEmailProps) {
         ))}
       </Section>
       <Text style={{ fontWeight: 700, color: '#b91c1c' }}>{props.action}</Text>
+      {props.secureUrl && props.secureLabel ? (
+        <Section style={{ textAlign: 'center', margin: '24px 0' }}>
+          <Button
+            href={props.secureUrl}
+            style={{
+              backgroundColor: '#b91c1c',
+              color: '#ffffff',
+              borderRadius: '8px',
+              padding: '12px 20px',
+              fontSize: '14px',
+              fontWeight: 600,
+              textDecoration: 'none',
+            }}
+          >
+            {props.secureLabel}
+          </Button>
+        </Section>
+      ) : null}
     </Layout>
   )
 }

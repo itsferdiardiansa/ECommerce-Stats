@@ -618,6 +618,60 @@
           "response": []
         },
         {
+          "name": "Secure Account (This wasn't me)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{secure_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/secure-account",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "secure-account"]
+            },
+            "description": "Public. Consumes the token from the 'This wasn't me - secure my account' link in a security-alert email. Locks the account (no factor can sign in), revokes ALL sessions and trusted devices, and emails a password-reset recovery link. Idempotent: re-clicking an already-locked account is a no-op 200 (survives a browser restart). The token lapses on its 72h TTL, and a later password reset invalidates it. Restored once the user completes the reset."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Secure Token (SSR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{secure_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/secure-account/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "secure-account", "verify"]
+            },
+            "description": "Public, non-consuming. Used by the SSR page load to decide what to render. Returns data.state: 'valid' (show the confirm button), 'already_secured' (account already locked - reload after a freeze), or 'invalid' (expired, or the user already reset their password since the link was minted)."
+          },
+          "response": []
+        },
+        {
           "name": "Request Email Change",
           "request": {
             "method": "POST",

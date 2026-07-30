@@ -76,6 +76,15 @@ export default () => ({
       ),
       maxAttempts: parseInt(process.env.EMAIL_CHANGE_MAX_ATTEMPTS || '5', 10),
     },
+    secureAccount: {
+      url:
+        process.env.SECURE_ACCOUNT_URL ||
+        'http://localhost:3000/secure-account',
+      ttlSeconds: parseInt(
+        process.env.SECURE_ACCOUNT_TTL_SECONDS || '259200',
+        10
+      ),
+    },
     loginHistory: {
       retentionDays: parseInt(
         process.env.LOGIN_HISTORY_RETENTION_DAYS || '90',

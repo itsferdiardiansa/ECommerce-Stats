@@ -53,6 +53,8 @@ export type I18nTranslations = {
             "user_not_found": string;
             "invalid_credentials": string;
             "account_not_verified": string;
+            "account_frozen": string;
+            "secure_token_invalid": string;
             "already_verified": string;
             "invalid_code": string;
             "code_expired": string;
@@ -117,6 +119,10 @@ export type I18nTranslations = {
             "throttled": string;
         };
         "reset_password": {
+            "success": string;
+            "token_checked": string;
+        };
+        "secure_account": {
             "success": string;
             "token_checked": string;
         };

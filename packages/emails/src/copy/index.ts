@@ -40,6 +40,7 @@ export interface AlertVars {
   device: string | null
   location: string | null
   ip: string | null
+  secureUrl?: string
 }
 
 export interface CodeStrings {
@@ -64,6 +65,7 @@ export interface AlertStrings {
   location: string | null
   ipLabel: string
   ip: string | null
+  secureLabel: string
   action: string
   footer: string
 }
@@ -136,11 +138,13 @@ const enLabels = {
   deviceLabel: 'Device',
   locationLabel: 'Approximate location',
   ipLabel: 'IP address',
+  secureLabel: "This wasn't me — secure my account",
 }
 const idLabels = {
   deviceLabel: 'Perangkat',
   locationLabel: 'Perkiraan lokasi',
   ipLabel: 'Alamat IP',
+  secureLabel: 'Ini bukan saya — amankan akun saya',
 }
 
 const enMethodNames: Record<SecurityMethod, string> = {

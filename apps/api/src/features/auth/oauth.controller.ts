@@ -1,4 +1,13 @@
-import { Controller, Get, Query, Ip, Headers, Req, Res } from '@nestjs/common'
+import {
+  Controller,
+  Get,
+  Query,
+  Ip,
+  Headers,
+  Req,
+  Res,
+  UnauthorizedException,
+} from '@nestjs/common'
 import type { Request, Response, CookieOptions } from 'express'
 import { Throttle } from '@nestjs/throttler'
 import { I18n, I18nContext } from 'nestjs-i18n'
@@ -90,8 +99,20 @@ export class OAuthController {
       res.cookie('refreshToken', refreshToken, this.getCookieOptions())
       res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
       res.redirect(config.security.oauth.successRedirect)
-    } catch {
-      res.redirect(config.security.oauth.failureRedirect)
+    } catch (err) {
+      res.redirect(this.failureUrl(err))
     }
+  }
+
+  /** A frozen account gets a distinct `error=locked` so the sign-in page can explain it. */
+  private failureUrl(err: unknown): string {
+    const failure = config.security.oauth.failureRedirect
+    const frozen =
+      err instanceof UnauthorizedException &&
+      err.message === 'auth.errors.account_frozen'
+    if (!frozen) return failure
+    const url = new URL(failure)
+    url.searchParams.set('error', 'locked')
+    return url.toString()
   }
 }

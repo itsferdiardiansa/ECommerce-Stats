@@ -10,8 +10,10 @@ import { Throttle } from '@nestjs/throttler'
 import { I18n, I18nContext } from 'nestjs-i18n'
 import { PasswordResetService } from './services/password-reset.service'
 import { EmailChangeService } from './services/email-change.service'
+import { SecureAccountService } from './services/secure-account.service'
 import { ForgotPasswordDto } from './dto/forgot-password.dto'
 import { ResetPasswordDto, VerifyResetTokenDto } from './dto/reset-password.dto'
+import { SecureAccountDto } from './dto/secure-account.dto'
 import {
   RequestEmailChangeDto,
   ConfirmEmailChangeDto,
@@ -28,7 +30,8 @@ import { authThrottle } from '@/common/helpers/throttle.helper'
 export class AccountController {
   constructor(
     private readonly passwordReset: PasswordResetService,
-    private readonly emailChange: EmailChangeService
+    private readonly emailChange: EmailChangeService,
+    private readonly secureAccount: SecureAccountService
   ) {}
 
   @Post('forgot-password')
@@ -66,6 +69,22 @@ export class AccountController {
   ) {
     const valid = await this.passwordReset.verifyToken(dto.token)
     return success(i18n.t('auth.reset_password.token_checked'), { valid })
+  }
+
+  @Post('secure-account')
+  @Throttle(authThrottle())
+  @HttpCode(HttpStatus.OK)
+  async secure(@Body() dto: SecureAccountDto, @I18n() i18n: I18nContext) {
+    await this.secureAccount.secureAccount(dto.token, i18n)
+    return success(i18n.t('auth.secure_account.success'), null)
+  }
+
+  @Post('secure-account/verify')
+  @Throttle(authThrottle())
+  @HttpCode(HttpStatus.OK)
+  async verifySecure(@Body() dto: SecureAccountDto, @I18n() i18n: I18nContext) {
+    const state = await this.secureAccount.checkToken(dto.token)
+    return success(i18n.t('auth.secure_account.token_checked'), { state })
   }
 
   @Post('email/change')

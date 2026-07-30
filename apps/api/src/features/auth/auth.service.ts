@@ -13,6 +13,7 @@ import {
   getSessionUser,
   updateUser,
   getUserCredentials,
+  getUserLockState,
 } from '@rufieltics/db/domains/identity/user'
 import {
   Sessions,
@@ -81,6 +82,11 @@ export class AuthService {
     userAgent?: string,
     ipAddress?: string
   ) {
+    const lockState = await getUserLockState(user.id)
+    if (lockState?.lockedAt) {
+      throw new UnauthorizedException('auth.errors.account_frozen')
+    }
+
     const jti = randomUUID()
     const refreshTtl = this.jwtService.getRefreshExpiresIn()
     const expires = new Date(Date.now() + refreshTtl * 1000)

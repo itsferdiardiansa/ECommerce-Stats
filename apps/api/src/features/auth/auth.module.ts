@@ -21,6 +21,7 @@ import { StepUpService } from './services/step-up.service'
 import { OAuthService } from './services/oauth.service'
 import { PasswordResetService } from './services/password-reset.service'
 import { EmailChangeService } from './services/email-change.service'
+import { SecureAccountService } from './services/secure-account.service'
 import { AuthAuditListener } from './listeners/auth-audit.listener'
 import { SecurityAlertListener } from './listeners/security-alert.listener'
 
@@ -47,6 +48,7 @@ import { SecurityAlertListener } from './listeners/security-alert.listener'
     OAuthService,
     PasswordResetService,
     EmailChangeService,
+    SecureAccountService,
     SessionCleanupService,
     LoginAnomalyService,
     AuthAuditListener,

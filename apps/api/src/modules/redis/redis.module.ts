@@ -15,6 +15,7 @@ import {
   SudoStore,
   SessionStore,
   MfaEnrolmentStore,
+  SecureAccountStore,
 } from './stores'
 
 const STORES = [
@@ -29,6 +30,7 @@ const STORES = [
   SudoStore,
   SessionStore,
   MfaEnrolmentStore,
+  SecureAccountStore,
 ]
 
 @Global()

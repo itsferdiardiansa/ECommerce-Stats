@@ -81,6 +81,10 @@ export class LoginService {
       throw new UnauthorizedException(i18n.t('auth.errors.invalid_credentials'))
     }
 
+    if (user.lockedAt) {
+      throw new UnauthorizedException(i18n.t('auth.errors.account_frozen'))
+    }
+
     if (!user.isActive) {
       this.eventEmitter.emit(
         AUTH_EVENTS.LOGIN_FAILED,

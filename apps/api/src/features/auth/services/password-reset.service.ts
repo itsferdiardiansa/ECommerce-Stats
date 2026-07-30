@@ -126,6 +126,7 @@ export class PasswordResetService {
     await updateUser(user.id, {
       passwordHash: await argon2.hash(newPassword),
       passwordChangedAt: new Date(),
+      lockedAt: null,
     })
     await this.resetStore.clear(stored.userId, tokenHash)
     await this.authService.revokeAllSessions(user.id)
