@@ -49,6 +49,12 @@ export default () => ({
         10
       ),
     },
+    password: {
+      minAgeSeconds: parseInt(
+        process.env.PASSWORD_MIN_AGE_SECONDS || '3600',
+        10
+      ),
+    },
     passwordReset: {
       codeTtlSeconds: parseInt(
         process.env.PASSWORD_RESET_CODE_TTL_SECONDS || '900',

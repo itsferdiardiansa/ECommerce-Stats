@@ -95,7 +95,13 @@ export async function getSessionUser(userId: number) {
 export async function getUserCredentials(userId: number) {
   return db.user.findFirst({
     where: { id: userId, deletedAt: null },
-    select: { id: true, email: true, name: true, passwordHash: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      passwordHash: true,
+      passwordChangedAt: true,
+    },
   })
 }
 

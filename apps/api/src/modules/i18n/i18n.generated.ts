@@ -70,6 +70,7 @@ export type I18nTranslations = {
             "step_up_invalid_code": string;
             "step_up_too_many_attempts": string;
             "password_reused": string;
+            "password_too_recent": string;
             "step_up_expects_totp": string;
             "step_up_expects_email": string;
             "step_up_expects_passkey": string;

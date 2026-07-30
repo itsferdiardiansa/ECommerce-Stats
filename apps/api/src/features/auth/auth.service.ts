@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { I18nContext } from 'nestjs-i18n'
+import { ConfigService } from '@nestjs/config'
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import * as argon2 from 'argon2'
 import { createHash, randomBytes, randomUUID } from 'crypto'
@@ -52,6 +53,8 @@ interface StoredSession {
 
 @Injectable()
 export class AuthService {
+  private readonly passwordMinAgeMs: number
+
   constructor(
     private readonly redisService: RedisService,
     private readonly sessionStore: SessionStore,
@@ -60,8 +63,12 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly eventEmitter: EventEmitter2,
     private readonly tokenDenylist: TokenDenylistService,
-    private readonly trustedDevices: TrustedDeviceService
-  ) {}
+    private readonly trustedDevices: TrustedDeviceService,
+    config: ConfigService
+  ) {
+    this.passwordMinAgeMs =
+      config.get<number>('security.password.minAgeSeconds', 3600) * 1000
+  }
 
   async initiateSession(
     user: {
@@ -301,6 +308,13 @@ export class AuthService {
     const user = await getUserCredentials(userId)
     if (!user) {
       throw new NotFoundException(i18n.t('users.errors.user_not_found'))
+    }
+
+    if (
+      user.passwordChangedAt &&
+      Date.now() - user.passwordChangedAt.getTime() < this.passwordMinAgeMs
+    ) {
+      throw new BadRequestException(i18n.t('auth.errors.password_too_recent'))
     }
 
     if (
