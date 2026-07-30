@@ -11,7 +11,7 @@ import { I18n, I18nContext } from 'nestjs-i18n'
 import { PasswordResetService } from './services/password-reset.service'
 import { EmailChangeService } from './services/email-change.service'
 import { ForgotPasswordDto } from './dto/forgot-password.dto'
-import { ResetPasswordDto } from './dto/reset-password.dto'
+import { ResetPasswordDto, VerifyResetTokenDto } from './dto/reset-password.dto'
 import {
   RequestEmailChangeDto,
   ConfirmEmailChangeDto,
@@ -38,8 +38,12 @@ export class AccountController {
     @Body() dto: ForgotPasswordDto,
     @I18n() i18n: I18nContext
   ) {
-    await this.passwordReset.forgotPassword(dto.email, i18n)
-    return success(i18n.t('auth.forgot_password.success'), null)
+    const { retryAfterSeconds, throttled } =
+      await this.passwordReset.forgotPassword(dto.email, i18n)
+    const message = throttled
+      ? i18n.t('auth.forgot_password.throttled')
+      : i18n.t('auth.forgot_password.success')
+    return success(message, { retryAfterSeconds, throttled })
   }
 
   @Post('reset-password')
@@ -51,6 +55,17 @@ export class AccountController {
   ) {
     await this.passwordReset.resetPassword(dto.token, dto.password, i18n)
     return success(i18n.t('auth.reset_password.success'), null)
+  }
+
+  @Post('reset-password/verify')
+  @Throttle(authThrottle())
+  @HttpCode(HttpStatus.OK)
+  async verifyResetToken(
+    @Body() dto: VerifyResetTokenDto,
+    @I18n() i18n: I18nContext
+  ) {
+    const valid = await this.passwordReset.verifyToken(dto.token)
+    return success(i18n.t('auth.reset_password.token_checked'), { valid })
   }
 
   @Post('email/change')

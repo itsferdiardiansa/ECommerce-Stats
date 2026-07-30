@@ -14,3 +14,9 @@ export const ResetPasswordSchema = z.object({
 })
 
 export class ResetPasswordDto extends createZodDto(ResetPasswordSchema) {}
+
+export const VerifyResetTokenSchema = z.object({
+  token: z.string({ error: 'common.validation.required' }).min(1),
+})
+
+export class VerifyResetTokenDto extends createZodDto(VerifyResetTokenSchema) {}

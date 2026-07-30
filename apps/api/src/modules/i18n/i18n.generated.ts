@@ -111,9 +111,11 @@ export type I18nTranslations = {
         };
         "forgot_password": {
             "success": string;
+            "throttled": string;
         };
         "reset_password": {
             "success": string;
+            "token_checked": string;
         };
         "email_change": {
             "requested": string;

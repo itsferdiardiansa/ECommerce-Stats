@@ -23,6 +23,7 @@ import { AUTH_EVENTS, PasswordChangedEvent } from '../events'
 @Injectable()
 export class PasswordResetService {
   private readonly ttlSeconds: number
+  private readonly resetUrl: string
 
   constructor(
     private readonly resetStore: PasswordResetStore,
@@ -35,17 +36,42 @@ export class PasswordResetService {
       'security.passwordReset.codeTtlSeconds',
       900
     )
+    this.resetUrl = config.get<string>(
+      'security.passwordReset.resetUrl',
+      'http://localhost:3000/reset-password'
+    )
   }
 
-  /** Enumeration-safe: always resolves the same way whether or not the email exists. */
-  async forgotPassword(email: string, i18n: I18nContext): Promise<void> {
+  private resendCooldownSeconds(count: number): number {
+    if (count <= 3) return 60
+    if (count <= 5) return 300
+    if (count <= 7) return 1800
+    if (count <= 9) return 7200
+    if (count <= 11) return 43200
+    return 86400
+  }
+
+  async forgotPassword(
+    email: string,
+    i18n: I18nContext
+  ): Promise<{ retryAfterSeconds: number; throttled: boolean }> {
+    const active = await this.resetStore.getResendCooldown(email)
+    if (active > 0) {
+      return { retryAfterSeconds: active, throttled: true }
+    }
+
+    const count = await this.resetStore.incrementResendCount(email)
+    const cooldown = this.resendCooldownSeconds(count)
+    await this.resetStore.setResendCooldown(email, cooldown)
+
     const user = await getUserByEmail(email)
     if (user) {
       const { token, tokenHash } = generatePasswordResetToken()
-      await this.resetStore.set(tokenHash, user.id, this.ttlSeconds)
+      await this.resetStore.issue(user.id, tokenHash, this.ttlSeconds)
+      const url = `${this.resetUrl}?token=${encodeURIComponent(token)}`
       const message = await renderEmail('password-reset', i18n.lang, {
         name: user.name,
-        code: token,
+        url,
         minutes: Math.round(this.ttlSeconds / 60),
       })
       await this.mailQueue.enqueue(
@@ -53,6 +79,14 @@ export class PasswordResetService {
         { priority: MailPriority.HIGH }
       )
     }
+
+    return { retryAfterSeconds: cooldown, throttled: false }
+  }
+
+  /** Non-consuming validity check for the reset page's load-time UX. */
+  async verifyToken(token: string): Promise<boolean> {
+    const stored = await this.resetStore.get(hashPasswordResetToken(token))
+    return stored !== null
   }
 
   async resetPassword(
@@ -68,7 +102,7 @@ export class PasswordResetService {
 
     const user = await getUserCredentials(stored.userId)
     if (!user) {
-      await this.resetStore.delete(tokenHash)
+      await this.resetStore.clear(stored.userId, tokenHash)
       throw new BadRequestException(i18n.t('auth.errors.reset_token_invalid'))
     }
 
@@ -93,7 +127,7 @@ export class PasswordResetService {
       passwordHash: await argon2.hash(newPassword),
       passwordChangedAt: new Date(),
     })
-    await this.resetStore.delete(tokenHash)
+    await this.resetStore.clear(stored.userId, tokenHash)
     await this.authService.revokeAllSessions(user.id)
 
     this.eventEmitter.emit(

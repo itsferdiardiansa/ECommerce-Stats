@@ -55,6 +55,9 @@ export default () => ({
         10
       ),
       maxAttempts: parseInt(process.env.PASSWORD_RESET_MAX_ATTEMPTS || '5', 10),
+      resetUrl:
+        process.env.PASSWORD_RESET_URL ||
+        'http://localhost:3000/reset-password',
     },
     emailChange: {
       codeTtlSeconds: parseInt(

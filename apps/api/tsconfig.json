@@ -30,6 +30,9 @@
   },
   "references": [
     {
+      "path": "../../packages/emails"
+    },
+    {
       "path": "../../packages/db"
     }
   ]

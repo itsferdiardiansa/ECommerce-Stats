@@ -6,6 +6,24 @@ export interface CodeVars {
   minutes: number
 }
 
+export interface LinkVars {
+  name: string
+  url: string
+  minutes: number
+}
+
+export interface LinkStrings {
+  subject: string
+  preview: string
+  heading: string
+  greeting: string
+  body: string
+  buttonLabel: string
+  expiry: string
+  fallback: string
+  footer: string
+}
+
 export type SecurityMethod = 'totp' | 'passkey' | 'trusted_device'
 
 export interface MethodVars {
@@ -67,11 +85,8 @@ export interface MethodStrings {
   footer: string
 }
 
-type CodeName =
-  | 'verification-code'
-  | 'step-up-otp'
-  | 'password-reset'
-  | 'email-change'
+type CodeName = 'verification-code' | 'step-up-otp' | 'email-change'
+type LinkName = 'password-reset'
 type MethodName = 'security-method-enabled' | 'security-method-disabled'
 type AlertName =
   | 'new-sign-in'
@@ -84,6 +99,38 @@ type AlertName =
 type CodeBuilders = Record<CodeName, (v: CodeVars) => CodeStrings>
 type MethodBuilders = Record<MethodName, (v: MethodVars) => MethodStrings>
 type AlertBuilders = Record<AlertName, (v: AlertVars) => AlertStrings>
+type LinkBuilders = Record<LinkName, (v: LinkVars) => LinkStrings>
+
+const enLink: LinkBuilders = {
+  'password-reset': v => ({
+    subject: 'Reset your password',
+    preview: 'Reset your password',
+    heading: 'Reset your password',
+    greeting: `Hi ${v.name},`,
+    body: 'We received a request to reset your password. Click the button below to choose a new one.',
+    buttonLabel: 'Reset password',
+    expiry: `This link expires in ${v.minutes} minutes and can be used once.`,
+    fallback: 'If the button does not work, paste this link into your browser:',
+    footer:
+      "If you didn't request this, you can safely ignore this email — your password won't change.",
+  }),
+}
+
+const idLink: LinkBuilders = {
+  'password-reset': v => ({
+    subject: 'Atur ulang kata sandi Anda',
+    preview: 'Atur ulang kata sandi Anda',
+    heading: 'Atur ulang kata sandi Anda',
+    greeting: `Hai ${v.name},`,
+    body: 'Kami menerima permintaan untuk mengatur ulang kata sandi Anda. Klik tombol di bawah untuk memilih yang baru.',
+    buttonLabel: 'Atur ulang kata sandi',
+    expiry: `Tautan ini kedaluwarsa dalam ${v.minutes} menit dan hanya dapat digunakan sekali.`,
+    fallback:
+      'Jika tombol tidak berfungsi, tempel tautan ini ke peramban Anda:',
+    footer:
+      'Jika Anda tidak meminta ini, abaikan email ini — kata sandi Anda tidak akan berubah.',
+  }),
+}
 
 const enLabels = {
   deviceLabel: 'Device',
@@ -159,16 +206,6 @@ const en: CodeBuilders & AlertBuilders = {
     body: 'We noticed a sign-in that needs an extra check. Enter this code to continue:',
     expiry: `This code expires in ${v.minutes} minutes.`,
     footer: "If this wasn't you, change your password immediately.",
-  }),
-  'password-reset': v => ({
-    subject: 'Reset your password',
-    preview: 'Your password reset code',
-    heading: 'Reset your password',
-    greeting: `Hi ${v.name},`,
-    body: 'Use this code to set a new password:',
-    expiry: `This code expires in ${v.minutes} minutes.`,
-    footer:
-      "If you didn't request this, you can safely ignore this email — your password won't change.",
   }),
   'email-change': v => ({
     subject: 'Confirm your new email address',
@@ -264,16 +301,6 @@ const id: CodeBuilders & AlertBuilders = {
     body: 'Kami mendeteksi proses masuk yang memerlukan pemeriksaan tambahan. Masukkan kode ini untuk melanjutkan:',
     expiry: `Kode ini kedaluwarsa dalam ${v.minutes} menit.`,
     footer: 'Jika ini bukan Anda, segera ubah kata sandi Anda.',
-  }),
-  'password-reset': v => ({
-    subject: 'Atur ulang kata sandi Anda',
-    preview: 'Kode atur ulang kata sandi Anda',
-    heading: 'Atur ulang kata sandi Anda',
-    greeting: `Hai ${v.name},`,
-    body: 'Gunakan kode ini untuk mengatur kata sandi baru:',
-    expiry: `Kode ini kedaluwarsa dalam ${v.minutes} menit.`,
-    footer:
-      'Jika Anda tidak meminta ini, abaikan email ini — kata sandi Anda tidak akan berubah.',
   }),
   'email-change': v => ({
     subject: 'Konfirmasi alamat email baru Anda',
@@ -429,4 +456,8 @@ export const copy: Record<Locale, CodeBuilders & AlertBuilders> = { en, id }
 export const methodCopy: Record<Locale, MethodBuilders> = {
   en: enMethod,
   id: idMethod,
+}
+export const linkCopy: Record<Locale, LinkBuilders> = {
+  en: enLink,
+  id: idLink,
 }

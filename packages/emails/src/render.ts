@@ -3,11 +3,14 @@ import { render } from '@react-email/render'
 import { CodeEmail } from './templates/CodeEmail'
 import { AlertEmail } from './templates/AlertEmail'
 import { MethodEmail } from './templates/MethodEmail'
+import { LinkEmail } from './templates/LinkEmail'
 import {
   copy,
   methodCopy,
+  linkCopy,
   type Locale,
   type CodeVars,
+  type LinkVars,
   type AlertVars,
   type MethodVars,
 } from './copy'
@@ -16,7 +19,7 @@ import {
 export interface EmailVars {
   'verification-code': CodeVars
   'step-up-otp': CodeVars
-  'password-reset': CodeVars
+  'password-reset': LinkVars
   'email-change': CodeVars
   'new-sign-in': AlertVars
   'blocked-attempt': AlertVars
@@ -41,7 +44,7 @@ type AnyComponent = ComponentType<Record<string, unknown>>
 const COMPONENTS: Record<EmailName, AnyComponent> = {
   'verification-code': CodeEmail as unknown as AnyComponent,
   'step-up-otp': CodeEmail as unknown as AnyComponent,
-  'password-reset': CodeEmail as unknown as AnyComponent,
+  'password-reset': LinkEmail as unknown as AnyComponent,
   'email-change': CodeEmail as unknown as AnyComponent,
   'new-sign-in': AlertEmail as unknown as AnyComponent,
   'blocked-attempt': AlertEmail as unknown as AnyComponent,
@@ -55,17 +58,16 @@ const COMPONENTS: Record<EmailName, AnyComponent> = {
 
 function isCodeEmail(
   name: EmailName
-): name is
-  | 'verification-code'
-  | 'step-up-otp'
-  | 'password-reset'
-  | 'email-change' {
+): name is 'verification-code' | 'step-up-otp' | 'email-change' {
   return (
     name === 'verification-code' ||
     name === 'step-up-otp' ||
-    name === 'password-reset' ||
     name === 'email-change'
   )
+}
+
+function isLinkEmail(name: EmailName): name is 'password-reset' {
+  return name === 'password-reset'
 }
 
 type MethodEmailName = 'security-method-enabled' | 'security-method-disabled'
@@ -94,14 +96,18 @@ export async function renderEmail<N extends EmailName>(
 
   const build = isMethodEmail(name)
     ? (methodCopy[key][name] as unknown as Build)
-    : (copy[key][
-        name as Exclude<EmailName, MethodEmailName>
-      ] as unknown as Build)
+    : isLinkEmail(name)
+      ? (linkCopy[key][name] as unknown as Build)
+      : (copy[key][
+          name as Exclude<EmailName, MethodEmailName | 'password-reset'>
+        ] as unknown as Build)
 
   const { subject, ...strings } = build(vars)
   const props: Record<string, unknown> = isCodeEmail(name)
     ? { ...strings, code: (vars as CodeVars).code }
-    : strings
+    : isLinkEmail(name)
+      ? { ...strings, url: (vars as LinkVars).url }
+      : strings
 
   const element = createElement(COMPONENTS[name], props)
 
