@@ -12,6 +12,7 @@ import { PasswordSecurity } from '@rufieltics/db/domains/auth'
 import { renderEmail } from '@rufieltics/emails'
 import { AuthService } from '../auth.service'
 import { PasswordResetStore } from '@/modules/redis/stores'
+import { NotificationService } from '@/modules/notifications/notification.service'
 import { MailQueueService } from '@/modules/mail/mail-queue.service'
 import { MailPriority } from '@/modules/mail/mail.constants'
 import {
@@ -30,6 +31,7 @@ export class PasswordResetService {
     private readonly mailQueue: MailQueueService,
     private readonly authService: AuthService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly notifications: NotificationService,
     config: ConfigService
   ) {
     this.ttlSeconds = config.get<number>(
@@ -130,6 +132,7 @@ export class PasswordResetService {
     })
     await this.resetStore.clear(stored.userId, tokenHash)
     await this.authService.revokeAllSessions(user.id)
+    await this.notifications.clearDedupe(user.id)
 
     this.eventEmitter.emit(
       AUTH_EVENTS.PASSWORD_CHANGED,

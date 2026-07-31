@@ -31,6 +31,7 @@ describe('PasswordResetService', () => {
   let mailQueue: { enqueue: jest.Mock }
   let authService: { revokeAllSessions: jest.Mock }
   let eventEmitter: { emit: jest.Mock }
+  let notifications: { clearDedupe: jest.Mock }
   let service: PasswordResetService
 
   beforeEach(() => {
@@ -46,12 +47,14 @@ describe('PasswordResetService', () => {
     mailQueue = { enqueue: jest.fn() }
     authService = { revokeAllSessions: jest.fn() }
     eventEmitter = { emit: jest.fn() }
+    notifications = { clearDedupe: jest.fn() }
     const config = { get: (_k: string, d: number) => d }
     service = new PasswordResetService(
       resetStore as never,
       mailQueue as never,
       authService as never,
       eventEmitter as never,
+      notifications as never,
       config as never
     )
     ;(renderEmail as jest.Mock).mockResolvedValue({

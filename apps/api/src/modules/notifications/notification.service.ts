@@ -1,8 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, Inject } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Queue } from 'bullmq'
+import Redis from 'ioredis'
 import { RedisService } from '@/modules/redis/redis.service'
+import { REDIS_CLIENT } from '@/modules/redis/redis.constants'
 import {
   NOTIFICATIONS_QUEUE,
   SecurityNotificationJob,
@@ -30,6 +32,7 @@ export class NotificationService {
   constructor(
     private readonly redis: RedisService,
     config: ConfigService,
+    @Inject(REDIS_CLIENT) private readonly redisClient: Redis,
     @InjectQueue(NOTIFICATIONS_QUEUE)
     private readonly queue: Queue<SecurityNotificationJob>
   ) {
@@ -37,6 +40,28 @@ export class NotificationService {
       'security.notificationDedupeTtlSeconds',
       86400
     )
+  }
+
+  /**
+   * Drops a user's alert-dedupe markers so the next event reaches them
+   * immediately. Called after a security action (freeze/recovery): once the
+   * user has engaged, re-alerting on fresh activity matters more than the
+   * anti-spam throttle. SCAN keeps it non-blocking.
+   */
+  async clearDedupe(userId: number): Promise<void> {
+    const pattern = `notif:sec:${userId}:*`
+    let cursor = '0'
+    do {
+      const [next, keys] = await this.redisClient.scan(
+        cursor,
+        'MATCH',
+        pattern,
+        'COUNT',
+        100
+      )
+      cursor = next
+      if (keys.length) await this.redisClient.del(...keys)
+    } while (cursor !== '0')
   }
 
   async notifySecurity(job: SecurityNotificationJob): Promise<void> {
