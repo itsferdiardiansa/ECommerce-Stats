@@ -19,7 +19,7 @@ import { GoogleButton } from './GoogleButton'
 export function SignInForm() {
   const router = useRouter()
   const { setSession } = useAuth()
-  const { mutate, isPending, error } = useLogin()
+  const { mutate, isPending, isSuccess, error } = useLogin()
 
   const form = useForm<SignInValues>({
     resolver: zodResolver(signInSchema),
@@ -75,7 +75,11 @@ export function SignInForm() {
             Forgot password?
           </Link>
         </div>
-        <Button type="submit" className="w-full" loading={isPending}>
+        <Button
+          type="submit"
+          className="w-full"
+          loading={isPending || isSuccess}
+        >
           {isPending ? 'Signing in…' : 'Sign in'}
         </Button>
 

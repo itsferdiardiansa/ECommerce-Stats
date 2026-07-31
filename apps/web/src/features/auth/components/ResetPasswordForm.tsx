@@ -16,7 +16,7 @@ import { FormError } from './FormError'
 
 export function ResetPasswordForm({ defaultToken }: { defaultToken: string }) {
   const router = useRouter()
-  const { mutate, isPending, error } = useResetPassword()
+  const { mutate, isPending, isSuccess, error } = useResetPassword()
   const stripped = useRef(false)
 
   const form = useForm<ResetPasswordValues>({
@@ -60,8 +60,7 @@ export function ResetPasswordForm({ defaultToken }: { defaultToken: string }) {
         <Button
           type="submit"
           className="w-full"
-          disabled={isPending}
-          aria-busy={isPending}
+          loading={isPending || isSuccess}
         >
           {isPending ? 'Resetting…' : 'Reset password'}
         </Button>

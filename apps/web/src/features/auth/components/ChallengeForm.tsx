@@ -40,6 +40,7 @@ export function ChallengeForm({
   const [useRecovery, setUseRecovery] = useState(false)
   const [passkeyError, setPasskeyError] = useState<string | null>(null)
   const [passkeyPending, setPasskeyPending] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
 
   const codeMethod: 'totp' | 'email' | 'recovery' = useRecovery
     ? 'recovery'
@@ -55,6 +56,7 @@ export function ChallengeForm({
 
   function completeSession(accessToken: string) {
     setSession(accessToken, { email })
+    setRedirecting(true)
     router.push('/security')
   }
 
@@ -111,7 +113,7 @@ export function ChallengeForm({
             type="button"
             className="w-full"
             onClick={onPasskey}
-            loading={passkeyPending}
+            loading={passkeyPending || redirecting}
           >
             {passkeyPending ? null : (
               <Fingerprint className="size-4" aria-hidden="true" />
@@ -158,7 +160,7 @@ export function ChallengeForm({
             <Button
               type="submit"
               className="w-full"
-              loading={form.formState.isSubmitting}
+              loading={form.formState.isSubmitting || redirecting}
             >
               {form.formState.isSubmitting
                 ? 'Verifying…'

@@ -14,7 +14,7 @@ import { GoogleButton } from './GoogleButton'
 
 export function SignUpForm() {
   const router = useRouter()
-  const { mutate, isPending, error } = useRegister()
+  const { mutate, isPending, isSuccess, error } = useRegister()
 
   const form = useForm<SignUpValues>({
     resolver: zodResolver(signUpSchema),
@@ -81,8 +81,7 @@ export function SignUpForm() {
         <Button
           type="submit"
           className="w-full"
-          disabled={isPending}
-          aria-busy={isPending}
+          loading={isPending || isSuccess}
         >
           {isPending ? 'Creating account…' : 'Create account'}
         </Button>

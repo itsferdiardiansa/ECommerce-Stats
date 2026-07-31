@@ -66,8 +66,7 @@ export function VerifyEmailForm({
         <Button
           type="submit"
           className="w-full"
-          disabled={verify.isPending}
-          aria-busy={verify.isPending}
+          loading={verify.isPending || verify.isSuccess}
         >
           {verify.isPending ? 'Verifying…' : 'Verify email'}
         </Button>
