@@ -3,29 +3,11 @@ import Link from 'next/link'
 import { AuthCard } from '@/features/auth/components/AuthCard'
 import { ResetPasswordForm } from '@/features/auth/components/ResetPasswordForm'
 import { Button } from '@/components/ui/button'
+import { isResetTokenValid } from '@/features/auth/api/auth.server'
 
 export const metadata: Metadata = {
   title: 'Reset password',
   referrer: 'no-referrer',
-}
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6001/api/v1'
-
-async function isResetTokenValid(token: string): Promise<boolean> {
-  try {
-    const res = await fetch(`${API_URL}/auth/reset-password/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token }),
-      cache: 'no-store',
-    })
-    if (!res.ok) return false
-    const body = (await res.json()) as { data?: { valid?: boolean } }
-    return body?.data?.valid === true
-  } catch {
-    return false
-  }
 }
 
 export default async function ResetPasswordPage({

@@ -3,31 +3,14 @@ import Link from 'next/link'
 import { AuthCard } from '@/features/auth/components/AuthCard'
 import { SecureAccountConfirm } from '@/features/auth/components/SecureAccountConfirm'
 import { Button } from '@/components/ui/button'
+import {
+  checkSecureToken,
+  type SecureTokenState,
+} from '@/features/auth/api/auth.server'
 
 export const metadata: Metadata = {
   title: 'Secure your account',
   referrer: 'no-referrer',
-}
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6001/api/v1'
-
-type SecureTokenState = 'valid' | 'already_secured' | 'invalid'
-
-async function checkSecureToken(token: string): Promise<SecureTokenState> {
-  try {
-    const res = await fetch(`${API_URL}/auth/secure-account/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token }),
-      cache: 'no-store',
-    })
-    if (!res.ok) return 'invalid'
-    const body = (await res.json()) as { data?: { state?: SecureTokenState } }
-    return body?.data?.state ?? 'invalid'
-  } catch {
-    return 'invalid'
-  }
 }
 
 const DESCRIPTIONS: Record<SecureTokenState, string> = {
@@ -82,14 +65,14 @@ export default async function SecureAccountPage({
           >
             This security link is invalid, already used, or has expired.
           </p>
-          <p className="text-muted-foreground text-sm">
+          {/* <p className="text-muted-foreground text-sm">
             If you&rsquo;re still worried about your account, reset your
             password now — it signs out every device and locks out anyone who
             knew your old password.
-          </p>
-          <Button asChild className="w-full">
+          </p> */}
+          {/* <Button asChild className="w-full">
             <Link href="/forgot-password">Reset your password</Link>
-          </Button>
+          </Button> */}
           <p className="text-muted-foreground text-center text-xs">
             Still need help? Contact support.
           </p>
