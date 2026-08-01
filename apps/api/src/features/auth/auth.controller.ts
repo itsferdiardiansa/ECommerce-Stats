@@ -26,7 +26,7 @@ import { RegisterDto } from './dto/register.dto'
 import { VerifyEmailDto } from './dto/verify-email.dto'
 import { ResendVerificationDto } from './dto/resend-verification.dto'
 import { LoginDto } from './dto/login.dto'
-import { StepUpDto } from './dto/step-up.dto'
+import { StepUpDto, VerifyStepUpChallengeDto } from './dto/step-up.dto'
 import { PasskeyOptionsDto, VerifyPasskeyLoginDto } from './dto/passkey.dto'
 import { PasswordlessAuthDto } from './dto/passwordless.dto'
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server'
@@ -158,6 +158,17 @@ export class AuthController {
     res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
 
     return success(i18n.t('auth.login.success'), result)
+  }
+
+  @Post('login/step-up/verify')
+  @Throttle(authThrottle())
+  @HttpCode(HttpStatus.OK)
+  async verifyStepUpChallenge(
+    @Body() dto: VerifyStepUpChallengeDto,
+    @I18n() i18n: I18nContext
+  ) {
+    const valid = await this.stepUpService.challengeExists(dto.challengeId)
+    return success(i18n.t('auth.step_up.challenge_checked'), { valid })
   }
 
   @Post('login/step-up')

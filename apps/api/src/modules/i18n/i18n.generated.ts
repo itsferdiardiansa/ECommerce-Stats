@@ -96,6 +96,7 @@ export type I18nTranslations = {
         "step_up": {
             "success": string;
             "passkey_options": string;
+            "challenge_checked": string;
         };
         "trusted_devices": {
             "list_success": string;

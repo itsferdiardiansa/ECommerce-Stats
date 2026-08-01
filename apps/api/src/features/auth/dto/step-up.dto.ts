@@ -13,3 +13,13 @@ export const StepUpSchema = z.object({
 })
 
 export class StepUpDto extends createZodDto(StepUpSchema) {}
+
+export const VerifyStepUpChallengeSchema = z.object({
+  challengeId: z
+    .string({ error: 'common.validation.required' })
+    .uuid({ message: 'common.validation.uuid' }),
+})
+
+export class VerifyStepUpChallengeDto extends createZodDto(
+  VerifyStepUpChallengeSchema
+) {}

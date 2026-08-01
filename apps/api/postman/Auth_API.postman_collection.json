@@ -236,6 +236,33 @@
           ]
         },
         {
+          "name": "Verify Step-Up Challenge (SSR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{step_up_challenge_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login/step-up/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "step-up", "verify"]
+            },
+            "description": "Public, non-consuming. Used by the SSR challenge page to decide what to render. Returns data.valid = true while the challenge still exists (not expired), false once it has lapsed - so an expired link shows a 'session expired, back to sign in' message instead of the code fields."
+          },
+          "response": []
+        },
+        {
           "name": "Step Up (Verify OTP)",
           "request": {
             "method": "POST",

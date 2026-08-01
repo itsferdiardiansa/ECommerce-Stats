@@ -290,6 +290,11 @@ export class StepUpService {
   }
 
   /** Validates the submitted factor and, on success, issues the session. */
+  async challengeExists(challengeId: string): Promise<boolean> {
+    const challenge = await this.stepUpStore.getChallenge(challengeId)
+    return challenge !== null
+  }
+
   async verifyStepUp(
     challengeId: string,
     code: string,
