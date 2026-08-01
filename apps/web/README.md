@@ -1,105 +1,47 @@
 # @rufieltics/web
 
-E-commerce Analytics Dashboard frontend for Rufieltics — Next.js app built with Tailwind, Recharts, Prisma (server package), and a small design-system of UI primitives.
+This is the Rufieltics dashboard, a Next.js app. It is where people sign in, connect their Shopify, Facebook Ads, Google Ads, and Google Analytics accounts, and read the numbers that come back. The heavy work happens in the API and the sync jobs, so the web app stays focused on presenting data and handling the account flows.
 
----
+## Built with
 
-## Quick summary
-
-- Framework: **Next.js** (app router)
-- Styling: **Tailwind CSS** + design tokens
-- Charts: **Recharts** (client components)
-- Tables: lightweight shadcn-style `Table` component located at `src/components/ui/table`
-- Date utils: `formatDate` / `formatDateTime` in `src/lib/utils.ts` (used across the UI)
-
----
-
-## Features
-
-- Dashboard overview with charts, tables and stat cards
-- Client-side charts (Pie, Bar) and responsive layout
-- Accessible UI primitives (Button, Card, Table, Tooltip, Sidebar, etc.)
-- Type-safe access to data via `@rufieltics/db` package
-- Dev convenience scripts (lint, format, build, dev)
-
----
+- Next.js on the app router
+- Tailwind CSS with a small set of design tokens
+- Recharts for the charts
+- A local set of UI primitives such as Button, Card, Table, Sidebar, and Tooltip
+- Typed data access through the `@rufieltics/db` package and the shared api client
 
 ## Getting started
 
-Prerequisites:
-
-- Node 18+ / 20+ recommended
-- pnpm (workspaces usage)
-- A Postgres database (for backend & migrations; see `packages/db`)
-
-Common commands (run from workspace root):
+Run these from the repo root so the workspace resolves.
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Run web dev server
 pnpm --filter @rufieltics/web run dev
+```
 
-# Build
+Other useful scripts:
+
+```bash
 pnpm --filter @rufieltics/web run build
-
-# Lint / format
 pnpm --filter @rufieltics/web run lint
 pnpm --filter @rufieltics/web run format
 ```
 
-Notes:
+The dashboard talks to the API, so start `@rufieltics/api` as well and point `NEXT_PUBLIC_API_URL` at it. Public values live in `.env.local`.
 
-- Some features depend on the `@rufieltics/db` package and a configured `DATABASE_URL` environment variable. To run full local stack, also start your DB and run migrations from `packages/db`.
-
----
-
-## Directory structure 📁
-
-Top-level (shortened):
+## How the code is organized
 
 ```
-apps/web/
-├─ app/                          # Next.js app routes & layout
-│  ├─ (dashboard)/
-│  │  └─ page.tsx                 # Dashboard page (overview)
-│  └─ layout.tsx
-├─ components/                    # Design-system + layout components
-│  ├─ layout/
-│  │  ├─ AppSidebar.tsx
-│  │  ├─ Header.tsx
-│  │  └─ OrgSwitcher.tsx
-│  └─ ui/
-│     ├─ table/                   # <- Table: Table.tsx, index.ts
-│     ├─ card/
-│     ├─ button/
-│     ├─ tooltip/
-│     ├─ sidebar/
-│     └─ ... (many other primitives)
-├─ features/                      # Feature pages / components
-│  └─ overview/
-│     ├─ components/
-│     │  ├─ data-lists/
-│     │  │  ├─ RecentOrdersList.tsx
-│     │  │  └─ TopProductsList.tsx
-│     │  ├─ order-status-pie-chart/
-│     │  └─ revenue-by-category-chart/
-│     └─ ...
-├─ services/                      # Client / server services (analytics, api calls)
-├─ lib/                           # Utilities: formatters, cn, date helpers
-│  └─ utils.ts                    # formatDate, formatDateTime, cn, formatBytes
-├─ hooks/                         # Custom hooks (useMediaQuery, useIsMobile)
-├─ config/                        # navConfig, constants
-└─ package.json
+apps/web/src/
+  app/          Next.js routes and layouts, including the auth pages and the dashboard
+  features/     Feature areas such as auth and the analytics overview
+  components/   Layout pieces and the UI primitives
+  lib/          The api client, env access, and small helpers
+  config/       Navigation and shared constants
 ```
 
-> Tip: Use `pnpm --filter @rufieltics/web run dev` from the repo root to run just the web package in dev mode.
-
----
+A few conventions are worth knowing. Public configuration is read once in `src/config/env.ts` instead of reaching for `process.env` around the codebase. Every call to the API goes through `src/lib/api-client.ts`, and the reads that happen while a page renders on the server live in files like `features/auth/api/auth.server.ts`.
 
 ## Contributing
 
-- Follow the existing style and utility functions (use `cn` for class merging)
-- Add unit / integration tests for new components where applicable
-- If adding new global styles, prefer Tailwind utilities and keep tokens in the design system
+Follow the patterns already in place. Use the `cn` helper for class names, keep new styling in Tailwind utilities, and add tests for components where it makes sense.
