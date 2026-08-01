@@ -54,6 +54,7 @@ export type I18nTranslations = {
             "invalid_credentials": string;
             "account_not_verified": string;
             "account_frozen": string;
+            "captcha_required": string;
             "secure_token_invalid": string;
             "already_verified": string;
             "invalid_code": string;

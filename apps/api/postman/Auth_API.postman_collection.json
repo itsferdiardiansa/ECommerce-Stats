@@ -197,14 +197,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"captchaToken\": \"XXXX.DUMMY.TOKEN.XXXX\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/auth/login",
               "host": ["{{base_url}}"],
               "path": ["auth", "login"]
             },
-            "description": "Login with email and password. Returns access + refresh tokens for a trusted sign-in. If the sign-in looks risky (new device/location), returns { stepUpRequired: true, challengeId } instead and emails a one-time code — complete it via 'Step Up (Verify OTP)'. The test script auto-saves either access_token or step_up_challenge_id."
+            "description": "Login with email and password. Returns access + refresh tokens for a trusted sign-in. If the sign-in looks risky (new device/location), returns { stepUpRequired: true, challengeId } instead and emails a one-time code — complete it via 'Step Up (Verify OTP)'. The test script auto-saves either access_token or step_up_challenge_id.\n\nCAPTCHA (Cloudflare Turnstile): off unless CAPTCHA_ENABLED=true on the API. When on, captchaToken is required only AFTER this IP has failed ~3 logins within 15 min (below that it is ignored, so captchaToken is optional). With the default Turnstile TEST secret (always-passes) any token value works, so the included dummy token passes — to exercise the 403 'captcha required' path, set TURNSTILE_SECRET_KEY=2x0000000000000000000000000000000AA (always-fails) or send an empty captchaToken."
           },
           "response": [],
           "event": [

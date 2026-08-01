@@ -85,6 +85,17 @@ export default () => ({
         10
       ),
     },
+    captcha: {
+      enabled: process.env.CAPTCHA_ENABLED === 'true',
+      secretKey:
+        process.env.TURNSTILE_SECRET_KEY ||
+        '1x0000000000000000000000000000000AA',
+      verifyUrl:
+        process.env.TURNSTILE_VERIFY_URL ||
+        'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+      threshold: parseInt(process.env.CAPTCHA_THRESHOLD || '3', 10),
+      windowSeconds: parseInt(process.env.CAPTCHA_WINDOW_SECONDS || '900', 10),
+    },
     loginHistory: {
       retentionDays: parseInt(
         process.env.LOGIN_HISTORY_RETENTION_DAYS || '90',

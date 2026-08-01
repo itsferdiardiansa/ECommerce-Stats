@@ -35,6 +35,7 @@ import { ChangePasswordDto } from './dto/change-password.dto'
 import { created, success } from '@/common/helpers/api-response.helper'
 import { ActiveUserGuard } from '@/common/guards/active-user.guard'
 import { SudoGuard } from '@/common/guards/sudo.guard'
+import { CaptchaGuard } from '@/common/guards/captcha.guard'
 import { CurrentUser } from '@/common/decorators/current-user.decorator'
 import { RequireSudo } from '@/common/decorators/require-sudo.decorator'
 import type { CurrentUserPayload } from '@/common/decorators/current-user.decorator'
@@ -119,6 +120,7 @@ export class AuthController {
 
   @Post('login')
   @Throttle(authThrottle())
+  @UseGuards(CaptchaGuard)
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() dto: LoginDto,

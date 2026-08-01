@@ -19,6 +19,7 @@ interface TextFieldProps<T extends FieldValues> {
   placeholder?: string
   description?: string
   maxLength?: number
+  disabled?: boolean
 }
 
 /** Reusable labelled text field wired to react-hook-form + the Form a11y layer. */
@@ -32,6 +33,7 @@ export function TextField<T extends FieldValues>({
   placeholder,
   description,
   maxLength,
+  disabled,
 }: TextFieldProps<T>) {
   return (
     <FormField
@@ -47,6 +49,7 @@ export function TextField<T extends FieldValues>({
               inputMode={inputMode}
               placeholder={placeholder}
               maxLength={maxLength}
+              disabled={disabled}
               {...field}
             />
           </FormControl>

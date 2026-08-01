@@ -1,5 +1,6 @@
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6001/api/v1'
+import { env } from '@/config/env'
+
+const BASE_URL = env.apiUrl
 
 /** Thrown for any non-2xx API response; carries the server's message + status. */
 export class ApiError extends Error {

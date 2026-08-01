@@ -6,6 +6,7 @@ export const LoginSchema = z.object({
     .string({ error: 'common.validation.required' })
     .email({ message: 'common.validation.email' }),
   password: z.string({ error: 'common.validation.required' }),
+  captchaToken: z.string().optional(),
 })
 
 export class LoginDto extends createZodDto(LoginSchema) {}

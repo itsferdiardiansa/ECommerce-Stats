@@ -22,6 +22,8 @@ import { OAuthService } from './services/oauth.service'
 import { PasswordResetService } from './services/password-reset.service'
 import { EmailChangeService } from './services/email-change.service'
 import { SecureAccountService } from './services/secure-account.service'
+import { CaptchaService } from './services/captcha.service'
+import { CaptchaGuard } from '@/common/guards/captcha.guard'
 import { AuthAuditListener } from './listeners/auth-audit.listener'
 import { SecurityAlertListener } from './listeners/security-alert.listener'
 
@@ -49,6 +51,8 @@ import { SecurityAlertListener } from './listeners/security-alert.listener'
     PasswordResetService,
     EmailChangeService,
     SecureAccountService,
+    CaptchaService,
+    CaptchaGuard,
     SessionCleanupService,
     LoginAnomalyService,
     AuthAuditListener,

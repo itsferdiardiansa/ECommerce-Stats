@@ -6,6 +6,7 @@ export interface AuthUser {
 export interface LoginRequest {
   email: string
   password: string
+  captchaToken?: string
 }
 
 export interface RegisterRequest {

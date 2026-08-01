@@ -2,11 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:6001/api/v1'
-
-const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_ENABLED === 'true'
+import { env } from '@/config/env'
 
 function GoogleIcon() {
   return (
@@ -38,7 +34,7 @@ export function GoogleButton({
 }) {
   const [pending, setPending] = useState(false)
 
-  if (!GOOGLE_ENABLED) return null
+  if (!env.google.enabled) return null
 
   return (
     <Button
@@ -48,7 +44,7 @@ export function GoogleButton({
       loading={pending}
       onClick={() => {
         setPending(true)
-        window.location.href = `${API_URL}/auth/oauth/google`
+        window.location.href = `${env.apiUrl}/auth/oauth/google`
       }}
     >
       {pending ? null : <GoogleIcon />}

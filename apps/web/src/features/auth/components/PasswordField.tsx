@@ -17,6 +17,7 @@ interface PasswordFieldProps<T extends FieldValues> {
   name: FieldPath<T>
   label: string
   autoComplete?: 'current-password' | 'new-password'
+  disabled?: boolean
 }
 
 /** Reusable password field with an accessible show/hide toggle. */
@@ -25,6 +26,7 @@ export function PasswordField<T extends FieldValues>({
   name,
   label,
   autoComplete = 'current-password',
+  disabled,
 }: PasswordFieldProps<T>) {
   const [visible, setVisible] = useState(false)
 
@@ -41,6 +43,7 @@ export function PasswordField<T extends FieldValues>({
                 type={visible ? 'text' : 'password'}
                 autoComplete={autoComplete}
                 className="pr-10"
+                disabled={disabled}
                 {...field}
               />
             </FormControl>

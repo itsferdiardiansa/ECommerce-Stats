@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
@@ -15,11 +16,18 @@ import { PasswordField } from './PasswordField'
 import { FormError } from './FormError'
 import { PasskeyAutofill } from './PasskeyAutofill'
 import { GoogleButton } from './GoogleButton'
+import { Turnstile } from './Turnstile'
+import { env } from '@/config/env'
 
 export function SignInForm() {
   const router = useRouter()
   const { setSession } = useAuth()
   const { mutate, isPending, isSuccess, error } = useLogin()
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [captchaKey, setCaptchaKey] = useState(0)
+  const [captchaError, setCaptchaError] = useState<string | null>(null)
+  const awaitingCaptcha = env.captcha.enabled && !captchaToken
+  const formDisabled = awaitingCaptcha || isPending || isSuccess
 
   const form = useForm<SignInValues>({
     resolver: zodResolver(signInSchema),
@@ -27,22 +35,27 @@ export function SignInForm() {
   })
 
   function onSubmit(values: SignInValues) {
-    mutate(values, {
-      onSuccess: res => {
-        if (isStepUp(res)) {
-          const params = new URLSearchParams({
-            challengeId: res.challengeId,
-            method: res.method,
-            methods: res.availableMethods.join(','),
-            email: values.email,
-          })
-          router.push(`/sign-in/challenge?${params.toString()}`)
-          return
-        }
-        setSession(res.accessToken, { email: values.email })
-        router.push('/security')
-      },
-    })
+    if (awaitingCaptcha) return
+    mutate(
+      { ...values, captchaToken: captchaToken ?? undefined },
+      {
+        onSuccess: res => {
+          if (isStepUp(res)) {
+            const params = new URLSearchParams({
+              challengeId: res.challengeId,
+              method: res.method,
+              methods: res.availableMethods.join(','),
+              email: values.email,
+            })
+            router.push(`/sign-in/challenge?${params.toString()}`)
+            return
+          }
+          setSession(res.accessToken, { email: values.email })
+          router.push('/security')
+        },
+        onError: () => setCaptchaKey(k => k + 1),
+      }
+    )
   }
 
   return (
@@ -60,12 +73,14 @@ export function SignInForm() {
           type="email"
           autoComplete="username webauthn"
           placeholder="you@example.com"
+          disabled={formDisabled}
         />
         <PasswordField
           control={form.control}
           name="password"
           label="Password"
           autoComplete="current-password"
+          disabled={formDisabled}
         />
         <div className="text-right">
           <Link
@@ -75,9 +90,23 @@ export function SignInForm() {
             Forgot password?
           </Link>
         </div>
+        <Turnstile
+          onToken={token => {
+            setCaptchaToken(token)
+            if (token) setCaptchaError(null)
+          }}
+          onError={() =>
+            setCaptchaError(
+              'Couldn’t load verification. Disable any ad blocker or refresh the page.'
+            )
+          }
+          resetKey={captchaKey}
+        />
+        <FormError message={captchaError} />
         <Button
           type="submit"
           className="w-full"
+          disabled={awaitingCaptcha}
           loading={isPending || isSuccess}
         >
           {isPending ? 'Signing in…' : 'Sign in'}
