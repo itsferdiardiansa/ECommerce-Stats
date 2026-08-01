@@ -1,0 +1,9 @@
+{
+  "lockouts": {
+    "list_success": "Lockout berhasil diambil",
+    "get_success": "Detail lockout berhasil diambil",
+    "cleared_success": "Lockout berhasil dihapus. Pengguna sekarang dapat mencoba verifikasi lagi.",
+    "not_found": "Lockout tidak ditemukan",
+    "already_cleared": "Lockout ini sudah dihapus sebelumnya"
+  }
+}

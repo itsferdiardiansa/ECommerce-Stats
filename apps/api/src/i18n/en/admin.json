@@ -1,0 +1,9 @@
+{
+  "lockouts": {
+    "list_success": "Lockouts retrieved successfully",
+    "get_success": "Lockout details retrieved successfully",
+    "cleared_success": "Lockout cleared successfully. User can now attempt verification again.",
+    "not_found": "Lockout not found",
+    "already_cleared": "This lockout has already been cleared"
+  }
+}

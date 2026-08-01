@@ -7,31 +7,304 @@ export async function createUser(data: CreateUserInput) {
   if (!data?.email || !data.email.includes('@')) {
     throw new Error('Invalid email address')
   }
-  return db.user.create({ data })
+  return db.user.create({
+    data,
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      name: true,
+      avatar: true,
+      phone: true,
+      emailVerifiedAt: true,
+      phoneVerifiedAt: true,
+      isActive: true,
+      isStaff: true,
+      isTwoFactorEnabled: true,
+      lastLoginAt: true,
+      passwordChangedAt: true,
+      createdAt: true,
+      updatedAt: true,
+      deletedAt: true,
+    },
+  })
 }
 
 export async function getUserById(id: number) {
-  return db.user.findUnique({
-    where: { id },
-    include: {
+  return db.user.findFirst({
+    where: {
+      id,
+      deletedAt: null, // Exclude soft-deleted users
+    },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      name: true,
+      avatar: true,
+      phone: true,
+      emailVerifiedAt: true,
+      phoneVerifiedAt: true,
+      isActive: true,
+      isStaff: true,
+      isTwoFactorEnabled: true,
+      lastLoginAt: true,
+      passwordChangedAt: true,
+      createdAt: true,
+      updatedAt: true,
+      deletedAt: true,
       addresses: true,
       orders: { take: 5, orderBy: { createdAt: 'desc' } },
     },
   })
 }
 
+/**
+ * Minimal target for security notifications: the recipient address and whether
+ * they've opted into email alerts. `alertsEmail` defaults to true when the user
+ * has no settings row yet.
+ */
+export async function getSecurityNotificationTarget(userId: number) {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      email: true,
+      name: true,
+      settings: { select: { alertsEmail: true } },
+    },
+  })
+
+  if (!user) return null
+
+  return {
+    email: user.email,
+    name: user.name,
+    alertsEmail: user.settings?.alertsEmail ?? true,
+  }
+}
+
+/** Minimal fields needed to mint an access token — no relations. */
+export async function getSessionUser(userId: number) {
+  return db.user.findFirst({
+    where: { id: userId, deletedAt: null },
+    select: { id: true, email: true, isStaff: true, isActive: true },
+  })
+}
+
+/** Credential lookup for re-authentication — no relations, no over-fetch. */
+export async function getUserLockState(userId: number) {
+  return db.user.findUnique({
+    where: { id: userId },
+    select: { lockedAt: true },
+  })
+}
+
+export async function getUserCredentials(userId: number) {
+  return db.user.findFirst({
+    where: { id: userId, deletedAt: null },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      passwordHash: true,
+      passwordChangedAt: true,
+      lockedAt: true,
+    },
+  })
+}
+
+export async function getUserByEmail(email: string) {
+  return db.user.findFirst({
+    where: {
+      email,
+      deletedAt: null, // Exclude soft-deleted users
+    },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      name: true,
+      avatar: true,
+      phone: true,
+      emailVerifiedAt: true,
+      phoneVerifiedAt: true,
+      isActive: true,
+      isStaff: true,
+      isTwoFactorEnabled: true,
+      lastLoginAt: true,
+      passwordChangedAt: true,
+      lockedAt: true,
+      passwordHash: true, // Needed for authentication
+      createdAt: true,
+      updatedAt: true,
+      deletedAt: true,
+    },
+  })
+}
+
+/**
+ * Check if email exists in database (including soft-deleted users)
+ * Used for registration validation
+ */
+export async function checkEmailExists(email: string): Promise<boolean> {
+  const count = await db.user.count({
+    where: { email },
+  })
+  return count > 0
+}
+
+/**
+ * Get user by email (including soft-deleted users)
+ * Used for registration validation to check deleted status
+ */
+export async function getUserByEmailIncludingDeleted(email: string) {
+  return db.user.findUnique({
+    where: { email },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      deletedAt: true,
+    },
+  })
+}
+
+/**
+ * Check if username exists in database (including soft-deleted users)
+ * Used for registration validation
+ */
+export async function checkUsernameExists(username: string): Promise<boolean> {
+  const count = await db.user.count({
+    where: { username },
+  })
+  return count > 0
+}
+
+/**
+ * Get user by username (including soft-deleted users)
+ * Used for registration validation to check deleted status
+ */
+export async function getUserByUsernameIncludingDeleted(username: string) {
+  return db.user.findUnique({
+    where: { username },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      deletedAt: true,
+    },
+  })
+}
+
 export async function updateUser(id: number, data: UpdateUserInput) {
-  return db.user.update({ where: { id }, data })
+  return db.user.update({
+    where: { id },
+    data,
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      name: true,
+      avatar: true,
+      phone: true,
+      emailVerifiedAt: true,
+      phoneVerifiedAt: true,
+      isActive: true,
+      isStaff: true,
+      isTwoFactorEnabled: true,
+      lastLoginAt: true,
+      passwordChangedAt: true,
+      createdAt: true,
+      updatedAt: true,
+      deletedAt: true,
+    },
+  })
 }
 
 export async function deleteUser(id: number) {
-  return db.user.delete({ where: { id } })
+  // Soft delete: set deletedAt timestamp instead of hard delete
+  const user = await db.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      name: true,
+      avatar: true,
+      phone: true,
+      emailVerifiedAt: true,
+      phoneVerifiedAt: true,
+      isActive: true,
+      isStaff: true,
+      isTwoFactorEnabled: true,
+      lastLoginAt: true,
+      passwordChangedAt: true,
+      createdAt: true,
+      updatedAt: true,
+      deletedAt: true,
+    },
+  })
+
+  if (!user) {
+    throw new Error('User not found')
+  }
+
+  // If already deleted, return as-is (DELETE is idempotent)
+  if (user.deletedAt) {
+    return user
+  }
+
+  // Perform soft delete
+  return db.user.update({
+    where: { id },
+    data: {
+      deletedAt: new Date(),
+      isActive: false, // Also deactivate the user
+    },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      name: true,
+      avatar: true,
+      phone: true,
+      emailVerifiedAt: true,
+      phoneVerifiedAt: true,
+      isActive: true,
+      isStaff: true,
+      isTwoFactorEnabled: true,
+      lastLoginAt: true,
+      passwordChangedAt: true,
+      createdAt: true,
+      updatedAt: true,
+      deletedAt: true,
+    },
+  })
 }
 
-export async function listUsers(
-  params: UserFilterParams = {}
-): Promise<
-  PaginatedResult<Prisma.UserGetPayload<{ include: { addresses: false } }>>
+export async function listUsers(params: UserFilterParams = {}): Promise<
+  PaginatedResult<
+    Prisma.UserGetPayload<{
+      select: {
+        id: true
+        email: true
+        username: true
+        name: true
+        avatar: true
+        phone: true
+        emailVerifiedAt: true
+        phoneVerifiedAt: true
+        isActive: true
+        isStaff: true
+        isTwoFactorEnabled: true
+        lastLoginAt: true
+        passwordChangedAt: true
+        createdAt: true
+        updatedAt: true
+        deletedAt: true
+      }
+    }>
+  >
 > {
   const {
     page = 1,
@@ -39,9 +312,14 @@ export async function listUsers(
     search,
     sortBy = 'createdAt',
     sortOrder = 'desc',
+    email,
+    name,
     isActive,
+    isStaff,
+    isTwoFactorEnabled,
     marketingOptIn,
     tierLevel,
+    includeDeleted = false,
   } = params
 
   const safePage = Math.max(1, page)
@@ -50,14 +328,24 @@ export async function listUsers(
 
   const where: Prisma.UserWhereInput = {}
 
+  if (!includeDeleted) {
+    where.deletedAt = null
+  }
+
   if (search) {
     where.OR = [
       { name: { contains: search, mode: 'insensitive' } },
       { email: { contains: search, mode: 'insensitive' } },
+      { username: { contains: search, mode: 'insensitive' } },
     ]
   }
 
+  if (email) where.email = { contains: email, mode: 'insensitive' }
+  if (name) where.name = { contains: name, mode: 'insensitive' }
   if (isActive !== undefined) where.isActive = isActive
+  if (isStaff !== undefined) where.isStaff = isStaff
+  if (isTwoFactorEnabled !== undefined)
+    where.isTwoFactorEnabled = isTwoFactorEnabled
 
   if (marketingOptIn !== undefined || tierLevel) {
     where.profile = {}
@@ -73,6 +361,24 @@ export async function listUsers(
       skip,
       take: safeLimit,
       orderBy: { [sortBy]: sortOrder },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        name: true,
+        avatar: true,
+        phone: true,
+        emailVerifiedAt: true,
+        phoneVerifiedAt: true,
+        isActive: true,
+        isStaff: true,
+        isTwoFactorEnabled: true,
+        lastLoginAt: true,
+        passwordChangedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        deletedAt: true,
+      },
     }),
   ])
 

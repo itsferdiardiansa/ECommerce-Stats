@@ -1,6 +1,4 @@
-
-
-model Account {
+model OAuthAccount {
   id                String  @id @default(cuid())
   userId            Int
   type              String
@@ -20,72 +18,128 @@ model Account {
 }
 
 model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       Int
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String    @id @default(cuid())
+  userId           Int
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  jti              String    @unique
+  refreshTokenHash String
+
+  orgId            String?
+  role             String?
+
+  ipAddress        String?
+  userAgent        String?
+
+  deviceFingerprint String
+
+  lastUsedAt       DateTime?
+  isRevoked        Boolean   @default(false)
+  expires          DateTime
+  createdAt        DateTime  @default(now())
+
+  @@index([userId])
+  @@index([jti])
+  @@index([expires, isRevoked])
+  @@unique([userId, deviceFingerprint])
   @@schema("auth")
 }
 
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-  @@schema("auth")
-}
-
-model TwoFactorToken {
-  id         String   @id @default(cuid())
-  email      String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([email, token])
-  @@schema("auth")
-}
-
-model TwoFactorConfirmation {
-  id     String @id @default(cuid())
-  userId Int    @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@schema("auth")
-}
-
-model Authenticator {
-  credentialID         String  @unique
-  userId               Int
-  providerAccountId    String
-  credentialPublicKey  String
-  counter              Int
-  credentialDeviceType String
-  credentialBackedUp   Boolean
-  transports           String?
+model UserTotp {
+  id          String    @id @default(cuid())
+  userId      Int       @unique
+  secret      String
+  confirmedAt DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@id([userId, credentialID])
+  @@schema("auth")
+}
+
+model RecoveryCode {
+  id        String    @id @default(cuid())
+  userId    Int
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@schema("auth")
+}
+
+// A WebAuthn credential (passkey). Phishing-resistant second factor: the private
+// key never leaves the authenticator, and the browser only signs for this app's
+// RP ID. counter/publicKey/credentialId are base64url. userHandle is stored so a
+// later passwordless-primary phase needs no re-enrolment.
+model Passkey {
+  id           String    @id @default(cuid())
+  userId       Int
+  credentialId String    @unique
+  publicKey    String
+  counter      BigInt     @default(0)
+  deviceType   String
+  backedUp     Boolean   @default(false)
+  transports   String[]
+  userHandle   String
+  name         String?
+  aaguid       String?
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
   @@schema("auth")
 }
 
 model LoginHistory {
   id        Int      @id @default(autoincrement())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Nullable so failed attempts for a non-existent email can still be recorded
+  // (needed for IP-based brute-force detection) without leaking existence.
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attemptedEmail    String?
+  deviceFingerprint String?
   ipAddress String?
   userAgent String?
   city      String?
   country   String?
+  latitude  Float?
+  longitude Float?
   isSuccess Boolean  @default(true)
   reason    LoginReason?
   createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([createdAt])
+  @@index([userId, deviceFingerprint])
+  @@index([ipAddress, createdAt])
+  @@schema("auth")
+}
+
+// A browser the user has opted to trust: presenting a valid token skips the
+// login step-up. Durable source of truth (Redis fronts it for the hot lookup);
+// revocable and expiring. tokenHash is a SHA-256 of a random cookie token.
+model TrustedDevice {
+  id                String    @id @default(cuid())
+  userId            Int
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash         String    @unique
+  deviceFingerprint String
+  label             String?
+  userAgent         String?
+  ipAddress         String?
+  lastUsedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  expiresAt         DateTime
+
+  @@index([userId])
+  @@index([userId, deviceFingerprint])
   @@schema("auth")
 }
 
@@ -115,5 +169,32 @@ model PasswordHistory {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@index([userId])
+  @@schema("auth")
+}
+
+model VerificationLockout {
+  id        Int                        @id @default(autoincrement())
+  email     String
+  reason    VerificationLockoutReason  @default(TOO_MANY_ATTEMPTS)
+  ipAddress String?
+  userAgent String?
+  lockedAt  DateTime                   @default(now())
+  expires   DateTime
+  clearedAt DateTime?
+  clearedBy Int?
+  createdAt DateTime                   @default(now())
+  updatedAt DateTime                   @updatedAt
+
+  @@index([email])
+  @@index([expires])
+  @@index([createdAt])
+  @@schema("auth")
+}
+
+enum VerificationLockoutReason {
+  TOO_MANY_ATTEMPTS
+  SUSPICIOUS_ACTIVITY
+  MANUAL_LOCK
+
   @@schema("auth")
 }

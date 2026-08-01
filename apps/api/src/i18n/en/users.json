@@ -1,0 +1,17 @@
+{
+  "create": {
+    "success": "User created successfully",
+    "error": "Failed to create user"
+  },
+  "update": {
+    "success": "User updated successfully"
+  },
+  "delete": {
+    "success": "User deleted successfully"
+  },
+  "errors": {
+    "user_not_found": "User not found",
+    "user_already_deleted": "User has already been deleted",
+    "cannot_update_deleted_user": "Cannot update a deleted user. Please restore the user first."
+  }
+}

@@ -30,7 +30,7 @@ const steps = [
   },
   {
     name: 'Copy Prisma Generated Assets',
-    command: 'node scripts/copyPrismaGenerated.mjs',
+    command: 'node scripts/copy-prisma-generated.mjs',
   },
   {
     name: 'Resolve TS Aliases',
@@ -39,16 +39,13 @@ const steps = [
   {
     name: 'Package.json & Readme',
     action: () => {
-      // 1. Copy README
       if (existsSync(resolve(cwd, 'README.md'))) {
         copyFileSync(resolve(cwd, 'README.md'), resolve(cwd, 'dist/README.md'))
       }
 
-      // 2. Transform and copy package.json
       const pkgJsonContent = readFileSync(resolve(cwd, 'package.json'), 'utf-8')
       const pkg = JSON.parse(pkgJsonContent)
 
-      // Update exports to remove "dist/" prefix
       if (pkg.exports) {
         for (const key in pkg.exports) {
           const exportEntry = pkg.exports[key]
@@ -67,16 +64,9 @@ const steps = [
         }
       }
 
-      // Remove publishConfig since we are now in the publish directory
       delete pkg.publishConfig
-
-      // Remove files array as we are already in the directory
       delete pkg.files
-
-      // Remove scripts that are not needed in the build artifact or might cause issues
       delete pkg.scripts
-
-      // Remove devDependencies
       delete pkg.devDependencies
 
       writeFileSync(

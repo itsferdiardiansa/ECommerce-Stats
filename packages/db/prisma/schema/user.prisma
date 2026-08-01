@@ -2,7 +2,7 @@ model User {
   id              Int             @id @default(autoincrement())
   email           String          @unique
   username        String          @unique
-  passwordHash    String
+  passwordHash    String?
   name            String
   avatar          String?
   phone           String?
@@ -15,16 +15,19 @@ model User {
   
   lastLoginAt         DateTime?
   passwordChangedAt   DateTime?
+  lockedAt            DateTime?
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
   deletedAt           DateTime?
   
   sessions              Session[]
-  accounts              Account[]
-  authenticators        Authenticator[]
+  oauthAccounts         OAuthAccount[]
+  passkeys              Passkey[]
   loginHistory          LoginHistory[]
+  trustedDevices        TrustedDevice[]
   passwordHistory       PasswordHistory[]
-  twoFactorConfirmation TwoFactorConfirmation?
+  totp                  UserTotp?
+  recoveryCodes         RecoveryCode[]
   
   profile             UserProfile?
   addresses           UserAddress[]
@@ -57,7 +60,7 @@ model UserProfile {
   marketingOptIn Boolean   @default(false)
   themePref      String    @default("system")
   loyaltyPoints  Int       @default(0)
-  tierLevel      String    @default("standard")
+  tierLevel      TierLevel @default(BASIC)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -231,6 +234,14 @@ model Dashboard {
   creator        User         @relation(fields: [creatorId], references: [id])
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+
+  @@schema("user")
+}
+
+enum TierLevel {
+  BASIC
+  PRO
+  PREMIUM
 
   @@schema("user")
 }

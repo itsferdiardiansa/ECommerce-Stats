@@ -1,0 +1,17 @@
+{
+  "create": {
+    "success": "Pengguna berhasil dibuat",
+    "error": "Gagal membuat pengguna"
+  },
+  "update": {
+    "success": "Pengguna berhasil diperbarui"
+  },
+  "delete": {
+    "success": "Pengguna berhasil dihapus"
+  },
+  "errors": {
+    "user_not_found": "Pengguna tidak ditemukan",
+    "user_already_deleted": "Pengguna sudah dihapus",
+    "cannot_update_deleted_user": "Tidak dapat memperbarui pengguna yang sudah dihapus. Mohon pulihkan pengguna terlebih dahulu."
+  }
+}

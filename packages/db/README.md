@@ -1,135 +1,137 @@
 # @rufieltics/db
 
-Database package for Rufieltics application. This package provides database connection and entity repositories for managing data related to users, stores, products, orders, and more.
+This package is the data layer for Rufieltics. It holds the Prisma schema, the generated client, and a set of domain functions that the API and the sync jobs call instead of writing raw queries. Keeping the schema and the access functions together means every app reads and writes data the same way.
 
----
+## What it covers
 
-## Features
+The schema is split into a few areas so each part stays readable.
 
-- Database connection using Prisma ORM
-- Entity repositories for core data models
-- Utility functions and DB scripts for seeding and synchronization
+- Identity and auth. Users, sessions, passkeys, two factor secrets, recovery codes, trusted devices, and login history.
+- Store connections. The provider accounts a business links, such as a Shopify store or an ad platform, along with the sync state for each one.
+- Commerce. The catalog, orders, and fulfillment records that get pulled in from those connections.
+- Finance and billing. Subscriptions, invoices, and payment records.
+- Analytics. The computed metrics the dashboard reads.
 
-```bash
-pnpm add @rufieltics/db --workspace-root
+The Prisma schema lives in `prisma/schema/` and is split across several files by area. The matching domain functions live in `src/domains/`, grouped the same way.
+
+## Entity relationships
+
+These diagrams show the main tables and how they relate. They are grouped by area to stay readable. The schema is the source of truth, so treat these as a map rather than a full column list.
+
+### Accounts and access
+
+```mermaid
+erDiagram
+  Organization ||--o{ OrganizationMember : has
+  User ||--o{ OrganizationMember : joins
+  Organization ||--o{ ApiKey : owns
+  User ||--o{ ApiKey : created
+  Organization ||--o{ Dashboard : owns
+  User ||--o{ Dashboard : created
+  User ||--o| UserProfile : has
+  User ||--o| UserSettings : has
+  User ||--o{ UserAddress : has
+  User ||--o{ AuditLog : records
+  Organization ||--o{ IdentityVerification : has
+  User ||--o{ IdentityVerification : has
+  IdentityVerification ||--o{ KycDocument : includes
 ```
 
----
+### Auth and security
+
+```mermaid
+erDiagram
+  User ||--o{ Session : has
+  User ||--o{ OAuthAccount : links
+  User ||--o| UserTotp : has
+  User ||--o{ RecoveryCode : has
+  User ||--o{ Passkey : has
+  User ||--o{ TrustedDevice : trusts
+  User ||--o{ LoginHistory : records
+  User ||--o{ PasswordHistory : records
+```
+
+### Commerce
+
+```mermaid
+erDiagram
+  Category ||--o{ Category : "parent of"
+  Category ||--o{ Product : groups
+  Brand ||--o{ Product : makes
+  Product ||--o{ ProductVariant : has
+  Product ||--o{ ProductImage : has
+  Product ||--o{ ProductReview : receives
+  Product ||--o{ InventoryLog : logs
+  Product ||--o{ PriceHistory : logs
+  Product }o--o{ Tag : tagged
+  User ||--o{ Order : places
+  UserAddress ||--o{ Order : ships_to
+  Order ||--o{ OrderItem : contains
+  Product ||--o{ OrderItem : ordered_as
+  ProductVariant ||--o{ OrderItem : ordered_as
+  Order ||--o{ Payment : paid_by
+  Order ||--o{ Shipment : fulfilled_by
+  Order ||--o{ OrderStatusHistory : tracks
+  Order }o--o{ Tag : tagged
+  User ||--o{ Cart : owns
+  Cart ||--o{ CartItem : contains
+  Product ||--o{ CartItem : added_as
+  User ||--o{ Wishlist : owns
+  Wishlist ||--o{ WishlistItem : contains
+  Product ||--o{ WishlistItem : saved_as
+```
+
+### Billing
+
+```mermaid
+erDiagram
+  Organization ||--o{ Subscription : has
+  Plan ||--o{ Subscription : billed_on
+  Subscription ||--o{ Invoice : generates
+  Organization ||--o{ Invoice : owes
+  Organization ||--o{ BillingPaymentMethod : has
+  Invoice ||--o{ BillingPayment : settled_by
+  Organization ||--o{ BillingPayment : makes
+  BillingPaymentMethod ||--o{ BillingPayment : charged_via
+```
+
+### Analytics
+
+The analytics area is a star schema for reporting. Fact tables such as `FactOrder`, `FactOrderItem`, `FactPayment`, `FactShipment`, `FactSession`, `FactPageview`, `FactSearch`, `FactCartActivity`, and `FactReview` hold the events. Dimension tables such as `DimDate`, `DimUser`, `DimProduct`, `DimMarketing`, and `DimLocation` hold the context. Aggregate tables such as `AggDailyStats` and `AggProductPerformance` hold rolled up numbers for fast reads.
+
+Facts join to dimensions on surrogate keys rather than enforced foreign keys, which is normal for a warehouse style layout, so those links do not appear as Prisma relations.
+
+```mermaid
+erDiagram
+  DimDate ||--o{ FactOrder : when
+  DimUser ||--o{ FactOrder : who
+  DimProduct ||--o{ FactOrderItem : what
+  DimMarketing ||--o{ FactSession : source
+  DimLocation ||--o{ FactSession : where
+  FactOrder ||--o{ FactOrderItem : lines
+```
 
 ## Usage
 
-Import the database connection and entity repositories in your application code:
+Import the function you need from its domain and call it. The functions return typed results straight from Prisma.
 
 ```typescript
-import { createUser } from '@rufieltics/db/entities/user'
+import { getUserByEmail } from '@rufieltics/db/domains/identity/user'
 
-async function main() {
-  const newUser = await createUser({
-    email: 'user@example.com',
-    name: 'John Doe',
-  })
-  console.log('New User:', newUser)
-}
-main().catch(console.error)
+const user = await getUserByEmail('owner@example.com')
 ```
 
----
-
-## Schema & Architecture
-
-This section explains how the database schema (see `prisma/schema.prisma`) maps to an **Entity-Relationship Diagram (ERD)** and a simple **Data Flow Diagram (DFD)** so clients can understand the domain model and the flow of data.
-
-### High-level summary
-
-- **Core entities:** `User`, `Product`, `Order`, `OrderItem`, `Category`, `Brand`, `ProductReview`.
-- **Relationships:**
-  - A `User` can have many `Order`s and `ProductReview`s.
-  - An `Order` contains many `OrderItem`s each `OrderItem` references a `Product`.
-  - A `Product` belongs to an optional `Category` and an optional `Brand` and can have many `ProductReview`s and `OrderItem`s.
-  - `Category` supports a parent/children hierarchy (self-relation).
-
-> Note: The canonical schema is in `packages/db/prisma/schema.prisma` — this README documents the structure as a guide.
-
-### Entity details (fields & constraints)
-
-- `User`
-  - Primary key: `id`
-  - Unique: `email`, `username`
-  - Timestamps: `createdAt`, `updatedAt`, `lastLogin`
-  - Relations: `orders`, `reviews`
-
-- `Product`
-  - Primary key: `id`
-  - Indexed: `categoryId`, `brandId`, `syncedAt`
-  - Fields include: `name`, `price`, `availability`, `rating`, `discount`
-  - Relations: `category`, `brand`, `orderItems`, `reviews`
-
-- `Category`
-  - Hierarchical: `parentId` → self-relation allows nested categories (`children`)
-  - Unique: `name`
-  - Relation: `products`
-
-- `Brand`
-  - Unique: `name`
-  - Relation: `products`
-
-- `Order`
-  - Primary key: `id`
-  - Enum `status` (`OrderStatus`)
-  - Indexed: `status`, `syncedAt`
-  - Relation: `items` (OrderItem), optional `user`
-
-- `OrderItem`
-  - Composite uniqueness: `[orderId, productId]` (one product per order line)
-  - Relations: `order`, `product`
-
-- `ProductReview`
-  - Composite uniqueness: `[productId, userId]` (one review per user per product)
-  - Foreign key `productId` has `onDelete: Cascade`
-
----
-
-### Data Flow Diagram (DFD) — common flows
-
-1. User checkout flow
-
-- Client → API: create `Order` with `OrderItem`s
-- API → DB: insert `Order` and `OrderItem`s calculate and store `totalPrice`
-- DB → API: return created `Order`
-
-2. Product synchronization
-
-- External data source → sync script → updates `Product` rows and sets `syncedAt`
-- Index on `syncedAt` allows efficient queries for recently-synced products
-
-3. Review flow
-
-- Client → API: create `ProductReview` for `productId` and `userId`
-- DB enforces one review per user/product via unique constraint
-
-4. Category management
-
-- Admin → API: create or move `Category` (set `parentId`) → affects product browsing hierarchy
-
-### Notes & best practices
-
-- Use Prisma Client (generated in `packages/db/prisma/generated`) for type-safe DB access.
-- Timestamps: `createdAt`, `updatedAt`, and `syncedAt` are important for synchronization and auditing.
-- Use the provided indexes and unique constraints to keep queries efficient and data consistent.
-- For visual documentation, consider exporting an ERD (e.g., dbdiagram) from the schema or using third-party tools to generate PNG/SVG.
-
----
-
-## Quick reference
-
-- Schema file: `packages/db/prisma/schema.prisma`
-- Generated Prisma client: `packages/db/prisma/generated`
-- Useful commands:
+## Working with the schema
 
 ```bash
-# Generate Prisma client
+# generate the Prisma client after a schema change
 pnpm --filter @rufieltics/db generate
 
-# Open Prisma Studio
-pnpm --filter @rufieltics/db db:studio
+# create and apply a migration in development
+pnpm --filter @rufieltics/db migrate:dev
+
+# browse the data
+pnpm --filter @rufieltics/db studio
 ```
+
+Migrations are checked into `prisma/migrations/`. Run `migrate:dev` after editing the schema so your local database and the generated client stay in step.

@@ -3,10 +3,6 @@ import { cookies } from 'next/headers'
 import React from 'react'
 import Providers from '@/components/layout/Providers'
 import ThemeProvider from '@/components/layout/theme-toggle/ThemeProvider'
-import AppSidebar from '@/components/layout/AppSidebar'
-import Header from '@/components/layout/Header'
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import PageContainer from '@/components/layout/PageContainer'
 import { fontVariables } from '@/lib/font'
 import { cn } from '@/lib/utils'
 import './globals.css'
@@ -38,7 +34,6 @@ export default async function RootLayout({
   const cookieStore = await cookies()
   const activeThemeValue = cookieStore.get('active_theme')?.value
   const isScaled = activeThemeValue?.endsWith('-scaled')
-  const defaultOpen = cookieStore.get('sidebar_state')?.value === 'true'
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -71,13 +66,7 @@ export default async function RootLayout({
           enableColorScheme
         >
           <Providers activeThemeValue={activeThemeValue as string}>
-            <SidebarProvider defaultOpen={defaultOpen}>
-              <AppSidebar />
-              <SidebarInset>
-                <Header />
-                <PageContainer>{children}</PageContainer>
-              </SidebarInset>
-            </SidebarProvider>
+            {children}
           </Providers>
         </ThemeProvider>
       </body>

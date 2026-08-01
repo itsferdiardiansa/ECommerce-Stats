@@ -1,11 +1,13 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import * as React from 'react'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -27,7 +29,13 @@ import {
 import { navItems } from '@/config/navConfig'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { cn } from '@/lib/utils'
-import { IconChevronRight, IconChevronsDown } from '@tabler/icons-react'
+import {
+  IconChevronRight,
+  IconChevronsDown,
+  IconLogout,
+} from '@tabler/icons-react'
+import { useAuth } from '@/features/auth/context/AuthContext'
+import { useLogout } from '@/features/auth/hooks/useAuthMutations'
 import { OrgSwitcher } from './OrgSwitcher'
 
 const mockUser = {
@@ -38,10 +46,25 @@ const mockUser = {
 
 export default function AppSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const { isOpen } = useMediaQuery()
+  const { accessToken, clear } = useAuth()
+  const { mutate: logout, isPending: isLoggingOut } = useLogout()
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   React.useEffect(() => {}, [isOpen])
+
+  function handleLogout() {
+    const finish = () => {
+      clear()
+      router.replace('/sign-in')
+    }
+    if (accessToken) {
+      logout(accessToken, { onSuccess: finish, onError: finish })
+    } else {
+      finish()
+    }
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -163,6 +186,15 @@ export default function AppSidebar() {
                     </div>
                   </div>
                 </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  className="cursor-pointer"
+                >
+                  <IconLogout className="size-4" />
+                  Log out
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>

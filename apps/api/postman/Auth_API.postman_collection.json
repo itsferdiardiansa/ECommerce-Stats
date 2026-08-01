@@ -1,0 +1,1455 @@
+{
+  "info": {
+    "name": "Auth",
+    "_postman_id": "rufieltics-api-collection",
+    "description": "API collection for Rufieltics authentication: registration, login, OAuth (Google), two-factor, sessions, and lockout management.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:6001/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "verification_code",
+      "value": "123456",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "lockout_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "step_up_challenge_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "trusted_device_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "device_secret",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "totp_secret",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "recovery_code",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "oauth_code",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "oauth_state",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reset_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "description": "Authentication endpoints for registration, login, and email verification",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en",
+                "description": "Language: en (English) or id (Indonesian)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"username\": \"johndoe\",\n  \"password\": \"SecurePass123!\",\n  \"name\": \"John Doe\",\n  \"phone\": \"+1234567890\",\n  \"avatar\": \"https://example.com/avatar.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Register a new user account. User will be created with isActive=false and requires email verification. A 6-digit verification code will be sent to the provided email address."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.id) {",
+                  "        pm.collectionVariables.set('user_id', response.data.id);",
+                  "        console.log('User ID saved: ' + response.data.id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"code\": \"{{verification_code}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/verify-email",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify-email"]
+            },
+            "description": "Verify email address with the 6-digit code received via email. Upon successful verification, the user's isActive will be set to true and emailVerifiedAt will be updated."
+          },
+          "response": []
+        },
+        {
+          "name": "Resend Verification Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/resend-verification",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "resend-verification"]
+            },
+            "description": "Resend verification code to the email address. The previous code will be invalidated and a new 6-digit code will be sent. Rate limited to 3 requests per hour per email."
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"captchaToken\": \"XXXX.DUMMY.TOKEN.XXXX\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login with email and password. Returns access + refresh tokens for a trusted sign-in. If the sign-in looks risky (new device/location), returns { stepUpRequired: true, challengeId } instead and emails a one-time code — complete it via 'Step Up (Verify OTP)'. The test script auto-saves either access_token or step_up_challenge_id.\n\nCAPTCHA (Cloudflare Turnstile): off unless CAPTCHA_ENABLED=true on the API. When on, captchaToken is required only AFTER this IP has failed ~3 logins within 15 min (below that it is ignored, so captchaToken is optional). With the default Turnstile TEST secret (always-passes) any token value works, so the included dummy token passes — to exercise the 403 'captcha required' path, set TURNSTILE_SECRET_KEY=2x0000000000000000000000000000000AA (always-fails) or send an empty captchaToken."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.accessToken) {",
+                  "        pm.collectionVariables.set('access_token', response.data.accessToken);",
+                  "        console.log('Access token saved');",
+                  "    } else if (response.data && response.data.stepUpRequired) {",
+                  "        pm.collectionVariables.set('step_up_challenge_id', response.data.challengeId);",
+                  "        console.log('Step-up required - challengeId saved. Check Mailpit for the OTP, then run \"Step Up (Verify OTP)\".');",
+                  "    }",
+                  "    // Tokens are bound to the device. The cookie is scoped to /api/v1/auth,",
+                  "    // so requests outside that path must send X-Device-Secret instead.",
+                  "    const secret = pm.cookies.get('deviceSecret');",
+                  "    if (secret) {",
+                  "        pm.collectionVariables.set('device_secret', secret);",
+                  "        console.log('Device secret saved');",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Step-Up Challenge (SSR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{step_up_challenge_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login/step-up/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "step-up", "verify"]
+            },
+            "description": "Public, non-consuming. Used by the SSR challenge page to decide what to render. Returns data.valid = true while the challenge still exists (not expired), false once it has lapsed - so an expired link shows a 'session expired, back to sign in' message instead of the code fields."
+          },
+          "response": []
+        },
+        {
+          "name": "Step Up (Verify OTP)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{step_up_challenge_id}}\",\n  \"code\": \"123456\",\n  \"method\": \"email\",\n  \"trustDevice\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login/step-up",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "step-up"]
+            },
+            "description": "Completes a step-up challenge. Set trustDevice: true to be remembered on this browser - trust is opt-in, so leaving it out means the next sign-in from a new device or location is challenged again. The method field is required: use \"email\" here, \"totp\" or \"recovery\" for a 2FA account."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.accessToken) {",
+                  "        pm.collectionVariables.set('access_token', response.data.accessToken);",
+                  "        console.log('Access token saved');",
+                  "    } else if (response.data && response.data.stepUpRequired) {",
+                  "        pm.collectionVariables.set('step_up_challenge_id', response.data.challengeId);",
+                  "        console.log('Step-up required - challengeId saved. Check Mailpit for the OTP, then run \"Step Up (Verify OTP)\".');",
+                  "    }",
+                  "    // Tokens are bound to the device. The cookie is scoped to /api/v1/auth,",
+                  "    // so requests outside that path must send X-Device-Secret instead.",
+                  "    const secret = pm.cookies.get('deviceSecret');",
+                  "    if (secret) {",
+                  "        pm.collectionVariables.set('device_secret', secret);",
+                  "        console.log('Device secret saved');",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Exchange a valid refresh token for a new access + refresh token pair. The used refresh token is immediately invalidated (single-use rotation). If the same refresh token is used twice, both are revoked."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.accessToken) {",
+                  "        pm.collectionVariables.set('access_token', response.data.accessToken);",
+                  "        console.log('New access token saved');",
+                  "    }",
+                  "    }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "Required — valid access token"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Revokes the current session. Deletes the refresh token from Redis and marks the DB session as isRevoked=true. Subsequent /auth/refresh calls with the same token will return 401."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set('access_token', '');",
+                  "    pm.collectionVariables.set('refresh_token', '');",
+                  "    console.log('Tokens cleared after logout');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revoke Other Sessions",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/sessions/others",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sessions", "others"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Revoke Sessions",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jtis\": [\n    \"ENTER-UUID-HERE\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/sessions",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sessions"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Sessions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/sessions",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sessions"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sudo (Re-authenticate)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Elevation lasts SUDO_TTL_SECONDS and is bound to this session only.",
+                  "pm.test('elevated', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"password\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/sudo",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sudo"]
+            },
+            "description": "Proves identity again before a destructive action. Guarded routes return 403 with error.code=SUDO_REQUIRED until this succeeds."
+          },
+          "response": []
+        },
+        {
+          "name": "Sudo Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/sudo",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sudo"]
+            },
+            "description": "Returns { active, expiresIn } so the client can prompt before showing a risky form."
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"NewPassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "password"]
+            },
+            "description": "Requires sudo. Rejects reuse of the last 5 passwords, signs out all other devices, untrusts their browsers, and emails the owner."
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "description": "Public. Always returns the same generic success (enumeration-safe). If the email exists, a single-use cryptographic reset token is emailed (view in Mailpit at http://localhost:8025) — copy it into {{reset_token}} for \"Reset Password\". Rate-limited like login."
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{reset_token}}\",\n  \"password\": \"NewSecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "reset-password"]
+            },
+            "description": "Public. Consumes the single-use token from the reset email, sets the new password, and revokes ALL sessions. Works for OAuth-only users setting a first password. Invalid/expired token returns a generic error."
+          },
+          "response": []
+        },
+        {
+          "name": "Secure Account (This wasn't me)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{secure_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/secure-account",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "secure-account"]
+            },
+            "description": "Public. Consumes the token from the 'This wasn't me - secure my account' link in a security-alert email. Locks the account (no factor can sign in), revokes ALL sessions and trusted devices, and emails a password-reset recovery link. Idempotent: re-clicking an already-locked account is a no-op 200 (survives a browser restart). The token lapses on its 72h TTL, and a later password reset invalidates it. Restored once the user completes the reset."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Secure Token (SSR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{secure_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/secure-account/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "secure-account", "verify"]
+            },
+            "description": "Public, non-consuming. Used by the SSR page load to decide what to render. Returns data.state: 'valid' (show the confirm button), 'already_secured' (account already locked - reload after a freeze), or 'invalid' (expired, or the user already reset their password since the link was minted)."
+          },
+          "response": []
+        },
+        {
+          "name": "Request Email Change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newEmail\": \"new.address@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/email/change",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "email", "change"]
+            },
+            "description": "Requires sudo. Sends a 6-digit confirmation code to the NEW email address (Mailpit). Rejects an address already in use. Run \"Sudo (Re-authenticate)\" first."
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm Email Change",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{verification_code}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/email/change/confirm",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "email", "change", "confirm"]
+            },
+            "description": "Confirms the code sent to the new email and updates the account email (marks it verified). Attempt-capped and single-use."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Trusted Devices",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/trusted-devices",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "trusted-devices"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Revoke Trusted Device",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/trusted-devices/{{trusted_device_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "trusted-devices", "{{trusted_device_id}}"]
+            },
+            "description": "Requires sudo. Emails the owner that a security method was removed."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "OAuth (Google)",
+      "description": "Sign in / sign up with Google (OpenID Connect, authorization-code + PKCE). These endpoints are browser-driven redirects, not JSON APIs — trigger the sign-in from a real browser. They are documented here for reference. Requires GOOGLE_CLIENT_ID/SECRET set on the API.",
+      "item": [
+        {
+          "name": "Google Sign-in (Redirect)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/oauth/google",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "oauth", "google"]
+            },
+            "description": "Starts the Google login. Responds 302 to Google's consent screen (sets a short-lived CSRF state + PKCE verifier in Redis). Open this URL in a browser — one button serves both sign-in and sign-up; the callback decides create-vs-login."
+          },
+          "response": []
+        },
+        {
+          "name": "Google Callback",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/oauth/google/callback?code={{oauth_code}}&state={{oauth_state}}",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "oauth", "google", "callback"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "{{oauth_code}}"
+                },
+                {
+                  "key": "state",
+                  "value": "{{oauth_state}}"
+                }
+              ]
+            },
+            "description": "Google redirects here after consent. Verifies state, exchanges the code, resolves-or-creates the user, sets httpOnly refreshToken + deviceSecret cookies, then 302s to the web app (OAUTH_SUCCESS_REDIRECT). On failure it 302s to OAUTH_FAILURE_REDIRECT. Invoked by Google automatically — not called by hand."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Two-Factor (TOTP)",
+      "item": [
+        {
+          "name": "MFA Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa"]
+            },
+            "description": "Shows whether TOTP is enabled/pending and how many recovery codes remain."
+          },
+          "response": []
+        },
+        {
+          "name": "Begin TOTP Enrolment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const d = pm.response.json().data;",
+                  "    pm.collectionVariables.set('totp_secret', d.secret);",
+                  "    console.log('otpauth URI:', d.otpauthUri);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/totp",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "totp"]
+            },
+            "description": "Requires sudo. Returns the base32 secret and an otpauth:// URI. Two-factor is NOT enabled yet - confirm a code first. Paste the URI into any QR generator, or type the secret into your authenticator app manually."
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm TOTP Enrolment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const codes = pm.response.json().data.recoveryCodes;",
+                  "    pm.collectionVariables.set('recovery_code', codes[0]);",
+                  "    console.log('Recovery codes (shown once):', codes.join(' '));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/totp/confirm",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "totp", "confirm"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"123456\"\n}"
+            },
+            "description": "Requires sudo. Enter the 6-digit code from your authenticator app. On success two-factor turns on and the recovery codes are returned ONCE - save them. Enabling two-factor also revokes every trusted browser and signs out all other sessions - anything trusted before the second factor existed must not bypass it."
+          },
+          "response": []
+        },
+        {
+          "name": "Regenerate Recovery Codes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/recovery-codes",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "recovery-codes"]
+            },
+            "description": "Requires sudo. Issues a new set and invalidates every previous code."
+          },
+          "response": []
+        },
+        {
+          "name": "Disable TOTP",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/totp",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "totp"]
+            },
+            "description": "Requires sudo. Removes the authenticator and all recovery codes, and emails the owner."
+          },
+          "response": []
+        },
+        {
+          "name": "Step Up (TOTP)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const d = pm.response.json().data;",
+                  "    if (d.accessToken) pm.collectionVariables.set('access_token', d.accessToken);",
+                  "    const s = pm.cookies.get('deviceSecret');",
+                  "    if (s) pm.collectionVariables.set('device_secret', s);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login/step-up",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "step-up"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{step_up_challenge_id}}\",\n  \"code\": \"123456\",\n  \"method\": \"totp\",\n  \"trustDevice\": false\n}"
+            },
+            "description": "When the account has TOTP, POST /auth/login returns method: 'totp' and sends NO email. Submit the code from your authenticator app here."
+          },
+          "response": []
+        },
+        {
+          "name": "Step Up (Recovery Code)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login/step-up",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "step-up"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{step_up_challenge_id}}\",\n  \"code\": \"{{recovery_code}}\",\n  \"method\": \"recovery\"\n}"
+            },
+            "description": "Lost your phone? Use a recovery code instead. Single use - it is burned on success and the owner is emailed."
+          },
+          "response": []
+        },
+        {
+          "name": "Sudo via TOTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/sudo",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sudo"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"totp\",\n  \"code\": \"123456\"\n}"
+            },
+            "description": "Elevate using the authenticator app instead of the password."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin - Lockout Management",
+      "description": "Admin-only endpoints for managing verification lockouts",
+      "item": [
+        {
+          "name": "List All Lockouts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "Admin access token required"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/lockouts?page=1&limit=10&status=active",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "lockouts"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page (max: 100, default: 10)"
+                },
+                {
+                  "key": "status",
+                  "value": "active",
+                  "description": "Filter by status: active, cleared, or all (default: active)"
+                },
+                {
+                  "key": "email",
+                  "value": "",
+                  "description": "Filter by exact email address",
+                  "disabled": true
+                },
+                {
+                  "key": "reason",
+                  "value": "",
+                  "description": "Filter by reason: TOO_MANY_ATTEMPTS, SUSPICIOUS_ACTIVITY, MANUAL_LOCK",
+                  "disabled": true
+                },
+                {
+                  "key": "sortBy",
+                  "value": "lockedAt",
+                  "description": "Sort by: lockedAt, expires, or email (default: lockedAt)",
+                  "disabled": true
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc",
+                  "description": "Sort order: asc or desc (default: desc)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List all verification lockouts with pagination and filters. Admin privileges required. Returns email, IP address, user agent, reason, timestamps, and remaining time for active lockouts."
+          },
+          "response": []
+        },
+        {
+          "name": "List Lockouts (Cleared Only)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/lockouts?status=cleared&page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "lockouts"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "cleared"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "List only cleared (resolved) lockouts with clearedAt and clearedBy information."
+          },
+          "response": []
+        },
+        {
+          "name": "List Lockouts (By Email)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/lockouts?email=john.doe@example.com&status=all",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "lockouts"],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "john.doe@example.com",
+                  "description": "Search lockouts for specific email"
+                },
+                {
+                  "key": "status",
+                  "value": "all",
+                  "description": "Include both active and cleared"
+                }
+              ]
+            },
+            "description": "Find all lockouts (active and cleared) for a specific email address."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Lockout by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/lockouts/1",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "lockouts", "1"]
+            },
+            "description": "Get detailed information about a specific lockout by ID. Admin privileges required."
+          },
+          "response": []
+        },
+        {
+          "name": "Clear Lockout (Manual Unlock)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/lockouts/1",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "lockouts", "1"]
+            },
+            "description": "Manually clear a lockout to allow the user to attempt verification again. Admin privileges required. Records the admin ID who cleared the lockout and removes it from both database and Redis."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Lockout Status (User)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "description": "User's own access token"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/my-lockout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "my-lockout"]
+            },
+            "description": "Check your own verification lockout status. Returns whether you're locked, the reason, expiry time, and remaining seconds/minutes. Authenticated users only."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Testing",
+      "description": "Test endpoints for various scenarios",
+      "item": [
+        {
+          "name": "Test Indonesian Language (Validation Error)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "id",
+                "description": "Indonesian language for error messages"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"invalid-email\",\n  \"username\": \"ab\",\n  \"password\": \"123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Test validation error messages in Indonesian. Should return all validation errors translated to Bahasa Indonesia."
+          },
+          "response": []
+        },
+        {
+          "name": "Test Email Verification - Invalid Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"code\": \"000000\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/verify-email",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify-email"]
+            },
+            "description": "Test verification with invalid code. Should return error message."
+          },
+          "response": []
+        },
+        {
+          "name": "Test Login - Unverified Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept-Language",
+                "value": "en"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Test login with unverified account (isActive=false). Should return error indicating account needs verification."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
