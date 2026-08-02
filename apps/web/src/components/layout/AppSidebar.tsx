@@ -26,13 +26,15 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
 } from '@/components/ui/sidebar'
-import { navItems } from '@/config/navConfig'
+import { navItems, accountNavItems } from '@/config/navConfig'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { cn } from '@/lib/utils'
 import {
+  IconArrowLeft,
   IconChevronRight,
   IconChevronsDown,
   IconLogout,
+  IconSettings,
 } from '@tabler/icons-react'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { useLogout } from '@/features/auth/hooks/useAuthMutations'
@@ -46,6 +48,8 @@ const mockUser = {
 
 export default function AppSidebar() {
   const pathname = usePathname()
+  const isAccount = pathname.startsWith('/account')
+  const items = isAccount ? accountNavItems : navItems
   const router = useRouter()
   const { isOpen } = useMediaQuery()
   const { accessToken, clear } = useAuth()
@@ -72,10 +76,26 @@ export default function AppSidebar() {
         <OrgSwitcher />
       </SidebarHeader>
       <SidebarContent className="overflow-x-hidden">
+        {isAccount ? (
+          <SidebarGroup>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Back to dashboard">
+                  <Link href="/">
+                    <IconArrowLeft className="size-4" />
+                    <span className="truncate">Back to dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+        ) : null}
         <SidebarGroup>
-          <SidebarGroupLabel>Overview</SidebarGroupLabel>
+          <SidebarGroupLabel>
+            {isAccount ? 'Account' : 'Overview'}
+          </SidebarGroupLabel>
           <SidebarMenu>
-            {navItems.map(item => {
+            {items.map(item => {
               const hasChildren = !!(item?.items && item.items.length > 0)
               const isActiveItem =
                 pathname === item.url ||
@@ -186,6 +206,13 @@ export default function AppSidebar() {
                     </div>
                   </div>
                 </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/account">
+                    <IconSettings className="size-4" />
+                    Account settings
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={handleLogout}

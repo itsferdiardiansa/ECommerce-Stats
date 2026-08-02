@@ -52,6 +52,10 @@ export const OrganizationMembers = {
     })
   },
 
+  async countByOrg(organizationId: string) {
+    return db.organizationMember.count({ where: { organizationId } })
+  },
+
   async updateRole(organizationId: string, userId: number, role: Role) {
     return db.organizationMember.update({
       where: {

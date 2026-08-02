@@ -144,7 +144,7 @@ export class LoginService {
       )
     }
 
-    const { geo, deviceFingerprint, ...session } =
+    const { geo, deviceFingerprint, jti: _jti, ...session } =
       await this.authService.initiateSession(
         user,
         role,
@@ -209,7 +209,7 @@ export class LoginService {
     const memberships = await OrganizationMembers.listByUser(user.id)
     const primary = pickPrimaryMembership(memberships)
 
-    const { geo, deviceFingerprint, ...session } =
+    const { geo, deviceFingerprint, jti: _jti, ...session } =
       await this.authService.initiateSession(
         user,
         primary?.role ?? null,

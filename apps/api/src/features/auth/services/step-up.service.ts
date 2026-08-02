@@ -462,7 +462,7 @@ export class StepUpService {
     const sessionUserAgent = challenge.userAgent ?? userAgent
     const sessionIpAddress = challenge.ipAddress ?? ipAddress
 
-    const { geo, deviceFingerprint, ...session } =
+    const { geo, deviceFingerprint, jti: _jti, ...session } =
       await this.authService.initiateSession(
         {
           id: challenge.userId,

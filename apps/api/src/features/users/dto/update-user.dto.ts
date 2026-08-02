@@ -5,7 +5,8 @@ import { z } from 'zod'
 export const UpdateUserSchema = z.object({
   username: z.string().min(3).optional(),
   name: z.string().min(3).optional(),
-  avatar: z.string().url({ error: 'common.validation.url' }).nullish(),
+  phone: z.string().nullish(),
+  avatar: z.string().nullish(),
 })
 
 export class UpdateUserDto extends createZodDto(UpdateUserSchema) {}

@@ -92,6 +92,23 @@ export async function getSessionUser(userId: number) {
 }
 
 /** Credential lookup for re-authentication — no relations, no over-fetch. */
+export async function getProfile(userId: number) {
+  return db.user.findFirst({
+    where: { id: userId, deletedAt: null },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      name: true,
+      avatar: true,
+      phone: true,
+      emailVerifiedAt: true,
+      isTwoFactorEnabled: true,
+      createdAt: true,
+    },
+  })
+}
+
 export async function getUserLockState(userId: number) {
   return db.user.findUnique({
     where: { id: userId },

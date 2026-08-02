@@ -40,6 +40,8 @@ import { CurrentUser } from '@/common/decorators/current-user.decorator'
 import { RequireSudo } from '@/common/decorators/require-sudo.decorator'
 import type { CurrentUserPayload } from '@/common/decorators/current-user.decorator'
 import { MyLockoutResponseDto } from './dto/my-lockout-response.dto'
+import { getProfile } from '@rufieltics/db/domains/identity/user'
+import { OrganizationMembers } from '@rufieltics/db/domains/identity/organization'
 import { VerificationStore } from '@/modules/redis/stores'
 import { JwtService } from '@/modules/jwt/jwt.service'
 import configuration from '@/config/configuration'
@@ -362,6 +364,29 @@ export class AuthController {
       userAgent
     )
     return success(result.message, null)
+  }
+
+  @Get('me')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ActiveUserGuard)
+  async me(@CurrentUser() user: CurrentUserPayload, @I18n() i18n: I18nContext) {
+    const profile = await getProfile(user.id)
+    const memberships = await OrganizationMembers.listByUser(user.id)
+    const primary = memberships[0] ?? null
+    const organization = primary
+      ? {
+          id: primary.organization.id,
+          name: primary.organization.name,
+          role: primary.role,
+          memberCount: await OrganizationMembers.countByOrg(
+            primary.organizationId
+          ),
+        }
+      : null
+    return success(i18n.t('common.success.generic'), {
+      ...profile,
+      organization,
+    })
   }
 
   @Get('trusted-devices')

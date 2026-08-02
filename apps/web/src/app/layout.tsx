@@ -6,7 +6,6 @@ import ThemeProvider from '@/components/layout/theme-toggle/ThemeProvider'
 import { fontVariables } from '@/lib/font'
 import { cn } from '@/lib/utils'
 import './globals.css'
-import './theme.css'
 
 const META_THEME_COLORS = {
   light: '#ffffff',

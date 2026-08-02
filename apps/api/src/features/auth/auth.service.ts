@@ -35,6 +35,7 @@ import {
   generateDeviceFingerprint,
   formatLocation,
   formatDevice,
+  describeSession,
 } from '@/utils/fingerprint'
 import {
   AUTH_EVENTS,
@@ -153,6 +154,7 @@ export class AuthService {
     ])
 
     return {
+      jti,
       accessToken,
       refreshToken,
       rawDeviceSecret,
@@ -269,9 +271,12 @@ export class AuthService {
       throw new UnauthorizedException(i18n.t('auth.errors.invalid_client'))
     }
 
+    const sudoTtl = await this.sudoStore.getTtl(jti)
+
     await Promise.all([
       this.sessionStore.delete(jti),
       Sessions.revokeByJti(jti),
+      this.sudoStore.revoke(jti),
       this.redisService.set(
         `revoked_jti:${jti}`,
         { userId },
@@ -291,6 +296,10 @@ export class AuthService {
       userAgent,
       ipAddress
     )
+
+    if (sudoTtl) {
+      await this.sudoStore.grant(result.jti, sudoTtl)
+    }
 
     // geo/deviceFingerprint are internal to session creation; don't leak them
     // in the refresh response.
@@ -438,10 +447,10 @@ export class AuthService {
       id: session.jti,
       isCurrent: session.jti === currentJti,
       ipAddress: session.ipAddress,
-      userAgent: session.userAgent,
       createdAt: session.createdAt,
       lastUsedAt: session.lastUsedAt,
       expires: session.expires,
+      ...describeSession(session.userAgent, session.ipAddress),
     }))
 
     return {
