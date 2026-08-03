@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Loader2 } from 'lucide-react'
+import { Loading } from '@/components/ui/Loading'
 import {
   Card,
   CardContent,
@@ -108,9 +108,7 @@ export default function ProfilePage() {
       <FormError message={error} />
 
       {isLoading ? (
-        <div className="flex justify-center py-10">
-          <Loader2 className="text-muted-foreground size-6 animate-spin" />
-        </div>
+        <Loading />
       ) : (
         <>
           <Card>

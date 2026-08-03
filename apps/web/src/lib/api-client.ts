@@ -48,6 +48,20 @@ export function configureApiAuth(handlers: {
   unauthorizedFn = handlers.onUnauthorized
 }
 
+function accessTokenExpired(authorization: string | undefined): boolean {
+  if (!authorization) return false
+  const segment = authorization.slice(7).split('.')[1]
+  if (!segment) return false
+  try {
+    const base64 = segment.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
+    const payload = JSON.parse(atob(padded)) as { exp?: number }
+    return typeof payload.exp === 'number' && Date.now() >= payload.exp * 1000
+  } catch {
+    return false
+  }
+}
+
 /**
  * The one place fetch lives. JSON in/out, cookie auth by default, unwraps the
  * `{ data }` envelope, throws a typed `ApiError` on failure, and supports a
@@ -94,7 +108,13 @@ export async function apiFetch<T>(
   try {
     let res = await send(baseHeaders)
 
-    if (res.status === 401 && authenticated && !skipAuthRefresh && refreshFn) {
+    if (
+      res.status === 401 &&
+      authenticated &&
+      !skipAuthRefresh &&
+      refreshFn &&
+      accessTokenExpired(baseHeaders.Authorization)
+    ) {
       const newToken = await refreshFn()
       if (newToken) {
         res = await send({

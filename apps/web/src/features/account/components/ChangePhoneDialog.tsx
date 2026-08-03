@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/label'
+import { Loading } from '@/components/ui/Loading'
 import {
   Dialog,
   DialogContent,
@@ -148,9 +148,7 @@ export function ChangePhoneDialog({
           <FormError message={error} />
 
           {checking ? (
-            <div className="flex justify-center py-6">
-              <Loader2 className="text-muted-foreground size-5 animate-spin" />
-            </div>
+            <Loading className="py-6" />
           ) : step === 'sudo' ? (
             <div className="space-y-2">
               <Label htmlFor="phone-password">Password</Label>

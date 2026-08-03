@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/components/ui/button'
 import { CodeInput } from '@/components/ui/CodeInput'
+import { Loading } from '@/components/ui/Loading'
 import { Label } from '@/components/ui/label'
 import {
   Dialog,
@@ -142,9 +142,7 @@ export default function TwoFactorPage() {
       ) : null}
 
       {status.isLoading ? (
-        <div className="flex justify-center py-6">
-          <Loader2 className="text-muted-foreground size-5 animate-spin" />
-        </div>
+        <Loading className="py-6" />
       ) : mode === 'view' ? (
         <div className="space-y-3">
           <p className="text-sm">

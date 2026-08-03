@@ -5,6 +5,7 @@ import { Clock, Globe, MapPin, Monitor, Smartphone } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Loading } from '@/components/ui/Loading'
 import { ApiError } from '@/lib/api-client'
 import {
   SudoCancelledError,
@@ -46,7 +47,7 @@ function lastSeen(iso: string | null) {
 
 export default function SessionsPage() {
   const sudo = useSudo()
-  const { data: sessions, error: loadError } = useSessions()
+  const { data: sessions, error: loadError, isLoading } = useSessions()
   const revoke = useRevokeSession()
   const revokeOthersMutation = useRevokeOtherSessions()
   const [actionError, setActionError] = useState<string | null>(null)
@@ -86,8 +87,8 @@ export default function SessionsPage() {
       <FormError message={error} />
 
       <div className="space-y-3">
-        {sessions === undefined ? (
-          <p className="text-muted-foreground text-sm">Loading…</p>
+        {isLoading || sessions === undefined ? (
+          <Loading />
         ) : sessions.length === 0 ? (
           <p className="text-muted-foreground text-sm">No active sessions.</p>
         ) : (

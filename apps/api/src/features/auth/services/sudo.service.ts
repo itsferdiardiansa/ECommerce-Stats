@@ -71,9 +71,14 @@ export class SudoService {
     }
 
     if (!passed) {
-      throw new UnauthorizedException(
-        i18n.t(this.invalidKey(input.method), { args: { attempts: remaining } })
-      )
+      const reason = i18n.t(this.invalidKey(input.method))
+      const clause =
+        remaining <= 0
+          ? i18n.t('auth.sudo.attempts_last')
+          : i18n.t('auth.sudo.attempts_remaining', {
+              args: { attempts: remaining },
+            })
+      throw new UnauthorizedException(`${reason} ${clause}`)
     }
 
     await this.sudoStore.grant(deviceKey, this.TTL_SECONDS)

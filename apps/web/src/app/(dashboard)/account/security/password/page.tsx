@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/label'
@@ -23,6 +23,7 @@ export default function PasswordPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
+  const confirmed = useRef(false)
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -35,15 +36,16 @@ export default function PasswordPage() {
     setBusy(true)
     try {
       await sudo.perform(() => changePassword.mutateAsync(next), {
-        force: true,
+        force: !confirmed.current,
       })
+      confirmed.current = false
       setDone(true)
       setNext('')
       setConfirm('')
     } catch (err) {
-      if (!(err instanceof SudoCancelledError)) {
-        setError(errText(err, 'Could not change your password.'))
-      }
+      if (err instanceof SudoCancelledError) return
+      confirmed.current = true
+      setError(errText(err, 'Could not change your password.'))
     } finally {
       setBusy(false)
     }

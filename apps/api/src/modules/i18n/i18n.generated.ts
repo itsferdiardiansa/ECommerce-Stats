@@ -111,6 +111,8 @@ export type I18nTranslations = {
             "too_many_attempts": string;
             "invalid_code": string;
             "invalid_passkey": string;
+            "attempts_remaining": string;
+            "attempts_last": string;
             "passkey_options": string;
         };
         "password": {
