@@ -28,7 +28,11 @@ export const authApi = {
       body: JSON.stringify(body),
     }),
 
-  refresh: () => apiFetch<SessionResponse>('/auth/refresh', { method: 'POST' }),
+  refresh: () =>
+    apiFetch<SessionResponse>('/auth/refresh', {
+      method: 'POST',
+      skipAuthRefresh: true,
+    }),
 
   logout: (accessToken: string) =>
     apiFetch<unknown>('/auth/logout', {

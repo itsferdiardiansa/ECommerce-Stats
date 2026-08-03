@@ -30,6 +30,22 @@ export interface ApiRequest extends Omit<RequestInit, 'body'> {
   token?: string
   /** Abort the request after this many milliseconds. */
   timeoutMs?: number
+  /** Skip the automatic refresh-on-401 retry (used by the refresh call itself). */
+  skipAuthRefresh?: boolean
+}
+
+type RefreshFn = () => Promise<string | null>
+type UnauthorizedFn = () => void
+
+let refreshFn: RefreshFn | null = null
+let unauthorizedFn: UnauthorizedFn | null = null
+
+export function configureApiAuth(handlers: {
+  refresh: RefreshFn
+  onUnauthorized: UnauthorizedFn
+}) {
+  refreshFn = handlers.refresh
+  unauthorizedFn = handlers.onUnauthorized
 }
 
 /**
@@ -50,6 +66,7 @@ export async function apiFetch<T>(
     headers,
     signal,
     credentials,
+    skipAuthRefresh,
     ...rest
   } = options
 
@@ -58,18 +75,36 @@ export async function apiFetch<T>(
     ? setTimeout(() => controller.abort(), timeoutMs)
     : undefined
 
-  try {
-    const res = await fetch(`${BASE_URL}${path}`, {
+  const baseHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(headers as Record<string, string> | undefined),
+  }
+  const authenticated = 'Authorization' in baseHeaders
+
+  const send = (requestHeaders: Record<string, string>) =>
+    fetch(`${BASE_URL}${path}`, {
       ...rest,
       credentials: credentials ?? 'include',
       signal: signal ?? controller?.signal,
       body: json !== undefined ? JSON.stringify(json) : body,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...headers,
-      },
+      headers: requestHeaders,
     })
+
+  try {
+    let res = await send(baseHeaders)
+
+    if (res.status === 401 && authenticated && !skipAuthRefresh && refreshFn) {
+      const newToken = await refreshFn()
+      if (newToken) {
+        res = await send({
+          ...baseHeaders,
+          Authorization: `Bearer ${newToken}`,
+        })
+      } else {
+        unauthorizedFn?.()
+      }
+    }
 
     let envelope: ApiEnvelope<T> = {}
     try {

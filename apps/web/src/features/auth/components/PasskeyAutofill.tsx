@@ -10,6 +10,7 @@ import type { AuthenticationResponseJSON } from '@simplewebauthn/browser'
 import { Fingerprint } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ApiError } from '@/lib/api-client'
+import { safeNextPath } from '@/lib/next-path'
 import { authApi } from '../api/auth.api'
 import { useAuth } from '../context/AuthContext'
 import { FormError } from './FormError'
@@ -19,7 +20,7 @@ import { FormError } from './FormError'
  * offers the passkey in the email field's autofill; the button is an explicit
  * (modal) fallback. Both verify a discoverable assertion and issue a session.
  */
-export function PasskeyAutofill() {
+export function PasskeyAutofill({ next }: { next?: string }) {
   const router = useRouter()
   const { setSession } = useAuth()
   const [error, setError] = useState<string | null>(null)
@@ -35,7 +36,7 @@ export function PasskeyAutofill() {
       response,
     })
     setSession(session.accessToken, null)
-    router.push('/security')
+    router.push(safeNextPath(next))
   }
 
   // Arm conditional UI (autofill) once, in the background.

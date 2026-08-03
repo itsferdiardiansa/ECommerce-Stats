@@ -18,11 +18,6 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null)
 
-/**
- * Minimal in-memory session: holds the access token + user for the tab's
- * lifetime. The durable refresh/deviceSecret cookies are httpOnly and handled
- * by the browser; refresh-on-load and guards are a later phase.
- */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [user, setUser] = useState<AuthUser | null>(null)

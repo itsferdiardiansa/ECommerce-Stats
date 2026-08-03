@@ -8,9 +8,14 @@ export const metadata: Metadata = { title: 'Sign in' }
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ verified?: string; error?: string; reset?: string }>
+  searchParams: Promise<{
+    verified?: string
+    error?: string
+    reset?: string
+    next?: string
+  }>
 }) {
-  const { verified, error, reset } = await searchParams
+  const { verified, error, reset, next } = await searchParams
 
   return (
     <AuthCard
@@ -61,7 +66,7 @@ export default async function SignInPage({
           to reset your password and sign back in.
         </p>
       ) : null}
-      <SignInForm />
+      <SignInForm next={next} />
     </AuthCard>
   )
 }

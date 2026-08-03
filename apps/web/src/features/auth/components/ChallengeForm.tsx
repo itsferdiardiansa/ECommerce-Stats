@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button'
 import { authApi } from '../api/auth.api'
 import { useAuth } from '../context/AuthContext'
 import { ApiError } from '@/lib/api-client'
+import { digitsOnly, recoveryCode } from '@/lib/sanitize'
+import { safeNextPath } from '@/lib/next-path'
 import { TextField } from './TextField'
 import { FormError } from './FormError'
 
@@ -22,12 +24,14 @@ interface ChallengeFormProps {
   challengeId: string
   methods: string[]
   email: string
+  next?: string
 }
 
 export function ChallengeForm({
   challengeId,
   methods,
   email,
+  next,
 }: ChallengeFormProps) {
   const router = useRouter()
   const { setSession } = useAuth()
@@ -57,7 +61,7 @@ export function ChallengeForm({
   function completeSession(accessToken: string) {
     setSession(accessToken, { email })
     setRedirecting(true)
-    router.push('/security')
+    router.push(safeNextPath(next))
   }
 
   async function onCodeSubmit(values: CodeValues) {
@@ -146,6 +150,9 @@ export function ChallengeForm({
               label={codeLabel}
               inputMode={codeMethod === 'recovery' ? 'text' : 'numeric'}
               autoComplete="one-time-code"
+              sanitize={
+                codeMethod === 'recovery' ? recoveryCode : v => digitsOnly(v, 6)
+              }
               placeholder={
                 codeMethod === 'recovery' ? 'XXXX-XXXX-XX' : '123456'
               }

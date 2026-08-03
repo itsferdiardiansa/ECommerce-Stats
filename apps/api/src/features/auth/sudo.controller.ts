@@ -34,6 +34,7 @@ export class SudoController {
     const result = await this.sudoService.elevate(
       user.id,
       user.jti,
+      user.fph,
       {
         method: dto.method,
         password: dto.password,
@@ -62,7 +63,7 @@ export class SudoController {
     @CurrentUser() user: CurrentUserPayload,
     @I18n() i18n: I18nContext
   ) {
-    const result = await this.sudoService.status(user.jti)
+    const result = await this.sudoService.status(user.fph)
     return success(i18n.t('auth.sudo.status_success'), result)
   }
 }

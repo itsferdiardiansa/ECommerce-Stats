@@ -81,7 +81,8 @@ export class AuthService {
     role: string | null,
     orgId: string | null,
     userAgent?: string,
-    ipAddress?: string
+    ipAddress?: string,
+    reuseDeviceSecret?: string
   ) {
     const lockState = await getUserLockState(user.id)
     if (lockState?.lockedAt) {
@@ -91,7 +92,7 @@ export class AuthService {
     const jti = randomUUID()
     const refreshTtl = this.jwtService.getRefreshExpiresIn()
     const expires = new Date(Date.now() + refreshTtl * 1000)
-    const rawDeviceSecret = randomBytes(32).toString('hex')
+    const rawDeviceSecret = reuseDeviceSecret ?? randomBytes(32).toString('hex')
     const deviceSecretHash = createHash('sha256')
       .update(rawDeviceSecret)
       .digest('hex')
@@ -168,7 +169,8 @@ export class AuthService {
     data: RefreshTokenDto,
     i18n: I18nContext,
     ipAddress?: string,
-    userAgent?: string
+    userAgent?: string,
+    existingDeviceSecret?: string
   ) {
     const { jti } = this.jwtService.verifyRefreshToken(data.refreshToken)
 
@@ -271,12 +273,9 @@ export class AuthService {
       throw new UnauthorizedException(i18n.t('auth.errors.invalid_client'))
     }
 
-    const sudoTtl = await this.sudoStore.getTtl(jti)
-
     await Promise.all([
       this.sessionStore.delete(jti),
       Sessions.revokeByJti(jti),
-      this.sudoStore.revoke(jti),
       this.redisService.set(
         `revoked_jti:${jti}`,
         { userId },
@@ -294,12 +293,9 @@ export class AuthService {
       role,
       orgId,
       userAgent,
-      ipAddress
+      ipAddress,
+      existingDeviceSecret
     )
-
-    if (sudoTtl) {
-      await this.sudoStore.grant(result.jti, sudoTtl)
-    }
 
     // geo/deviceFingerprint are internal to session creation; don't leak them
     // in the refresh response.
@@ -315,6 +311,7 @@ export class AuthService {
   async changePassword(
     userId: number,
     currentJti: string,
+    deviceKey: string,
     newPassword: string,
     i18n: I18nContext,
     ipAddress?: string,
@@ -356,7 +353,7 @@ export class AuthService {
     })
 
     await this.revokeOtherSessions(userId, currentJti, i18n)
-    await this.sudoStore.revoke(currentJti)
+    await this.sudoStore.revoke(deviceKey)
 
     const { geo } = generateDeviceFingerprint(userId, userAgent, ipAddress)
     this.eventEmitter.emit(

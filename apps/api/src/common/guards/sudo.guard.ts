@@ -32,9 +32,9 @@ export class SudoGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<RequestWithUser>()
     const i18n = I18nContext.current(context)
-    const jti = request.user?.jti
+    const deviceKey = request.user?.fph
 
-    if (!jti || (await this.sudoStore.getTtl(jti)) === null) {
+    if (!deviceKey || (await this.sudoStore.getTtl(deviceKey)) === null) {
       throw new ForbiddenException({
         message: i18n?.t('auth.sudo.required') || 'Re-authentication required',
         code: 'SUDO_REQUIRED',

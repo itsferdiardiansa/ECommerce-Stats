@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/Input'
+import { CodeInput } from '@/components/ui/CodeInput'
 import { Label } from '@/components/ui/label'
 import {
   Dialog,
@@ -41,9 +42,11 @@ export function ChangeEmailDialog({
   const [newEmail, setNewEmail] = useState('')
   const [confirmEmail, setConfirmEmail] = useState('')
   const [code, setCode] = useState('')
+  const [checking, setChecking] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const opened = useRef(false)
+  const retry = useRef<null | (() => Promise<void>)>(null)
   const pending = busy || requestChange.isPending || confirmChange.isPending
 
   useEffect(() => {
@@ -51,18 +54,15 @@ export function ChangeEmailDialog({
       opened.current = false
       return
     }
-    if (sudo.loading) return
-    if (!opened.current) {
-      opened.current = true
-      setStep(sudo.isValid ? 'form' : 'sudo')
-      setError(null)
-      return
-    }
-    if (!sudo.isValid && step === 'form') {
-      setStep('sudo')
-      setError(EXPIRED)
-    }
-  }, [open, sudo.loading, sudo.isValid, step])
+    if (opened.current) return
+    opened.current = true
+    setError(null)
+    setChecking(true)
+    sudo.checkSudo().then(active => {
+      setStep(active ? 'form' : 'sudo')
+      setChecking(false)
+    })
+  }, [open, sudo])
 
   function reset() {
     setStep('sudo')
@@ -71,6 +71,7 @@ export function ChangeEmailDialog({
     setConfirmEmail('')
     setCode('')
     setError(null)
+    retry.current = null
   }
 
   function close(next: boolean) {
@@ -84,7 +85,13 @@ export function ChangeEmailDialog({
     try {
       await sudo.authorize(password)
       setPassword('')
-      setStep('form')
+      const resume = retry.current
+      retry.current = null
+      if (resume) {
+        await resume()
+      } else {
+        setStep('form')
+      }
     } catch (e) {
       setError(errText(e, 'Could not confirm. Check your password.'))
     } finally {
@@ -93,11 +100,6 @@ export function ChangeEmailDialog({
   }
 
   async function submit() {
-    if (!sudo.isValid) {
-      setStep('sudo')
-      setError(EXPIRED)
-      return
-    }
     if (newEmail !== confirmEmail) {
       setError('The email addresses do not match.')
       return
@@ -108,7 +110,7 @@ export function ChangeEmailDialog({
       setStep('code')
     } catch (e) {
       if (e instanceof ApiError && e.code === 'SUDO_REQUIRED') {
-        sudo.invalidate()
+        retry.current = submit
         setStep('sudo')
         setError(EXPIRED)
       } else {
@@ -127,105 +129,124 @@ export function ChangeEmailDialog({
     }
   }
 
+  function onPrimary() {
+    if (checking || pending) return
+    if (step === 'sudo') {
+      if (password) authorize()
+    } else if (step === 'form') {
+      if (newEmail && confirmEmail) submit()
+    } else if (code) {
+      confirm()
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={close}>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Change email address</DialogTitle>
-          <DialogDescription>
-            {step === 'sudo'
-              ? 'Enter your password to continue.'
-              : step === 'code'
-                ? `Enter the 6 digit code we sent to ${newEmail}.`
-                : 'Enter the new email address for your account.'}
-          </DialogDescription>
-        </DialogHeader>
+        <form
+          className="grid gap-4"
+          onSubmit={e => {
+            e.preventDefault()
+            onPrimary()
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Change email address</DialogTitle>
+            <DialogDescription>
+              {step === 'sudo'
+                ? 'Enter your password to continue.'
+                : step === 'code'
+                  ? `Enter the 6 digit code we sent to ${newEmail}.`
+                  : 'Enter the new email address for your account.'}
+            </DialogDescription>
+          </DialogHeader>
 
-        <FormError message={error ?? sudo.error} />
+          <FormError message={error} />
 
-        {sudo.loading ? (
-          <div className="flex justify-center py-6">
-            <Loader2 className="text-muted-foreground size-5 animate-spin" />
-          </div>
-        ) : step === 'sudo' ? (
-          <div className="space-y-2">
-            <Label htmlFor="email-password">Password</Label>
-            <Input
-              id="email-password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              disabled={pending}
-            />
-          </div>
-        ) : step === 'form' ? (
-          <div className="space-y-4">
+          {checking ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="text-muted-foreground size-5 animate-spin" />
+            </div>
+          ) : step === 'sudo' ? (
             <div className="space-y-2">
-              <Label htmlFor="new-email">New email</Label>
+              <Label htmlFor="email-password">Password</Label>
               <Input
-                id="new-email"
-                type="email"
-                value={newEmail}
-                onChange={e => setNewEmail(e.target.value)}
+                id="email-password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
                 disabled={pending}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirm-email">Confirm email</Label>
-              <Input
-                id="confirm-email"
-                type="email"
-                value={confirmEmail}
-                onChange={e => setConfirmEmail(e.target.value)}
-                disabled={pending}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <Label htmlFor="email-code">Code</Label>
-            <Input
-              id="email-code"
-              inputMode="numeric"
-              placeholder="123456"
-              value={code}
-              onChange={e => setCode(e.target.value)}
-              disabled={pending}
-            />
-          </div>
-        )}
-
-        <DialogFooter>
-          <Button
-            variant="ghost"
-            onClick={() => close(false)}
-            disabled={pending}
-          >
-            Cancel
-          </Button>
-          {sudo.loading ? null : step === 'sudo' ? (
-            <Button onClick={authorize} loading={busy} disabled={!password}>
-              Continue
-            </Button>
           ) : step === 'form' ? (
-            <Button
-              onClick={submit}
-              loading={requestChange.isPending}
-              disabled={!newEmail || !confirmEmail}
-            >
-              Save
-            </Button>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-email">New email</Label>
+                <Input
+                  id="new-email"
+                  type="email"
+                  value={newEmail}
+                  onChange={e => setNewEmail(e.target.value)}
+                  disabled={pending}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-email">Confirm email</Label>
+                <Input
+                  id="confirm-email"
+                  type="email"
+                  value={confirmEmail}
+                  onChange={e => setConfirmEmail(e.target.value)}
+                  disabled={pending}
+                />
+              </div>
+            </div>
           ) : (
-            <Button
-              onClick={confirm}
-              loading={confirmChange.isPending}
-              disabled={!code}
-            >
-              Confirm
-            </Button>
+            <div className="space-y-2">
+              <Label htmlFor="email-code">Code</Label>
+              <CodeInput
+                id="email-code"
+                placeholder="123456"
+                value={code}
+                onValueChange={setCode}
+                disabled={pending}
+              />
+            </div>
           )}
-        </DialogFooter>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => close(false)}
+              disabled={pending}
+            >
+              Cancel
+            </Button>
+            {checking ? null : step === 'sudo' ? (
+              <Button type="submit" loading={busy} disabled={!password}>
+                Continue
+              </Button>
+            ) : step === 'form' ? (
+              <Button
+                type="submit"
+                loading={requestChange.isPending}
+                disabled={!newEmail || !confirmEmail}
+              >
+                Save
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                loading={confirmChange.isPending}
+                disabled={!code}
+              >
+                Confirm
+              </Button>
+            )}
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

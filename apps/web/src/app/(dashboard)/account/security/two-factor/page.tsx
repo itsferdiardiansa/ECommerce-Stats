@@ -2,11 +2,22 @@
 
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/Input'
+import { CodeInput } from '@/components/ui/CodeInput'
 import { Label } from '@/components/ui/label'
-import { ApiError } from '@/lib/api-client'
-import { useSudo } from '@/features/account/context/SudoContext'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { CopyableCode } from '@/features/account/components/CopyableCode'
+import {
+  SudoCancelledError,
+  useSudo,
+} from '@/features/account/context/SudoContext'
 import { useMfaStatus } from '@/features/account/hooks/useAccountQueries'
 import {
   useRegenerateRecoveryCodes,
@@ -14,15 +25,14 @@ import {
   useTotpConfirm,
   useTotpDisable,
 } from '@/features/account/hooks/useAccountMutations'
+import { ApiError } from '@/lib/api-client'
 import { FormError } from '@/features/auth/components/FormError'
 
-type Mode = 'view' | 'password' | 'enrolCode'
+type Mode = 'view' | 'enrolCode'
 type Action = 'enrol' | 'disable' | 'regen'
 
 const errText = (e: unknown, fallback: string) =>
   e instanceof ApiError ? e.message : e ? fallback : null
-
-const EXPIRED = 'Your confirmation expired. Please enter your password again.'
 
 export default function TwoFactorPage() {
   const sudo = useSudo()
@@ -34,18 +44,19 @@ export default function TwoFactorPage() {
 
   const [mode, setMode] = useState<Mode>('view')
   const [action, setAction] = useState<Action>('enrol')
-  const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
   const [secret, setSecret] = useState<string | null>(null)
+  const [otpauth, setOtpauth] = useState<string | null>(null)
   const [codes, setCodes] = useState<string[] | null>(null)
+  const [qrOpen, setQrOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   function toView() {
     setMode('view')
-    setPassword('')
     setCode('')
     setSecret(null)
+    setOtpauth(null)
     setError(null)
   }
 
@@ -53,7 +64,7 @@ export default function TwoFactorPage() {
     if (which === 'enrol') {
       const res = await totpBegin.mutateAsync()
       setSecret(res.secret)
-      setPassword('')
+      setOtpauth(res.otpauthUri)
       setMode('enrolCode')
       return
     }
@@ -70,34 +81,13 @@ export default function TwoFactorPage() {
   async function start(which: Action) {
     setError(null)
     setAction(which)
-    if (!sudo.isValid) {
-      setMode('password')
-      return
-    }
     setBusy(true)
     try {
-      await runAction(which)
+      await sudo.perform(() => runAction(which))
     } catch (e) {
-      if (e instanceof ApiError && e.code === 'SUDO_REQUIRED') {
-        sudo.invalidate()
-        setMode('password')
-        setError(EXPIRED)
-      } else {
+      if (!(e instanceof SudoCancelledError)) {
         setError(errText(e, 'Could not complete that action.'))
       }
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function authorize() {
-    setError(null)
-    setBusy(true)
-    try {
-      await sudo.authorize(password)
-      await runAction(action)
-    } catch (e) {
-      setError(errText(e, 'Could not confirm. Check your password.'))
     } finally {
       setBusy(false)
     }
@@ -106,11 +96,13 @@ export default function TwoFactorPage() {
   async function confirmEnrol() {
     setError(null)
     try {
-      const res = await totpConfirm.mutateAsync(code)
+      const res = await sudo.perform(() => totpConfirm.mutateAsync(code))
       setCodes(res.recoveryCodes)
       toView()
     } catch (e) {
-      setError(errText(e, 'That code was not valid.'))
+      if (!(e instanceof SudoCancelledError)) {
+        setError(errText(e, 'That code was not valid.'))
+      }
     }
   }
 
@@ -149,7 +141,7 @@ export default function TwoFactorPage() {
         </div>
       ) : null}
 
-      {status.isLoading || sudo.loading ? (
+      {status.isLoading ? (
         <div className="flex justify-center py-6">
           <Loader2 className="text-muted-foreground size-5 animate-spin" />
         </div>
@@ -190,24 +182,35 @@ export default function TwoFactorPage() {
         </div>
       ) : mode === 'enrolCode' ? (
         <div className="space-y-4">
-          <div className="space-y-1">
+          <div className="space-y-3">
             <p className="text-sm">
-              Add this key to your authenticator app, then enter the 6 digit
-              code it shows.
+              Scan this QR code with your authenticator app, then enter the 6
+              digit code it shows.
             </p>
-            <code className="bg-muted block rounded px-2 py-1 font-mono text-sm break-all">
-              {secret}
-            </code>
+            {otpauth ? (
+              <button
+                type="button"
+                onClick={() => setQrOpen(true)}
+                aria-label="Enlarge QR code"
+                className="focus-visible:ring-ring w-fit cursor-pointer rounded-lg border bg-white p-3 transition-transform hover:scale-[1.02] focus-visible:ring-2 focus-visible:outline-none"
+              >
+                <QRCodeSVG value={otpauth} size={168} />
+              </button>
+            ) : null}
+            <div className="space-y-1">
+              <p className="text-muted-foreground text-xs">
+                Can&apos;t scan it? Enter this key manually instead:
+              </p>
+              {secret ? <CopyableCode value={secret} /> : null}
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="code">Code</Label>
-            <Input
+            <CodeInput
               id="code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
               placeholder="123456"
               value={code}
-              onChange={e => setCode(e.target.value)}
+              onValueChange={setCode}
               disabled={totpConfirm.isPending}
             />
           </div>
@@ -228,34 +231,25 @@ export default function TwoFactorPage() {
             </Button>
           </div>
         </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="pw">Confirm your password</Label>
-            <Input
-              id="pw"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              disabled={busy}
-            />
+      ) : null}
+
+      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Scan QR code</DialogTitle>
+            <DialogDescription>
+              Point your authenticator app at this code.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center py-2">
+            {otpauth ? (
+              <div className="rounded-lg border bg-white p-4">
+                <QRCodeSVG value={otpauth} size={288} />
+              </div>
+            ) : null}
           </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={authorize}
-              loading={busy}
-              disabled={!password}
-              variant={action === 'disable' ? 'destructive' : 'default'}
-            >
-              Continue
-            </Button>
-            <Button variant="ghost" onClick={toView} disabled={busy}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

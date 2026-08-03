@@ -18,8 +18,9 @@ import { PasskeyAutofill } from './PasskeyAutofill'
 import { GoogleButton } from './GoogleButton'
 import { Turnstile } from './Turnstile'
 import { env } from '@/config/env'
+import { safeNextPath } from '@/lib/next-path'
 
-export function SignInForm() {
+export function SignInForm({ next }: { next?: string }) {
   const router = useRouter()
   const { setSession } = useAuth()
   const { mutate, isPending, isSuccess, error } = useLogin()
@@ -47,11 +48,12 @@ export function SignInForm() {
               methods: res.availableMethods.join(','),
               email: values.email,
             })
+            if (next) params.set('next', next)
             router.push(`/sign-in/challenge?${params.toString()}`)
             return
           }
           setSession(res.accessToken, { email: values.email })
-          router.push('/security')
+          router.push(safeNextPath(next))
         },
         onError: () => setCaptchaKey(k => k + 1),
       }
@@ -118,7 +120,7 @@ export function SignInForm() {
           <span className="bg-border h-px flex-1" />
         </div>
         <GoogleButton />
-        <PasskeyAutofill />
+        <PasskeyAutofill next={next} />
       </form>
     </Form>
   )

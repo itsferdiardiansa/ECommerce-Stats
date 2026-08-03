@@ -314,12 +314,15 @@ export class AuthController {
       )
     }
 
+    const existingDeviceSecret = req.cookies?.deviceSecret as string | undefined
+
     const { refreshToken, rawDeviceSecret, ...result } =
       await this.authService.refreshToken(
         { refreshToken: token },
         i18n,
         ipAddress,
-        userAgent
+        userAgent,
+        existingDeviceSecret
       )
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
@@ -358,6 +361,7 @@ export class AuthController {
     const result = await this.authService.changePassword(
       user.id,
       user.jti,
+      user.fph,
       dto.password,
       i18n,
       ipAddress,

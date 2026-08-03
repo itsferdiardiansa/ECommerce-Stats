@@ -31,14 +31,3 @@ export function useMfaStatus() {
     enabled: !!accessToken,
   })
 }
-
-export function useSudoStatus() {
-  const { accessToken } = useAuth()
-  return useQuery({
-    queryKey: accountKeys.sudo(),
-    queryFn: () => accountApi.sudoStatus(accessToken as string),
-    enabled: !!accessToken,
-    staleTime: 0,
-    gcTime: 0,
-  })
-}

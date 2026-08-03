@@ -6,14 +6,16 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ApiError } from '@/lib/api-client'
-import { useSudo } from '@/features/account/context/SudoContext'
+import {
+  SudoCancelledError,
+  useSudo,
+} from '@/features/account/context/SudoContext'
 import { useSessions } from '@/features/account/hooks/useAccountQueries'
 import {
   useRevokeOtherSessions,
   useRevokeSession,
 } from '@/features/account/hooks/useAccountMutations'
 import { FormError } from '@/features/auth/components/FormError'
-import { SudoDialog } from '@/features/account/components/SudoDialog'
 
 const errText = (e: unknown, fallback: string) =>
   e instanceof ApiError ? e.message : e ? fallback : null
@@ -48,37 +50,26 @@ export default function SessionsPage() {
   const revoke = useRevokeSession()
   const revokeOthersMutation = useRevokeOtherSessions()
   const [actionError, setActionError] = useState<string | null>(null)
-  const [sudoOpen, setSudoOpen] = useState(false)
-  const [pending, setPending] = useState<(() => Promise<unknown>) | null>(null)
 
   const error =
     actionError ?? errText(loadError, 'Could not load your sessions.')
 
-  async function askSudo(action: () => Promise<unknown>) {
-    if (sudo.loading) return
+  async function run(action: () => Promise<unknown>) {
     setActionError(null)
-    if (sudo.isValid) {
-      try {
-        await action()
-        return
-      } catch (e) {
-        if (!(e instanceof ApiError && e.code === 'SUDO_REQUIRED')) {
-          setActionError(errText(e, 'Could not complete that action.'))
-          return
-        }
-        sudo.invalidate()
-      }
+    try {
+      await sudo.perform(action)
+    } catch (e) {
+      if (e instanceof SudoCancelledError) return
+      setActionError(errText(e, 'Could not complete that action.'))
     }
-    setPending(() => action)
-    setSudoOpen(true)
   }
 
   function revokeOne(id: string) {
-    void askSudo(() => revoke.mutateAsync(id))
+    void run(() => revoke.mutateAsync(id))
   }
 
   function revokeOthers() {
-    void askSudo(() => revokeOthersMutation.mutateAsync())
+    void run(() => revokeOthersMutation.mutateAsync())
   }
 
   const hasOthers = (sessions ?? []).some(s => !s.isCurrent)
@@ -161,16 +152,6 @@ export default function SessionsPage() {
           Sign out all other devices
         </Button>
       ) : null}
-
-      <SudoDialog
-        open={sudoOpen}
-        onOpenChange={setSudoOpen}
-        onConfirmed={async () => {
-          if (pending) await pending()
-        }}
-        title="Confirm to sign out"
-        description="Enter your password to sign out of the selected device."
-      />
     </div>
   )
 }

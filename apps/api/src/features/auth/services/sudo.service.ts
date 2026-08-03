@@ -44,14 +44,15 @@ export class SudoService {
   async elevate(
     userId: number,
     jti: string,
+    deviceKey: string,
     input: SudoInput,
     i18n: I18nContext
   ): Promise<{ expiresIn: number }> {
-    const active = await this.sudoStore.getTtl(jti)
+    const active = await this.sudoStore.getTtl(deviceKey)
     if (active !== null) return { expiresIn: active }
 
     const attempts = await this.sudoStore.incrementAttempts(
-      jti,
+      deviceKey,
       this.TTL_SECONDS
     )
 
@@ -75,7 +76,7 @@ export class SudoService {
       )
     }
 
-    await this.sudoStore.grant(jti, this.TTL_SECONDS)
+    await this.sudoStore.grant(deviceKey, this.TTL_SECONDS)
 
     return { expiresIn: this.TTL_SECONDS }
   }
@@ -121,8 +122,10 @@ export class SudoService {
     return this.totpService.verifyAndConsume(userId, secret, code)
   }
 
-  async status(jti: string): Promise<{ active: boolean; expiresIn: number }> {
-    const ttl = await this.sudoStore.getTtl(jti)
+  async status(
+    deviceKey: string
+  ): Promise<{ active: boolean; expiresIn: number }> {
+    const ttl = await this.sudoStore.getTtl(deviceKey)
     return { active: ttl !== null, expiresIn: ttl ?? 0 }
   }
 }

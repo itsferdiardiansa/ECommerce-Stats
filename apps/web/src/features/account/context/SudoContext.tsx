@@ -4,22 +4,32 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
+  useMemo,
+  useRef,
   useState,
 } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ApiError } from '@/lib/api-client'
+import { accountApi } from '@/features/account/api/account.api'
 import { accountKeys } from '@/features/account/api/account.keys'
-import { useSudoStatus } from '@/features/account/hooks/useAccountQueries'
 import { useSudoAuthorize } from '@/features/account/hooks/useAccountMutations'
 import { useAuth } from '@/features/auth/context/AuthContext'
+import { SudoPrompt } from '@/features/account/components/SudoPrompt'
+
+export class SudoCancelledError extends Error {
+  constructor() {
+    super('Sudo confirmation was cancelled')
+    this.name = 'SudoCancelledError'
+  }
+}
 
 interface SudoContextValue {
-  isValid: boolean
-  loading: boolean
-  error: string | null
+  checkSudo: () => Promise<boolean>
   authorize: (password: string) => Promise<void>
-  invalidate: () => void
+  perform: <T>(
+    action: () => Promise<T>,
+    options?: { force?: boolean }
+  ) => Promise<T>
 }
 
 const SudoContext = createContext<SudoContextValue | null>(null)
@@ -27,59 +37,92 @@ const SudoContext = createContext<SudoContextValue | null>(null)
 export function SudoProvider({ children }: { children: React.ReactNode }) {
   const { accessToken } = useAuth()
   const qc = useQueryClient()
-  const status = useSudoStatus()
   const authorizeMutation = useSudoAuthorize()
-  const [expiresAt, setExpiresAt] = useState<number | null>(null)
+  const [promptOpen, setPromptOpen] = useState(false)
+  const resolverRef = useRef<((ok: boolean) => void) | null>(null)
 
-  useEffect(() => {
-    if (!status.data) return
-    setExpiresAt(
-      status.data.active ? Date.now() + status.data.expiresIn * 1000 : null
-    )
-  }, [status.data])
-
-  useEffect(() => {
-    if (expiresAt === null) return
-    const ms = expiresAt - Date.now()
-    if (ms <= 0) {
-      setExpiresAt(null)
-      return
+  const checkSudo = useCallback(async () => {
+    if (!accessToken) return false
+    try {
+      const data = await qc.fetchQuery({
+        queryKey: accountKeys.sudo(),
+        queryFn: () => accountApi.sudoStatus(accessToken),
+        staleTime: 0,
+      })
+      return data.active
+    } catch {
+      return false
     }
-    const t = setTimeout(() => setExpiresAt(null), ms)
-    return () => clearTimeout(t)
-  }, [expiresAt])
+  }, [accessToken, qc])
 
   const authorize = useCallback(
     async (password: string) => {
-      const { expiresIn } = await authorizeMutation.mutateAsync(password)
-      qc.setQueryData(accountKeys.sudo(), { active: true, expiresIn })
+      await authorizeMutation.mutateAsync(password)
     },
-    [authorizeMutation, qc]
+    [authorizeMutation]
   )
 
-  const invalidate = useCallback(() => {
-    qc.setQueryData(accountKeys.sudo(), { active: false, expiresIn: 0 })
-    setExpiresAt(null)
-  }, [qc])
+  const requireSudo = useCallback(
+    () =>
+      new Promise<boolean>(resolve => {
+        resolverRef.current = resolve
+        setPromptOpen(true)
+      }),
+    []
+  )
 
-  const loading = !accessToken || status.isLoading
-  const error = status.error
-    ? status.error instanceof ApiError
-      ? status.error.message
-      : 'Could not check your session.'
-    : null
+  const settle = useCallback((ok: boolean) => {
+    const resolve = resolverRef.current
+    resolverRef.current = null
+    setPromptOpen(false)
+    resolve?.(ok)
+  }, [])
+
+  const perform = useCallback(
+    async <T,>(
+      action: () => Promise<T>,
+      options?: { force?: boolean }
+    ): Promise<T> => {
+      const active = options?.force ? false : await checkSudo()
+      if (!active) {
+        const ok = await requireSudo()
+        if (!ok) throw new SudoCancelledError()
+      }
+      try {
+        return await action()
+      } catch (e) {
+        if (e instanceof ApiError && e.code === 'SUDO_REQUIRED') {
+          const ok = await requireSudo()
+          if (!ok) throw new SudoCancelledError()
+          return await action()
+        }
+        throw e
+      }
+    },
+    [checkSudo, requireSudo]
+  )
+
+  const onPromptAuthorize = useCallback(
+    async (password: string) => {
+      await authorize(password)
+      settle(true)
+    },
+    [authorize, settle]
+  )
+
+  const value = useMemo(
+    () => ({ checkSudo, authorize, perform }),
+    [checkSudo, authorize, perform]
+  )
 
   return (
-    <SudoContext.Provider
-      value={{
-        isValid: expiresAt !== null,
-        loading,
-        error,
-        authorize,
-        invalidate,
-      }}
-    >
+    <SudoContext.Provider value={value}>
       {children}
+      <SudoPrompt
+        open={promptOpen}
+        onAuthorize={onPromptAuthorize}
+        onCancel={() => settle(false)}
+      />
     </SudoContext.Provider>
   )
 }

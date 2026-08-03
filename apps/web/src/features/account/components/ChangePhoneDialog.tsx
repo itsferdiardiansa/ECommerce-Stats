@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ApiError } from '@/lib/api-client'
+import { phoneChars } from '@/lib/sanitize'
 import { useSudo } from '@/features/account/context/SudoContext'
 import { FormError } from '@/features/auth/components/FormError'
 
@@ -37,38 +38,38 @@ export function ChangePhoneDialog({
   const [step, setStep] = useState<'sudo' | 'form'>('sudo')
   const [password, setPassword] = useState('')
   const [phone, setPhone] = useState('')
+  const [checking, setChecking] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const opened = useRef(false)
+  const retry = useRef<null | (() => Promise<void>)>(null)
 
   useEffect(() => {
     if (!open) {
       opened.current = false
       return
     }
-    if (sudo.loading) return
-    if (!opened.current) {
-      opened.current = true
-      setError(null)
-      if (sudo.isValid) {
+    if (opened.current) return
+    opened.current = true
+    setError(null)
+    setChecking(true)
+    sudo.checkSudo().then(active => {
+      if (active) {
         setPhone(currentPhone ?? '')
         setStep('form')
       } else {
         setStep('sudo')
       }
-      return
-    }
-    if (!sudo.isValid && step === 'form') {
-      setStep('sudo')
-      setError(EXPIRED)
-    }
-  }, [open, sudo.loading, sudo.isValid, step, currentPhone])
+      setChecking(false)
+    })
+  }, [open, sudo, currentPhone])
 
   function reset() {
     setStep('sudo')
     setPassword('')
     setPhone(currentPhone ?? '')
     setError(null)
+    retry.current = null
   }
 
   function close(next: boolean) {
@@ -82,8 +83,14 @@ export function ChangePhoneDialog({
     try {
       await sudo.authorize(password)
       setPassword('')
-      setPhone(currentPhone ?? '')
-      setStep('form')
+      const resume = retry.current
+      retry.current = null
+      if (resume) {
+        await resume()
+      } else {
+        setPhone(currentPhone ?? '')
+        setStep('form')
+      }
     } catch (e) {
       setError(errText(e, 'Could not confirm. Check your password.'))
     } finally {
@@ -92,11 +99,6 @@ export function ChangePhoneDialog({
   }
 
   async function submit() {
-    if (!sudo.isValid) {
-      setStep('sudo')
-      setError(EXPIRED)
-      return
-    }
     setBusy(true)
     setError(null)
     try {
@@ -104,7 +106,7 @@ export function ChangePhoneDialog({
       close(false)
     } catch (e) {
       if (e instanceof ApiError && e.code === 'SUDO_REQUIRED') {
-        sudo.invalidate()
+        retry.current = submit
         setStep('sudo')
         setError(EXPIRED)
       } else {
@@ -115,64 +117,87 @@ export function ChangePhoneDialog({
     }
   }
 
+  function onPrimary() {
+    if (checking || busy) return
+    if (step === 'sudo') {
+      if (password) authorize()
+    } else {
+      submit()
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={close}>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Change phone number</DialogTitle>
-          <DialogDescription>
-            {step === 'sudo'
-              ? 'Enter your password to continue.'
-              : 'Enter the phone number for your account.'}
-          </DialogDescription>
-        </DialogHeader>
+        <form
+          className="grid gap-4"
+          onSubmit={e => {
+            e.preventDefault()
+            onPrimary()
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Change phone number</DialogTitle>
+            <DialogDescription>
+              {step === 'sudo'
+                ? 'Enter your password to continue.'
+                : 'Enter the phone number for your account.'}
+            </DialogDescription>
+          </DialogHeader>
 
-        <FormError message={error ?? sudo.error} />
+          <FormError message={error} />
 
-        {sudo.loading ? (
-          <div className="flex justify-center py-6">
-            <Loader2 className="text-muted-foreground size-5 animate-spin" />
-          </div>
-        ) : step === 'sudo' ? (
-          <div className="space-y-2">
-            <Label htmlFor="phone-password">Password</Label>
-            <Input
-              id="phone-password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              disabled={busy}
-            />
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <Label htmlFor="new-phone">Phone number</Label>
-            <Input
-              id="new-phone"
-              type="tel"
-              placeholder="Optional"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              disabled={busy}
-            />
-          </div>
-        )}
-
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => close(false)} disabled={busy}>
-            Cancel
-          </Button>
-          {sudo.loading ? null : step === 'sudo' ? (
-            <Button onClick={authorize} loading={busy} disabled={!password}>
-              Continue
-            </Button>
+          {checking ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="text-muted-foreground size-5 animate-spin" />
+            </div>
+          ) : step === 'sudo' ? (
+            <div className="space-y-2">
+              <Label htmlFor="phone-password">Password</Label>
+              <Input
+                id="phone-password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                disabled={busy}
+              />
+            </div>
           ) : (
-            <Button onClick={submit} loading={busy}>
-              Save
-            </Button>
+            <div className="space-y-2">
+              <Label htmlFor="new-phone">Phone number</Label>
+              <Input
+                id="new-phone"
+                type="tel"
+                inputMode="tel"
+                placeholder="Optional"
+                value={phone}
+                onChange={e => setPhone(phoneChars(e.target.value))}
+                disabled={busy}
+              />
+            </div>
           )}
-        </DialogFooter>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => close(false)}
+              disabled={busy}
+            >
+              Cancel
+            </Button>
+            {checking ? null : step === 'sudo' ? (
+              <Button type="submit" loading={busy} disabled={!password}>
+                Continue
+              </Button>
+            ) : (
+              <Button type="submit" loading={busy}>
+                Save
+              </Button>
+            )}
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

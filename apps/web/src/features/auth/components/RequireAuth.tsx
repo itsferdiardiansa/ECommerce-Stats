@@ -6,12 +6,6 @@ import { Loader2 } from 'lucide-react'
 import { authApi } from '../api/auth.api'
 import { useAuth } from '../context/AuthContext'
 
-/**
- * Client guard for authenticated areas. The access token lives in memory only,
- * so on a hard load it tries to mint one from the httpOnly refresh cookie; if
- * that fails the user is sent to sign-in. The ref makes the refresh single-shot
- * so React StrictMode's double-invoke can't trip refresh-token reuse detection.
- */
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const { accessToken, setSession } = useAuth()
   const router = useRouter()
