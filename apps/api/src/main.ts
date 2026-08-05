@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { NestFactory } from '@nestjs/core'
 import { z } from 'zod'
 import cookieParser from 'cookie-parser'
@@ -12,7 +13,18 @@ import { assertProductionSecrets } from './config/assert-secrets'
 async function bootstrap() {
   assertProductionSecrets()
   z.config({ customError: i18nZodErrorMap })
-  const app = await NestFactory.create(AppModule)
+
+  const keyFile = process.env.SSL_KEY_FILE
+  const certFile = process.env.SSL_CERT_FILE
+  const httpsOptions =
+    keyFile && certFile
+      ? { key: readFileSync(keyFile), cert: readFileSync(certFile) }
+      : undefined
+
+  const app = await NestFactory.create(
+    AppModule,
+    httpsOptions ? { httpsOptions } : {}
+  )
   const configService = app.get(ConfigService)
 
   app.enableCors({

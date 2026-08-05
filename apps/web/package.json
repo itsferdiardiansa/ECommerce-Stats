@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "nx next:dev",
+    "dev:https": "next dev --port 3000 --experimental-https --experimental-https-key ./certs/localhost-key.pem --experimental-https-cert ./certs/localhost.pem",
     "build": "nx next:build",
     "start": "nx next:start",
     "lint": "next lint",
