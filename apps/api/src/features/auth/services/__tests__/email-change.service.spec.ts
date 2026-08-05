@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common'
-import { EmailChangeService } from './email-change.service'
+import { EmailChangeService } from '../email-change.service'
 import * as userDomain from '@rufieltics/db/domains/identity/user'
 import { renderEmail } from '@rufieltics/emails'
 

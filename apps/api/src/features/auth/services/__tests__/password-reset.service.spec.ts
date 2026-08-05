@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common'
-import { PasswordResetService } from './password-reset.service'
+import { PasswordResetService } from '../password-reset.service'
 import * as userDomain from '@rufieltics/db/domains/identity/user'
 import { PasswordSecurity } from '@rufieltics/db/domains/auth'
 import { renderEmail } from '@rufieltics/emails'
