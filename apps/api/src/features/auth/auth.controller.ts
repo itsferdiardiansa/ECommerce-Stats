@@ -52,6 +52,7 @@ const config = configuration()
 @Controller('auth')
 export class AuthController {
   private readonly AUTH_COOKIE_PATH = '/api/v1/auth'
+  private readonly DEVICE_COOKIE_PATH = '/api/v1'
 
   constructor(
     private readonly authService: AuthService,
@@ -67,9 +68,16 @@ export class AuthController {
     return {
       httpOnly: true,
       secure: config.nodeEnv === 'production',
-      sameSite: 'strict',
+      sameSite: config.nodeEnv === 'production' ? 'strict' : 'lax',
       path: this.AUTH_COOKIE_PATH,
       maxAge: this.jwtService.getRefreshExpiresIn() * 1000,
+    }
+  }
+
+  private getDeviceCookieOptions(): CookieOptions {
+    return {
+      ...this.getCookieOptions(),
+      path: this.DEVICE_COOKIE_PATH,
     }
   }
 
@@ -77,7 +85,7 @@ export class AuthController {
     return {
       httpOnly: true,
       secure: config.nodeEnv === 'production',
-      sameSite: 'strict',
+      sameSite: config.nodeEnv === 'production' ? 'strict' : 'lax',
       path: this.AUTH_COOKIE_PATH,
       maxAge: ttlSeconds * 1000,
     }
@@ -157,7 +165,7 @@ export class AuthController {
     const { refreshToken, rawDeviceSecret, ...result } = loginResult
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
-    res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
+    res.cookie('deviceSecret', rawDeviceSecret, this.getDeviceCookieOptions())
 
     return success(i18n.t('auth.login.success'), result)
   }
@@ -200,7 +208,7 @@ export class AuthController {
     )
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
-    res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
+    res.cookie('deviceSecret', rawDeviceSecret, this.getDeviceCookieOptions())
     if (trustedDeviceToken) {
       res.cookie(
         'trustedDevice',
@@ -252,7 +260,7 @@ export class AuthController {
     )
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
-    res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
+    res.cookie('deviceSecret', rawDeviceSecret, this.getDeviceCookieOptions())
     if (trustedDeviceToken) {
       res.cookie(
         'trustedDevice',
@@ -292,7 +300,7 @@ export class AuthController {
       )
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
-    res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
+    res.cookie('deviceSecret', rawDeviceSecret, this.getDeviceCookieOptions())
 
     return success(i18n.t('auth.login.success'), result)
   }
@@ -326,7 +334,7 @@ export class AuthController {
       )
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
-    res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
+    res.cookie('deviceSecret', rawDeviceSecret, this.getDeviceCookieOptions())
 
     return success(i18n.t('auth.refresh.success'), result)
   }
@@ -342,7 +350,7 @@ export class AuthController {
   ) {
     await this.authService.logout(user.jti)
     res.clearCookie('refreshToken', { path: this.AUTH_COOKIE_PATH })
-    res.clearCookie('deviceSecret', { path: this.AUTH_COOKIE_PATH })
+    res.clearCookie('deviceSecret', { path: this.DEVICE_COOKIE_PATH })
     return success(i18n.t('auth.logout.success'), null)
   }
 
@@ -477,7 +485,7 @@ export class AuthController {
 
     if (dto.jtis.includes(user.jti)) {
       res.clearCookie('refreshToken', { path: this.AUTH_COOKIE_PATH })
-      res.clearCookie('deviceSecret', { path: this.AUTH_COOKIE_PATH })
+      res.clearCookie('deviceSecret', { path: this.DEVICE_COOKIE_PATH })
     }
 
     return success(result.message, null)
