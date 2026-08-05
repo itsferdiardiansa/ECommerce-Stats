@@ -105,32 +105,32 @@ export async function apiFetch<T>(
       headers: requestHeaders,
     })
 
+  const readEnvelope = async (res: Response): Promise<ApiEnvelope<T>> => {
+    try {
+      return (await res.json()) as ApiEnvelope<T>
+    } catch {
+      return {}
+    }
+  }
+
   try {
     let res = await send(baseHeaders)
+    let envelope = await readEnvelope(res)
 
-    if (
-      res.status === 401 &&
-      authenticated &&
-      !skipAuthRefresh &&
-      refreshFn &&
-      accessTokenExpired(baseHeaders.Authorization)
-    ) {
-      const newToken = await refreshFn()
-      if (newToken) {
-        res = await send({
-          ...baseHeaders,
-          Authorization: `Bearer ${newToken}`,
-        })
-      } else {
-        unauthorizedFn?.()
+    if (res.status === 401 && authenticated && !skipAuthRefresh && refreshFn) {
+      const sessionInvalid = envelope.error?.code === 'SESSION_INVALID'
+      if (sessionInvalid || accessTokenExpired(baseHeaders.Authorization)) {
+        const newToken = await refreshFn()
+        if (newToken) {
+          res = await send({
+            ...baseHeaders,
+            Authorization: `Bearer ${newToken}`,
+          })
+          envelope = await readEnvelope(res)
+        } else {
+          unauthorizedFn?.()
+        }
       }
-    }
-
-    let envelope: ApiEnvelope<T> = {}
-    try {
-      envelope = (await res.json()) as ApiEnvelope<T>
-    } catch {
-      // no/invalid JSON body
     }
 
     if (!res.ok) {

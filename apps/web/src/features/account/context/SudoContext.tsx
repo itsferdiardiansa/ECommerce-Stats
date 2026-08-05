@@ -50,7 +50,8 @@ export function SudoProvider({ children }: { children: React.ReactNode }) {
         staleTime: 0,
       })
       return data.active
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 'SESSION_INVALID') throw e
       return false
     }
   }, [accessToken, qc])
