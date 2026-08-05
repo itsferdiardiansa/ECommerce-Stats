@@ -87,9 +87,10 @@ model Passkey {
   transports   String[]
   userHandle   String
   name         String?
-  aaguid       String?
-  createdAt    DateTime  @default(now())
-  lastUsedAt   DateTime?
+  aaguid         String?
+  createdAt      DateTime  @default(now())
+  lastUsedAt     DateTime?
+  lastUsedDevice String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

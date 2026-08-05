@@ -75,6 +75,11 @@
       "key": "reset_token",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "passkey_id",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -1145,6 +1150,234 @@
               "raw": "{\n  \"method\": \"totp\",\n  \"code\": \"123456\"\n}"
             },
             "description": "Elevate using the authenticator app instead of the password."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Passkeys",
+      "item": [
+        {
+          "name": "List Passkeys",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/passkeys",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys"]
+            },
+            "description": "Lists the current user's passkeys (id, name, aaguid, transports, deviceType, backedUp, createdAt, lastUsedAt). No sudo required. Saves the first id to {{passkey_id}}."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const list = pm.response.json().data.passkeys || [];",
+                  "    if (list.length) {",
+                  "        pm.collectionVariables.set('passkey_id', list[0].id);",
+                  "        console.log('passkey_id set to', list[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Begin Passkey Registration (This Device)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/passkeys/options",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys", "options"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attachment\": \"platform\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Requires sudo. authenticatorAttachment=platform steers the browser to the built-in authenticator (Touch ID / Windows Hello). Returns WebAuthn creation options; the ceremony itself must run in a browser."
+          },
+          "response": []
+        },
+        {
+          "name": "Begin Passkey Registration (Another Device)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/passkeys/options",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys", "options"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attachment\": \"cross-platform\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Requires sudo. authenticatorAttachment=cross-platform makes the browser show its native cross-device (QR) / security-key flow. Attachment is optional; omit it to let the user choose."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Passkey Registration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/passkeys/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys", "verify"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"response\": {\n    \"id\": \"...\",\n    \"rawId\": \"...\",\n    \"type\": \"public-key\",\n    \"response\": {}\n  },\n  \"name\": \"My passkey\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Requires sudo. `response` is the RegistrationResponseJSON produced by the browser WebAuthn ceremony and cannot be generated in Postman. `name` is optional; when omitted the UI shows the provider name from the AAGUID."
+          },
+          "response": []
+        },
+        {
+          "name": "Rename Passkey",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/passkeys/{{passkey_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys", "{{passkey_id}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My MacBook\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Requires sudo. Renames the passkey. Run List Passkeys first to populate {{passkey_id}}."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Passkey",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/passkeys/{{passkey_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys", "{{passkey_id}}"]
+            },
+            "description": "Requires sudo. Removes the passkey. Run List Passkeys first to populate {{passkey_id}}."
           },
           "response": []
         }

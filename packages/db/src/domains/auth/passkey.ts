@@ -33,10 +33,18 @@ export const Passkeys = {
     return db.passkey.count({ where: { userId } })
   },
 
-  async updateCounterAndUsed(credentialId: string, counter: bigint) {
+  async updateCounterAndUsed(
+    credentialId: string,
+    counter: bigint,
+    device?: string
+  ) {
     return db.passkey.update({
       where: { credentialId },
-      data: { counter, lastUsedAt: new Date() },
+      data: {
+        counter,
+        lastUsedAt: new Date(),
+        ...(device ? { lastUsedDevice: device } : {}),
+      },
     })
   },
 

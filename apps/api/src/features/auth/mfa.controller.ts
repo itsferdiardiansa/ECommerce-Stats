@@ -20,6 +20,7 @@ import { ConfirmTotpDto } from './dto/mfa.dto'
 import {
   VerifyPasskeyRegistrationDto,
   RenamePasskeyDto,
+  BeginPasskeyRegistrationDto,
 } from './dto/passkey.dto'
 import { success } from '@/common/helpers/api-response.helper'
 import { ActiveUserGuard } from '@/common/guards/active-user.guard'
@@ -122,9 +123,14 @@ export class MfaController {
   @RequireSudo()
   async beginPasskey(
     @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: BeginPasskeyRegistrationDto,
     @I18n() i18n: I18nContext
   ) {
-    const options = await this.mfaService.beginPasskeyEnrolment(user.id, i18n)
+    const options = await this.mfaService.beginPasskeyEnrolment(
+      user.id,
+      i18n,
+      dto.attachment
+    )
     return success(i18n.t('auth.mfa.passkey.enrolment_started'), options)
   }
 

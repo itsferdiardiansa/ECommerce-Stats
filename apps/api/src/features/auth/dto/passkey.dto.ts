@@ -51,6 +51,10 @@ export const RenamePasskeySchema = z.object({
   name: z.string().trim().min(1).max(60),
 })
 
+export const BeginPasskeyRegistrationSchema = z.object({
+  attachment: z.enum(['platform', 'cross-platform']).optional(),
+})
+
 export class VerifyPasskeyRegistrationDto extends createZodDto(
   VerifyPasskeyRegistrationSchema
 ) {}
@@ -59,3 +63,6 @@ export class VerifyPasskeyLoginDto extends createZodDto(
 ) {}
 export class PasskeyOptionsDto extends createZodDto(PasskeyOptionsSchema) {}
 export class RenamePasskeyDto extends createZodDto(RenamePasskeySchema) {}
+export class BeginPasskeyRegistrationDto extends createZodDto(
+  BeginPasskeyRegistrationSchema
+) {}

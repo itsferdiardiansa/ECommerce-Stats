@@ -144,14 +144,18 @@ export class LoginService {
       )
     }
 
-    const { geo, deviceFingerprint, jti: _jti, ...session } =
-      await this.authService.initiateSession(
-        user,
-        role,
-        orgId,
-        userAgent,
-        ipAddress
-      )
+    const {
+      geo,
+      deviceFingerprint,
+      jti: _jti,
+      ...session
+    } = await this.authService.initiateSession(
+      user,
+      role,
+      orgId,
+      userAgent,
+      ipAddress
+    )
 
     this.eventEmitter.emit(
       AUTH_EVENTS.LOGIN_SUCCESS,
@@ -197,7 +201,8 @@ export class LoginService {
   ) {
     const userId = await this.passkeyService.finishDiscoverableAuthentication(
       challengeId,
-      response
+      response,
+      userAgent
     )
     const user = userId ? await getSessionUser(userId) : null
     if (!user) {
@@ -209,14 +214,18 @@ export class LoginService {
     const memberships = await OrganizationMembers.listByUser(user.id)
     const primary = pickPrimaryMembership(memberships)
 
-    const { geo, deviceFingerprint, jti: _jti, ...session } =
-      await this.authService.initiateSession(
-        user,
-        primary?.role ?? null,
-        primary?.organizationId ?? null,
-        userAgent,
-        ipAddress
-      )
+    const {
+      geo,
+      deviceFingerprint,
+      jti: _jti,
+      ...session
+    } = await this.authService.initiateSession(
+      user,
+      primary?.role ?? null,
+      primary?.organizationId ?? null,
+      userAgent,
+      ipAddress
+    )
 
     this.eventEmitter.emit(
       AUTH_EVENTS.LOGIN_SUCCESS,

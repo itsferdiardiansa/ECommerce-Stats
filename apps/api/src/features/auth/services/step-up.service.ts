@@ -417,7 +417,8 @@ export class StepUpService {
     const verifiedUserId = await this.passkeyService.finishAuthentication(
       'login',
       challengeId,
-      response
+      response,
+      userAgent
     )
 
     if (verifiedUserId !== challenge.userId) {
@@ -462,18 +463,22 @@ export class StepUpService {
     const sessionUserAgent = challenge.userAgent ?? userAgent
     const sessionIpAddress = challenge.ipAddress ?? ipAddress
 
-    const { geo, deviceFingerprint, jti: _jti, ...session } =
-      await this.authService.initiateSession(
-        {
-          id: challenge.userId,
-          email: challenge.email,
-          isStaff: challenge.isStaff,
-        },
-        challenge.role,
-        challenge.orgId,
-        sessionUserAgent,
-        sessionIpAddress
-      )
+    const {
+      geo,
+      deviceFingerprint,
+      jti: _jti,
+      ...session
+    } = await this.authService.initiateSession(
+      {
+        id: challenge.userId,
+        email: challenge.email,
+        isStaff: challenge.isStaff,
+      },
+      challenge.role,
+      challenge.orgId,
+      sessionUserAgent,
+      sessionIpAddress
+    )
 
     this.eventEmitter.emit(
       AUTH_EVENTS.LOGIN_SUCCESS,

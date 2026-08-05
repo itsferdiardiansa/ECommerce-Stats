@@ -10,33 +10,42 @@ import type { PasskeySummary } from '../types'
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` })
 
 export const mfaApi = {
-  sudoWithPassword: (token: string, password: string) =>
-    apiFetch<{ expiresIn: number }>('/auth/sudo', {
-      method: 'POST',
-      headers: auth(token),
-      body: JSON.stringify({ method: 'password', password }),
-    }),
-
   listPasskeys: (token: string) =>
     apiFetch<{ passkeys: PasskeySummary[] }>('/auth/mfa/passkeys', {
       headers: auth(token),
     }),
 
-  passkeyRegisterOptions: (token: string) =>
+  passkeyRegisterOptions: (
+    token: string,
+    attachment?: 'platform' | 'cross-platform'
+  ) =>
     apiFetch<PublicKeyCredentialCreationOptionsJSON>(
       '/auth/mfa/passkeys/options',
-      { method: 'POST', headers: auth(token) }
+      {
+        method: 'POST',
+        headers: auth(token),
+        body: JSON.stringify(attachment ? { attachment } : {}),
+        timeoutMs: 20000,
+      }
     ),
 
   passkeyRegisterVerify: (
     token: string,
     response: RegistrationResponseJSON,
-    name: string
+    name?: string
   ) =>
     apiFetch<{ id: string; name: string | null }>('/auth/mfa/passkeys/verify', {
       method: 'POST',
       headers: auth(token),
-      body: JSON.stringify({ response, name }),
+      body: JSON.stringify(name ? { response, name } : { response }),
+      timeoutMs: 20000,
+    }),
+
+  renamePasskey: (token: string, id: string, name: string) =>
+    apiFetch<null>(`/auth/mfa/passkeys/${id}`, {
+      method: 'PATCH',
+      headers: auth(token),
+      body: JSON.stringify({ name }),
     }),
 
   deletePasskey: (token: string, id: string) =>
