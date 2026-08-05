@@ -8,7 +8,10 @@ export const UpdateUserSchema = z.object({
     .min(3, { message: 'common.validation.minLength' })
     .regex(/^[a-zA-Z0-9._-]+$/, { message: 'common.validation.pattern' })
     .optional(),
-  name: z.string().min(3, { message: 'common.validation.minLength' }).optional(),
+  name: z
+    .string()
+    .min(3, { message: 'common.validation.minLength' })
+    .optional(),
   phone: z
     .string()
     .regex(/^\+?[0-9\s()-]{7,20}$/, {
