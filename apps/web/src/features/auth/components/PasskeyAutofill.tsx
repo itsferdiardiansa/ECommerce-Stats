@@ -20,7 +20,17 @@ import { FormError } from './FormError'
  * offers the passkey in the email field's autofill; the button is an explicit
  * (modal) fallback. Both verify a discoverable assertion and issue a session.
  */
-export function PasskeyAutofill({ next }: { next?: string }) {
+export function PasskeyAutofill({
+  next,
+  disabled = false,
+  onStart,
+  onStop,
+}: {
+  next?: string
+  disabled?: boolean
+  onStart?: () => boolean
+  onStop?: () => void
+}) {
   const router = useRouter()
   const { setSession } = useAuth()
   const [error, setError] = useState<string | null>(null)
@@ -52,7 +62,13 @@ export function PasskeyAutofill({ next }: { next?: string }) {
           optionsJSON: options,
           useBrowserAutofill: true,
         })
-        if (!cancelled) await complete(challengeId, response)
+        if (cancelled) return
+        if (onStart && !onStart()) return
+        try {
+          await complete(challengeId, response)
+        } catch {
+          onStop?.()
+        }
       } catch {
         // No passkey chosen / autofill aborted / superseded — stay silent.
       }
@@ -64,6 +80,7 @@ export function PasskeyAutofill({ next }: { next?: string }) {
 
   // Explicit modal picker (supersedes the armed conditional ceremony).
   async function onClick() {
+    if (onStart && !onStart()) return
     setError(null)
     setPending(true)
     try {
@@ -77,6 +94,7 @@ export function PasskeyAutofill({ next }: { next?: string }) {
           : 'Passkey sign-in was cancelled or unavailable.'
       )
       setPending(false)
+      onStop?.()
     }
   }
 
@@ -87,6 +105,7 @@ export function PasskeyAutofill({ next }: { next?: string }) {
         variant="outline"
         className="w-full"
         onClick={onClick}
+        disabled={disabled}
         loading={pending}
       >
         {pending ? null : <Fingerprint className="size-4" aria-hidden="true" />}
