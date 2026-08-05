@@ -2,6 +2,8 @@ import { env } from '@/config/env'
 
 const BASE_URL = env.apiUrl
 
+const DEFAULT_TIMEOUT_MS = 15000
+
 /** Thrown for any non-2xx API response; carries the server's message + status. */
 export class ApiError extends Error {
   readonly status: number
@@ -12,6 +14,14 @@ export class ApiError extends Error {
     this.name = 'ApiError'
     this.status = status
     this.code = code
+  }
+}
+
+/** Thrown when a request exceeds its timeout and the user doesn't retry. */
+export class TimeoutError extends Error {
+  constructor(message = 'The request timed out.') {
+    super(message)
+    this.name = 'TimeoutError'
   }
 }
 
@@ -28,17 +38,21 @@ export interface ApiRequest extends Omit<RequestInit, 'body'> {
   body?: BodyInit | null
   /** Bearer token for the Authorization header. */
   token?: string
-  /** Abort the request after this many milliseconds. */
+  /** Abort after this many ms. Defaults to 15s; pass 0 to disable. */
   timeoutMs?: number
   /** Skip the automatic refresh-on-401 retry (used by the refresh call itself). */
   skipAuthRefresh?: boolean
+  /** Skip the timeout retry prompt; a plain TimeoutError is thrown instead. */
+  skipTimeoutPrompt?: boolean
 }
 
 type RefreshFn = () => Promise<string | null>
 type UnauthorizedFn = () => void
+type TimeoutFn = (actions: { retry: () => void; giveUp: () => void }) => void
 
 let refreshFn: RefreshFn | null = null
 let unauthorizedFn: UnauthorizedFn | null = null
+let timeoutFn: TimeoutFn | null = null
 
 export function configureApiAuth(handlers: {
   refresh: RefreshFn
@@ -46,6 +60,11 @@ export function configureApiAuth(handlers: {
 }) {
   refreshFn = handlers.refresh
   unauthorizedFn = handlers.onUnauthorized
+}
+
+/** Wire up how a request timeout surfaces to the user (e.g. a retry toast). */
+export function configureApiTimeout(handler: TimeoutFn | null) {
+  timeoutFn = handler
 }
 
 function accessTokenExpired(authorization: string | undefined): boolean {
@@ -81,12 +100,20 @@ export async function apiFetch<T>(
     signal,
     credentials,
     skipAuthRefresh,
+    skipTimeoutPrompt,
     ...rest
   } = options
 
-  const controller = timeoutMs != null ? new AbortController() : undefined
+  const effectiveTimeout =
+    timeoutMs === 0 ? undefined : (timeoutMs ?? DEFAULT_TIMEOUT_MS)
+  const useOwnTimeout = signal == null && effectiveTimeout != null
+  let timedOut = false
+  const controller = useOwnTimeout ? new AbortController() : undefined
   const timer = controller
-    ? setTimeout(() => controller.abort(), timeoutMs)
+    ? setTimeout(() => {
+        timedOut = true
+        controller.abort()
+      }, effectiveTimeout)
     : undefined
 
   const baseHeaders: Record<string, string> = {
@@ -142,6 +169,19 @@ export async function apiFetch<T>(
     }
 
     return envelope.data as T
+  } catch (err) {
+    const aborted = (err as { name?: string } | null)?.name === 'AbortError'
+    const isTimeout = timedOut && aborted
+    if (!isTimeout) throw err
+    if (skipTimeoutPrompt || !timeoutFn) throw new TimeoutError()
+    return await new Promise<T>((resolve, reject) => {
+      timeoutFn?.({
+        retry: () => {
+          apiFetch<T>(path, options).then(resolve, reject)
+        },
+        giveUp: () => reject(new TimeoutError()),
+      })
+    })
   } finally {
     if (timer) clearTimeout(timer)
   }

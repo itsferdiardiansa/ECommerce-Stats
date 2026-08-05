@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { configureApiAuth } from '@/lib/api-client'
+import { configureApiAuth, configureApiTimeout } from '@/lib/api-client'
 import { safeNextPath } from '@/lib/next-path'
 import { authApi } from '@/features/auth/api/auth.api'
 import { useAuth } from '@/features/auth/context/AuthContext'
@@ -52,6 +53,29 @@ export function SessionExpiredProvider({
   useEffect(() => {
     configureApiAuth({ refresh, onUnauthorized })
   }, [refresh, onUnauthorized])
+
+  useEffect(() => {
+    configureApiTimeout(({ retry, giveUp }) => {
+      let handled = false
+      toast.error('The request timed out. Check your connection.', {
+        duration: 8000,
+        action: {
+          label: 'Retry',
+          onClick: () => {
+            handled = true
+            retry()
+          },
+        },
+        onAutoClose: () => {
+          if (!handled) giveUp()
+        },
+        onDismiss: () => {
+          if (!handled) giveUp()
+        },
+      })
+    })
+    return () => configureApiTimeout(null)
+  }, [])
 
   const redirect = useCallback(() => {
     if (redirectedRef.current) return
