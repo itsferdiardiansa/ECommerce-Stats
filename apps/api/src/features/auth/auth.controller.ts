@@ -45,7 +45,11 @@ import { OrganizationMembers } from '@rufieltics/db/domains/identity/organizatio
 import { VerificationStore } from '@/modules/redis/stores'
 import { JwtService } from '@/modules/jwt/jwt.service'
 import configuration from '@/config/configuration'
-import { authThrottle, stepUpThrottle } from '@/common/helpers/throttle.helper'
+import {
+  authThrottle,
+  passkeyThrottle,
+  stepUpThrottle,
+} from '@/common/helpers/throttle.helper'
 
 const config = configuration()
 
@@ -221,7 +225,7 @@ export class AuthController {
   }
 
   @Post('login/passkey/options')
-  @Throttle(authThrottle())
+  @Throttle(passkeyThrottle())
   @HttpCode(HttpStatus.OK)
   async passkeyLoginOptions(
     @Body() dto: PasskeyOptionsDto,
@@ -235,7 +239,7 @@ export class AuthController {
   }
 
   @Post('login/passkey/verify')
-  @Throttle(authThrottle())
+  @Throttle(passkeyThrottle())
   @HttpCode(HttpStatus.OK)
   async passkeyLoginVerify(
     @Body() dto: VerifyPasskeyLoginDto,
@@ -273,7 +277,7 @@ export class AuthController {
   }
 
   @Post('login/passkey/discover')
-  @Throttle(authThrottle())
+  @Throttle(passkeyThrottle())
   @HttpCode(HttpStatus.OK)
   async passkeyDiscover(@I18n() i18n: I18nContext) {
     const result = await this.loginService.beginPasskeyDiscovery()
@@ -281,7 +285,7 @@ export class AuthController {
   }
 
   @Post('login/passkey/authenticate')
-  @Throttle(authThrottle())
+  @Throttle(passkeyThrottle())
   @HttpCode(HttpStatus.OK)
   async passkeyAuthenticate(
     @Body() dto: PasswordlessAuthDto,

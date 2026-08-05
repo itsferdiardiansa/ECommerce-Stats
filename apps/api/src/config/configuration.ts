@@ -17,6 +17,10 @@ export default () => ({
       ttl: parseInt(process.env.THROTTLE_AUTH_TTL || '60000', 10),
       limit: parseInt(process.env.THROTTLE_AUTH_LIMIT || '5', 10),
     },
+    passkey: {
+      ttl: parseInt(process.env.THROTTLE_PASSKEY_TTL || '60000', 10),
+      limit: parseInt(process.env.THROTTLE_PASSKEY_LIMIT || '30', 10),
+    },
     stepUp: {
       ttl: parseInt(process.env.THROTTLE_STEP_UP_TTL || '60000', 10),
       limit: parseInt(process.env.THROTTLE_STEP_UP_LIMIT || '60', 10),
