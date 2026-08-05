@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { Camera, UserRound } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { avatarSrc } from '@/lib/avatar'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -92,7 +93,9 @@ export function AvatarUploader({
         aria-label="Change profile photo"
       >
         <Avatar className="bg-muted size-20">
-          {value ? <AvatarImage src={value} alt={name} /> : null}
+          {value ? (
+            <AvatarImage src={avatarSrc(value) ?? undefined} alt={name} />
+          ) : null}
           <AvatarFallback className="bg-muted">
             <UserRound className="text-muted-foreground size-9" />
           </AvatarFallback>
@@ -110,7 +113,9 @@ export function AvatarUploader({
 
           <div className="flex flex-col items-center gap-4">
             <Avatar className="bg-muted size-28">
-              {shown ? <AvatarImage src={shown} alt={name} /> : null}
+              {shown ? (
+                <AvatarImage src={avatarSrc(shown) ?? undefined} alt={name} />
+              ) : null}
               <AvatarFallback className="bg-muted">
                 <UserRound className="text-muted-foreground size-12" />
               </AvatarFallback>
