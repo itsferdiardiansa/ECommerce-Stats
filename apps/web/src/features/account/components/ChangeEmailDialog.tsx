@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { toast } from 'sonner'
 import { ApiError } from '@/lib/api-client'
 import { useSudo } from '@/features/account/context/SudoContext'
 import {
@@ -124,6 +125,7 @@ export function ChangeEmailDialog({
     try {
       await confirmChange.mutateAsync(code)
       close(false)
+      toast.success('Email address updated.')
     } catch (e) {
       setError(errText(e, 'That code was not valid.'))
     }

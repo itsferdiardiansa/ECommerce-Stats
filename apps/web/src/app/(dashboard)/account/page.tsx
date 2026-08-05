@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { Loading } from '@/components/ui/Loading'
 import {
   Card,
@@ -47,7 +48,6 @@ export default function ProfilePage() {
   const [name, setName] = useState('')
   const [username, setUsername] = useState('')
   const [phone, setPhone] = useState('')
-  const [savedMsg, setSavedMsg] = useState<string | null>(null)
   const [emailOpen, setEmailOpen] = useState(false)
   const [phoneOpen, setPhoneOpen] = useState(false)
 
@@ -61,13 +61,12 @@ export default function ProfilePage() {
   async function saveDetails(e: React.FormEvent) {
     e.preventDefault()
     if (!profile) return
-    setSavedMsg(null)
     try {
       await updateProfile.mutateAsync({
         id: profile.id,
         data: { name, username },
       })
-      setSavedMsg('Saved.')
+      toast.success('Profile saved.')
     } catch {
       // surfaced via updateProfile.error
     }
@@ -76,6 +75,7 @@ export default function ProfilePage() {
   async function saveAvatar(avatar: string | null) {
     if (!profile) return
     await updateProfile.mutateAsync({ id: profile.id, data: { avatar } })
+    toast.success('Profile photo updated.')
   }
 
   async function savePhone(next: string | null) {
@@ -153,11 +153,6 @@ export default function ProfilePage() {
                     />
                   </div>
                 </div>
-                {savedMsg ? (
-                  <p className="text-sm text-emerald-600 dark:text-emerald-400">
-                    {savedMsg}
-                  </p>
-                ) : null}
               </CardContent>
               <CardFooter>
                 <Button type="submit" loading={saving}>

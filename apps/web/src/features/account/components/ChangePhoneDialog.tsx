@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { toast } from 'sonner'
 import { ApiError } from '@/lib/api-client'
 import { phoneChars } from '@/lib/sanitize'
 import { useSudo } from '@/features/account/context/SudoContext'
@@ -104,6 +105,7 @@ export function ChangePhoneDialog({
     try {
       await onSave(phone.trim() || null)
       close(false)
+      toast.success('Phone number updated.')
     } catch (e) {
       if (e instanceof ApiError && e.code === 'SUDO_REQUIRED') {
         retry.current = submit

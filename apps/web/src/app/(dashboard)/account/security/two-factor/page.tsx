@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/components/ui/button'
 import { CodeInput } from '@/components/ui/CodeInput'
@@ -71,11 +72,13 @@ export default function TwoFactorPage() {
     if (which === 'disable') {
       await totpDisable.mutateAsync()
       toView()
+      toast.success('Two-factor authentication turned off.')
       return
     }
     const res = await regen.mutateAsync()
     setCodes(res.recoveryCodes)
     toView()
+    toast.success('Recovery codes regenerated.')
   }
 
   async function start(which: Action) {
@@ -99,6 +102,7 @@ export default function TwoFactorPage() {
       const res = await sudo.perform(() => totpConfirm.mutateAsync(code))
       setCodes(res.recoveryCodes)
       toView()
+      toast.success('Two-factor authentication enabled.')
     } catch (e) {
       if (!(e instanceof SudoCancelledError)) {
         setError(errText(e, 'That code was not valid.'))

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Loading } from '@/components/ui/Loading'
+import { toast } from 'sonner'
 import { ApiError } from '@/lib/api-client'
 import {
   SudoCancelledError,
@@ -55,10 +56,11 @@ export default function SessionsPage() {
   const error =
     actionError ?? errText(loadError, 'Could not load your sessions.')
 
-  async function run(action: () => Promise<unknown>) {
+  async function run(action: () => Promise<unknown>, successMsg: string) {
     setActionError(null)
     try {
       await sudo.perform(action)
+      toast.success(successMsg)
     } catch (e) {
       if (e instanceof SudoCancelledError) return
       setActionError(errText(e, 'Could not complete that action.'))
@@ -66,11 +68,14 @@ export default function SessionsPage() {
   }
 
   function revokeOne(id: string) {
-    void run(() => revoke.mutateAsync(id))
+    void run(() => revoke.mutateAsync(id), 'Signed out of that device.')
   }
 
   function revokeOthers() {
-    void run(() => revokeOthersMutation.mutateAsync())
+    void run(
+      () => revokeOthersMutation.mutateAsync(),
+      'Signed out of all other devices.'
+    )
   }
 
   const hasOthers = (sessions ?? []).some(s => !s.isCurrent)

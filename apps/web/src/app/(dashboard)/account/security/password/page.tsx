@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/label'
@@ -22,13 +23,11 @@ export default function PasswordPage() {
   const [confirm, setConfirm] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [done, setDone] = useState(false)
   const confirmed = useRef(false)
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    setDone(false)
     if (next !== confirm) {
       setError('The new passwords do not match.')
       return
@@ -39,9 +38,9 @@ export default function PasswordPage() {
         force: !confirmed.current,
       })
       confirmed.current = false
-      setDone(true)
       setNext('')
       setConfirm('')
+      toast.success('Password changed. Other devices were signed out.')
     } catch (err) {
       if (err instanceof SudoCancelledError) return
       confirmed.current = true
@@ -59,15 +58,6 @@ export default function PasswordPage() {
           Change your password. Every other device is signed out afterwards.
         </p>
       </div>
-
-      {done ? (
-        <p
-          role="status"
-          className="rounded-md bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400"
-        >
-          Your password has been changed.
-        </p>
-      ) : null}
 
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <FormError message={error} />
