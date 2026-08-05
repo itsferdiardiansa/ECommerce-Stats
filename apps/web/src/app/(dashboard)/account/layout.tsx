@@ -1,5 +1,11 @@
+import type { Metadata } from 'next'
 import React from 'react'
 import { SudoProvider } from '@/features/account/context/SudoContext'
+
+export const metadata: Metadata = {
+  title: 'Profile',
+  description: 'Manage your name, username, photo, email, and phone number.',
+}
 
 export default function AccountLayout({
   children,

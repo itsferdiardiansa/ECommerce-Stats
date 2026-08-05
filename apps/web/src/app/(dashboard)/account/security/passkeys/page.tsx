@@ -1,4 +1,10 @@
+import type { Metadata } from 'next'
 import { PasskeysManager } from '@/features/account/components/PasskeysManager'
+
+export const metadata: Metadata = {
+  title: 'Passkeys',
+  description: 'Create and manage passkeys for passwordless sign-in.',
+}
 
 export default function PasskeysPage() {
   return (
