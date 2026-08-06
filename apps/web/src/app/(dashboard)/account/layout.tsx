@@ -1,9 +1,13 @@
 import type { Metadata } from 'next'
 import React from 'react'
 import { SudoProvider } from '@/features/account/context/SudoContext'
+import { appName } from '@/config/site'
 
 export const metadata: Metadata = {
-  title: 'Profile',
+  title: {
+    default: `${appName} | Profile`,
+    template: `${appName} | %s`,
+  },
   description: 'Manage your name, username, photo, email, and phone number.',
 }
 

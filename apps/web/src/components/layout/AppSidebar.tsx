@@ -47,6 +47,7 @@ import {
 } from '@tabler/icons-react'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { useLogout } from '@/features/auth/hooks/useAuthMutations'
+import { Icons } from './Icons'
 import { OrgSwitcher } from './OrgSwitcher'
 
 const mockUser = {
@@ -111,6 +112,9 @@ export default function AppSidebar() {
                 const isActiveItem =
                   pathname === item.url ||
                   (hasChildren && item.items?.some(si => si.url === pathname))
+                const NavIcon = item.icon
+                  ? Icons[item.icon as keyof typeof Icons]
+                  : null
 
                 return hasChildren ? (
                   <SidebarMenuItem key={item.title}>
@@ -118,6 +122,7 @@ export default function AppSidebar() {
                       tooltip={item.title}
                       isActive={isActiveItem}
                     >
+                      {NavIcon ? <NavIcon className="size-4 shrink-0" /> : null}
                       <span className="truncate">{item.title}</span>
                       <IconChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]:rotate-90" />
                     </SidebarMenuButton>
@@ -158,6 +163,9 @@ export default function AppSidebar() {
                             'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
                         )}
                       >
+                        {NavIcon ? (
+                          <NavIcon className="size-4 shrink-0" />
+                        ) : null}
                         <span className="truncate">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
