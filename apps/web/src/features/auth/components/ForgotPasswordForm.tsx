@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Form } from '@/components/ui/Form'
+import { Form } from '@/components/ui/form'
 import { Button } from '@/components/ui/button'
 import { useForgotPassword } from '../hooks/useAuthMutations'
 import {

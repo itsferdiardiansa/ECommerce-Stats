@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/Input'
-import { CodeInput } from '@/components/ui/CodeInput'
-import { Loading } from '@/components/ui/Loading'
-import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/form/input'
+import { CodeInput } from '@/components/ui/form/code-input'
+import { Loading } from '@/components/ui/loading'
+import { Label } from '@/components/ui/form/label'
 import {
   Dialog,
   DialogContent,

@@ -6,8 +6,8 @@ import { toast } from 'sonner'
 import { startRegistration } from '@simplewebauthn/browser'
 import { Check, Fingerprint, Pencil, Smartphone, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/Input'
-import { Loading } from '@/components/ui/Loading'
+import { Input } from '@/components/ui/form/input'
+import { Loading } from '@/components/ui/loading'
 import {
   Dialog,
   DialogContent,
