@@ -1,0 +1,12 @@
+{
+  "settings": {
+    "updated": "Your settings have been saved."
+  },
+  "address": {
+    "created": "Address added.",
+    "updated": "Address updated.",
+    "deleted": "Address removed.",
+    "default_set": "Default address updated.",
+    "not_found": "That address could not be found."
+  }
+}

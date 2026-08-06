@@ -1,0 +1,12 @@
+{
+  "settings": {
+    "updated": "Pengaturan Anda telah disimpan."
+  },
+  "address": {
+    "created": "Alamat ditambahkan.",
+    "updated": "Alamat diperbarui.",
+    "deleted": "Alamat dihapus.",
+    "default_set": "Alamat utama diperbarui.",
+    "not_found": "Alamat tersebut tidak ditemukan."
+  }
+}

@@ -13,7 +13,12 @@ import {
   NotificationsModule,
   GeoModule,
 } from './modules'
-import { AuthModule, UsersModule, OrganizationsModule } from './features'
+import {
+  AuthModule,
+  UsersModule,
+  OrganizationsModule,
+  AccountModule,
+} from './features'
 import { I18nThrottlerGuard } from '@/common/guards/throttler.guard'
 
 @Module({
@@ -52,6 +57,7 @@ import { I18nThrottlerGuard } from '@/common/guards/throttler.guard'
     AuthModule,
     UsersModule,
     OrganizationsModule,
+    AccountModule,
   ],
   controllers: [],
   providers: [

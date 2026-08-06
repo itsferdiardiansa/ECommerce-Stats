@@ -5,6 +5,18 @@
 import type { Path } from "nestjs-i18n";
 /* prettier-ignore */
 export type I18nTranslations = {
+    "account": {
+        "settings": {
+            "updated": string;
+        };
+        "address": {
+            "created": string;
+            "updated": string;
+            "deleted": string;
+            "default_set": string;
+            "not_found": string;
+        };
+    };
     "admin": {
         "lockouts": {
             "list_success": string;
