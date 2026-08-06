@@ -5,7 +5,7 @@ import { Clock, Globe, MapPin, Monitor, Smartphone } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Loading } from '@/components/ui/Loading'
+import { Loading } from '@/components/ui/loading'
 import { toast } from 'sonner'
 import { ApiError } from '@/lib/api-client'
 import {

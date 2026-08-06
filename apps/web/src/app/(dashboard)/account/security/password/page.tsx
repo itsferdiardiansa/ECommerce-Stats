@@ -3,8 +3,8 @@
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/Input'
-import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/form/input'
+import { Label } from '@/components/ui/form/label'
 import { ApiError } from '@/lib/api-client'
 import {
   SudoCancelledError,

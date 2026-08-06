@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { NotificationsForm } from '@/features/account/components/NotificationsForm'
 
 export const metadata: Metadata = {
   title: 'Notifications',
@@ -7,11 +8,14 @@ export const metadata: Metadata = {
 
 export default function NotificationsPage() {
   return (
-    <div className="space-y-1">
-      <h1 className="text-xl font-semibold">Notifications</h1>
-      <p className="text-muted-foreground text-sm">
-        Choose which security emails you receive.
-      </p>
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h1 className="text-xl font-semibold">Notifications</h1>
+        <p className="text-muted-foreground text-sm">
+          Choose which emails and alerts you receive.
+        </p>
+      </div>
+      <NotificationsForm />
     </div>
   )
 }

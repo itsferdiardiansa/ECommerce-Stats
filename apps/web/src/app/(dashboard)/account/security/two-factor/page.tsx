@@ -4,9 +4,9 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/components/ui/button'
-import { CodeInput } from '@/components/ui/CodeInput'
-import { Loading } from '@/components/ui/Loading'
-import { Label } from '@/components/ui/label'
+import { CodeInput } from '@/components/ui/form/code-input'
+import { Loading } from '@/components/ui/loading'
+import { Label } from '@/components/ui/form/label'
 import {
   Dialog,
   DialogContent,

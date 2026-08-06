@@ -45,9 +45,93 @@ export interface Profile {
   } | null
 }
 
+export interface AccountSettings {
+  bio: string | null
+  birthDate: string | null
+  gender: string | null
+  languagePref: string
+  currencyPref: string
+  marketingOptIn: boolean
+  defaultTimezone: string
+  weekStartsOn: string
+  dateFormat: string
+  alertsEmail: boolean
+  weeklyReport: boolean
+}
+
+export type AccountSettingsUpdate = Partial<AccountSettings>
+
+export interface Address {
+  id: number
+  label: string | null
+  type: string
+  isDefault: boolean
+  street1: string
+  street2: string | null
+  city: string
+  state: string
+  postalCode: string
+  country: string
+  phone: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AddressInput {
+  label?: string | null
+  type?: 'shipping' | 'billing'
+  street1: string
+  street2?: string | null
+  city: string
+  state: string
+  postalCode: string
+  country: string
+  phone?: string | null
+  isDefault?: boolean
+}
+
 export const accountApi = {
   getMe: (token: string) =>
     apiFetch<Profile>('/auth/me', { headers: auth(token) }),
+
+  getSettings: (token: string) =>
+    apiFetch<AccountSettings>('/account/settings', { headers: auth(token) }),
+
+  updateSettings: (token: string, data: AccountSettingsUpdate) =>
+    apiFetch<AccountSettings>('/account/settings', {
+      method: 'PATCH',
+      headers: auth(token),
+      body: JSON.stringify(data),
+    }),
+
+  listAddresses: (token: string) =>
+    apiFetch<Address[]>('/account/addresses', { headers: auth(token) }),
+
+  createAddress: (token: string, data: AddressInput) =>
+    apiFetch<Address>('/account/addresses', {
+      method: 'POST',
+      headers: auth(token),
+      body: JSON.stringify(data),
+    }),
+
+  updateAddress: (token: string, id: number, data: Partial<AddressInput>) =>
+    apiFetch<Address>(`/account/addresses/${id}`, {
+      method: 'PATCH',
+      headers: auth(token),
+      body: JSON.stringify(data),
+    }),
+
+  deleteAddress: (token: string, id: number) =>
+    apiFetch<null>(`/account/addresses/${id}`, {
+      method: 'DELETE',
+      headers: auth(token),
+    }),
+
+  setDefaultAddress: (token: string, id: number) =>
+    apiFetch<Address[]>(`/account/addresses/${id}/default`, {
+      method: 'POST',
+      headers: auth(token),
+    }),
 
   updateProfile: (
     token: string,

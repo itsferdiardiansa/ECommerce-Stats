@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { Loading } from '@/components/ui/Loading'
+import { Loading } from '@/components/ui/loading'
 import {
   Card,
   CardContent,
@@ -14,13 +14,14 @@ import {
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/Input'
-import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/form/input'
+import { Label } from '@/components/ui/form/label'
 import { ApiError } from '@/lib/api-client'
 import { useProfile } from '@/features/account/hooks/useAccountQueries'
 import { useUpdateProfile } from '@/features/account/hooks/useAccountMutations'
 import { FormError } from '@/features/auth/components/FormError'
 import { AvatarUploader } from '@/features/account/components/AvatarUploader'
+import { PersonalDetailsCard } from '@/features/account/components/PersonalDetailsCard'
 import { ChangeEmailDialog } from '@/features/account/components/ChangeEmailDialog'
 import { ChangePhoneDialog } from '@/features/account/components/ChangePhoneDialog'
 
@@ -161,6 +162,8 @@ export default function ProfilePage() {
               </CardFooter>
             </form>
           </Card>
+
+          <PersonalDetailsCard />
 
           <Card>
             <CardHeader>

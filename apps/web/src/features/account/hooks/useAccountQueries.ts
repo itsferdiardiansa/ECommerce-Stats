@@ -31,3 +31,21 @@ export function useMfaStatus() {
     enabled: !!accessToken,
   })
 }
+
+export function useAccountSettings() {
+  const { accessToken } = useAuth()
+  return useQuery({
+    queryKey: accountKeys.settings(),
+    queryFn: () => accountApi.getSettings(accessToken as string),
+    enabled: !!accessToken,
+  })
+}
+
+export function useAddresses() {
+  const { accessToken } = useAuth()
+  return useQuery({
+    queryKey: accountKeys.addresses(),
+    queryFn: () => accountApi.listAddresses(accessToken as string),
+    enabled: !!accessToken,
+  })
+}

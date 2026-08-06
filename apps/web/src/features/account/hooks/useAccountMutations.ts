@@ -2,6 +2,10 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { accountApi } from '@/features/account/api/account.api'
+import type {
+  AccountSettingsUpdate,
+  AddressInput,
+} from '@/features/account/api/account.api'
 import { accountKeys } from '@/features/account/api/account.keys'
 import { useAuth } from '@/features/auth/context/AuthContext'
 
@@ -107,5 +111,59 @@ export function useRevokeOtherSessions() {
   return useMutation({
     mutationFn: () => accountApi.revokeOtherSessions(accessToken as string),
     onSuccess: () => qc.invalidateQueries({ queryKey: accountKeys.sessions() }),
+  })
+}
+
+export function useUpdateSettings() {
+  const { accessToken } = useAuth()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: AccountSettingsUpdate) =>
+      accountApi.updateSettings(accessToken as string, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: accountKeys.settings() }),
+  })
+}
+
+export function useCreateAddress() {
+  const { accessToken } = useAuth()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: AddressInput) =>
+      accountApi.createAddress(accessToken as string, data),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: accountKeys.addresses() }),
+  })
+}
+
+export function useUpdateAddress() {
+  const { accessToken } = useAuth()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: { id: number; data: Partial<AddressInput> }) =>
+      accountApi.updateAddress(accessToken as string, vars.id, vars.data),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: accountKeys.addresses() }),
+  })
+}
+
+export function useDeleteAddress() {
+  const { accessToken } = useAuth()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) =>
+      accountApi.deleteAddress(accessToken as string, id),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: accountKeys.addresses() }),
+  })
+}
+
+export function useSetDefaultAddress() {
+  const { accessToken } = useAuth()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) =>
+      accountApi.setDefaultAddress(accessToken as string, id),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: accountKeys.addresses() }),
   })
 }
