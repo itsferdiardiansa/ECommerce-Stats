@@ -32,7 +32,7 @@ interface ApiEnvelope<T> {
 }
 
 export interface ApiRequest extends Omit<RequestInit, 'body'> {
-  /** JSON-serializable payload — sets Content-Type and serializes for you. */
+  /** JSON-serializable payload - sets Content-Type and serializes for you. */
   json?: unknown
   /** Raw body, when `json` isn't appropriate (form data, etc.). */
   body?: BodyInit | null

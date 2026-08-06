@@ -140,7 +140,7 @@ export default function TwoFactorPage() {
           <AlertDescription>
             {data.passkeys.count > 0 ? (
               <span>
-                A passkey signs you in with your device and biometric —
+                A passkey signs you in with your device and biometric -
                 it&apos;s phishing-resistant and already counts as two factors,
                 so no code is asked for when you use one. Two-factor adds a
                 one-time code to{' '}
@@ -153,7 +153,7 @@ export default function TwoFactorPage() {
                 Two-factor adds a one-time code to password sign-in, so a stolen
                 password alone can&apos;t get in. For the strongest protection,
                 also add a{' '}
-                <span className="text-foreground font-medium">passkey</span> —
+                <span className="text-foreground font-medium">passkey</span> -
                 it replaces your password and resists phishing.
               </span>
             )}

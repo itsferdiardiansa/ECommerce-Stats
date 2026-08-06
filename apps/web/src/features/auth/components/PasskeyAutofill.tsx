@@ -70,7 +70,7 @@ export function PasskeyAutofill({
           onStop?.()
         }
       } catch {
-        // No passkey chosen / autofill aborted / superseded — stay silent.
+        // No passkey chosen / autofill aborted / superseded - stay silent.
       }
     })()
     return () => {

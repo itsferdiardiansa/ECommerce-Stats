@@ -128,7 +128,7 @@ export default function ProfilePage() {
                     onSave={saveAvatar}
                   />
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{name || '—'}</p>
+                    <p className="truncate font-medium">{name || '-'}</p>
                     <p className="text-muted-foreground truncate text-sm">
                       {profile?.email ?? ''}
                     </p>

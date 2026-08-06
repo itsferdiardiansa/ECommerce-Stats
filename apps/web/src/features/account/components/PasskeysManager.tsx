@@ -45,7 +45,7 @@ function passkeyCreateError(
   }
   if (name === 'NotAllowedError') {
     return attachment === 'platform'
-      ? 'Could not create a passkey here. This device may already have one for your account — remove it first, or use another device.'
+      ? 'Could not create a passkey here. This device may already have one for your account - remove it first, or use another device.'
       : 'Passkey creation was cancelled or timed out. Please try again.'
   }
   return 'Passkey creation was unavailable. Please try again.'

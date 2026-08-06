@@ -143,7 +143,7 @@ export function PreferencesForm() {
               label="Language"
               options={LANGUAGES}
               disabled={update.isPending}
-              description="The interface language. Translation is coming soon — your choice is saved for then."
+              description="The interface language. Translation is coming soon - your choice is saved for then."
             />
             <SelectField
               control={form.control}
