@@ -168,6 +168,7 @@ export function PasskeysManager() {
           className="shrink-0"
           onClick={openCreate}
           loading={preparing || creating}
+          disabled={isLoading}
         >
           Create passkey
         </Button>

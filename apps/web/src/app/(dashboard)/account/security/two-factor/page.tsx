@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { QRCodeSVG } from 'qrcode.react'
+import { KeyRound } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { CodeInput } from '@/components/ui/form/code-input'
 import { Loading } from '@/components/ui/loading'
@@ -126,6 +128,38 @@ export default function TwoFactorPage() {
       <FormError
         message={error ?? errText(status.error, 'Could not load your status.')}
       />
+
+      {data && mode === 'view' ? (
+        <Alert>
+          <KeyRound />
+          <AlertTitle>
+            {data.passkeys.count > 0
+              ? 'Passkeys and two-factor'
+              : 'How two-factor protects your account'}
+          </AlertTitle>
+          <AlertDescription>
+            {data.passkeys.count > 0 ? (
+              <span>
+                A passkey signs you in with your device and biometric —
+                it&apos;s phishing-resistant and already counts as two factors,
+                so no code is asked for when you use one. Two-factor adds a
+                one-time code to{' '}
+                <span className="text-foreground font-medium">password</span>{' '}
+                sign-in, so keep it on while you still use your password. It
+                isn&apos;t used when you sign in with a passkey.
+              </span>
+            ) : (
+              <span>
+                Two-factor adds a one-time code to password sign-in, so a stolen
+                password alone can&apos;t get in. For the strongest protection,
+                also add a{' '}
+                <span className="text-foreground font-medium">passkey</span> —
+                it replaces your password and resists phishing.
+              </span>
+            )}
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {codes ? (
         <div className="space-y-2 rounded-md border p-3">
