@@ -12,7 +12,6 @@ import { useAuth } from '@/features/auth/context/AuthContext'
 
 interface ProfileUpdate {
   name?: string
-  username?: string
   phone?: string | null
   avatar?: string | null
 }

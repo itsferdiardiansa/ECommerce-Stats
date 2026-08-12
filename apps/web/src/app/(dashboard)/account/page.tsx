@@ -65,7 +65,7 @@ export default function ProfilePage() {
     try {
       await updateProfile.mutateAsync({
         id: profile.id,
-        data: { name, username },
+        data: { name },
       })
       toast.success('Profile saved.')
     } catch {
@@ -149,9 +149,12 @@ export default function ProfilePage() {
                     <Input
                       id="username"
                       value={username}
-                      onChange={e => setUsername(e.target.value)}
-                      disabled={saving}
+                      readOnly
+                      className="text-muted-foreground cursor-not-allowed"
                     />
+                    <p className="text-muted-foreground text-xs">
+                      Your username is permanent and can&apos;t be changed.
+                    </p>
                   </div>
                 </div>
               </CardContent>

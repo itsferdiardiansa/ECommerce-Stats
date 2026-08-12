@@ -174,7 +174,6 @@ export const accountApi = {
     id: number,
     data: {
       name?: string
-      username?: string
       phone?: string | null
       avatar?: string | null
     }
