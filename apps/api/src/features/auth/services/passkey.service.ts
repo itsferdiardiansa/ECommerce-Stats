@@ -227,7 +227,7 @@ export class PasskeyService {
 
   /**
    * Passwordless (conditional UI) options: no user is known yet, so no
-   * allowCredentials — the authenticator offers any resident credential. User
+   * allowCredentials - the authenticator offers any resident credential. User
    * verification is required because the passkey is the sole factor.
    */
   async beginDiscoverableAuthentication(id: string) {

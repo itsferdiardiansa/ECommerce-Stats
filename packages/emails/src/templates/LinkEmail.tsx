@@ -15,7 +15,7 @@ export interface LinkEmailProps {
 
 /**
  * Shared layout for action-link emails (password reset). The wording differs
- * per use case and locale — it's injected via props from the copy layer, so
+ * per use case and locale - it's injected via props from the copy layer, so
  * this component stays purely presentational.
  */
 export function LinkEmail(props: LinkEmailProps) {

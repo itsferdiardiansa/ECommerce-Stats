@@ -25,7 +25,7 @@ export class SessionStore {
     return this.redis.get(this.key(sessionId))
   }
 
-  /** Dropping a session also drops its sudo grant — elevation is session-scoped. */
+  /** Dropping a session also drops its sudo grant - elevation is session-scoped. */
   async delete(sessionId: string): Promise<void> {
     await Promise.all([
       this.redis.del(this.key(sessionId)),

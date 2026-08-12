@@ -83,7 +83,7 @@ export async function getSecurityNotificationTarget(userId: number) {
   }
 }
 
-/** Minimal fields needed to mint an access token — no relations. */
+/** Minimal fields needed to mint an access token - no relations. */
 export async function getSessionUser(userId: number) {
   return db.user.findFirst({
     where: { id: userId, deletedAt: null },
@@ -91,7 +91,7 @@ export async function getSessionUser(userId: number) {
   })
 }
 
-/** Credential lookup for re-authentication — no relations, no over-fetch. */
+/** Credential lookup for re-authentication - no relations, no over-fetch. */
 export async function getProfile(userId: number) {
   return db.user.findFirst({
     where: { id: userId, deletedAt: null },

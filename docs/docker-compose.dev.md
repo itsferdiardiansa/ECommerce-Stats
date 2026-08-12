@@ -44,7 +44,7 @@ Notes & Parity Tips
 
 - The worker connects to PgBouncer at `pgbouncer:6432`. The `DATABASE_URL` in the `worker` service points to PgBouncer by default. In production, point `DATABASE_URL` to your pooler (pgbouncer) endpoint.
 - Keep env variable names identical across dev/staging/prod (`DATABASE_URL`, `DIRECT_URL`, `SUPABASE_SERVICE_KEY`, `DB_ENV`).
-- If you need full Supabase features (auth, storage), use the Supabase CLI (`supabase start`) instead of plain Postgres — it runs in Docker and provides parity.
+- If you need full Supabase features (auth, storage), use the Supabase CLI (`supabase start`) instead of plain Postgres - it runs in Docker and provides parity.
 
 Cleaning up
 
@@ -54,7 +54,7 @@ Cleaning up
 
 Security
 
-- `.env` contains local secrets — do not commit it.
+- `.env` contains local secrets - do not commit it.
 
 Troubleshooting
 

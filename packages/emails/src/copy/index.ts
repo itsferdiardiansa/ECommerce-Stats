@@ -114,7 +114,7 @@ const enLink: LinkBuilders = {
     expiry: `This link expires in ${v.minutes} minutes and can be used once.`,
     fallback: 'If the button does not work, paste this link into your browser:',
     footer:
-      "If you didn't request this, you can safely ignore this email — your password won't change.",
+      "If you didn't request this, you can safely ignore this email - your password won't change.",
   }),
 }
 
@@ -130,7 +130,7 @@ const idLink: LinkBuilders = {
     fallback:
       'Jika tombol tidak berfungsi, tempel tautan ini ke peramban Anda:',
     footer:
-      'Jika Anda tidak meminta ini, abaikan email ini — kata sandi Anda tidak akan berubah.',
+      'Jika Anda tidak meminta ini, abaikan email ini - kata sandi Anda tidak akan berubah.',
   }),
 }
 
@@ -138,13 +138,13 @@ const enLabels = {
   deviceLabel: 'Device',
   locationLabel: 'Approximate location',
   ipLabel: 'IP address',
-  secureLabel: "This wasn't me — secure my account",
+  secureLabel: "This wasn't me - secure my account",
 }
 const idLabels = {
   deviceLabel: 'Perangkat',
   locationLabel: 'Perkiraan lokasi',
   ipLabel: 'Alamat IP',
-  secureLabel: 'Ini bukan saya — amankan akun saya',
+  secureLabel: 'Ini bukan saya - amankan akun saya',
 }
 
 const enMethodNames: Record<SecurityMethod, string> = {
@@ -176,7 +176,7 @@ const formatWhen = (iso: string, locale: Locale): string =>
   }).format(new Date(iso)) + ' UTC'
 
 const joinFrom = (v: MethodVars): string | null =>
-  [v.device, v.location].filter(Boolean).join(' — ') || null
+  [v.device, v.location].filter(Boolean).join(' - ') || null
 
 const enDetails = (v: AlertVars) => ({
   ...enLabels,
@@ -239,7 +239,7 @@ const en: CodeBuilders & AlertBuilders = {
     body: 'Someone entered your correct password from a new device but could not complete verification, so the sign-in was blocked:',
     ...enDetails(v),
     action:
-      'Your password may be compromised — change it now and review your active sessions.',
+      'Your password may be compromised - change it now and review your active sessions.',
     footer: 'You received this because security alerts are enabled.',
   }),
   'suspicious-login': v => ({
@@ -334,7 +334,7 @@ const id: CodeBuilders & AlertBuilders = {
     body: 'Seseorang memasukkan kata sandi Anda yang benar dari perangkat baru tetapi tidak dapat menyelesaikan verifikasi, sehingga upaya masuk diblokir:',
     ...idDetails(v),
     action:
-      'Kata sandi Anda mungkin telah bocor — segera ubah dan tinjau sesi aktif Anda.',
+      'Kata sandi Anda mungkin telah bocor - segera ubah dan tinjau sesi aktif Anda.',
     footer: 'Anda menerima ini karena peringatan keamanan diaktifkan.',
   }),
   'suspicious-login': v => ({
@@ -413,7 +413,7 @@ const enMethod: MethodBuilders = {
     fromLabel: 'From:',
     from: joinFrom(v),
     action:
-      "If you didn't remove this, change your password now — your account may be compromised.",
+      "If you didn't remove this, change your password now - your account may be compromised.",
     actionTone: 'warning',
     footer: 'You received this because security alerts are enabled.',
   }),
@@ -450,7 +450,7 @@ const idMethod: MethodBuilders = {
     fromLabel: 'Dari:',
     from: joinFrom(v),
     action:
-      'Jika ini bukan Anda, segera ubah kata sandi Anda — akun Anda mungkin telah disusupi.',
+      'Jika ini bukan Anda, segera ubah kata sandi Anda - akun Anda mungkin telah disusupi.',
     actionTone: 'warning',
     footer: 'Anda menerima ini karena peringatan keamanan diaktifkan.',
   }),

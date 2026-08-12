@@ -13,7 +13,7 @@ import {
   SecurityNotificationKind,
 } from './notification.types'
 
-/** Alerts that warrant a "this wasn't me — secure my account" recovery link. */
+/** Alerts that warrant a "this wasn't me - secure my account" recovery link. */
 const SECURE_LINK_KINDS = new Set<SecurityNotificationKind>([
   SecurityNotificationKind.SUSPICIOUS_LOGIN,
   SecurityNotificationKind.SESSION_COMPROMISE,

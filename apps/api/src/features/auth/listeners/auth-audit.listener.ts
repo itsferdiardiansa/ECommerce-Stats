@@ -15,7 +15,7 @@ import {
  * Detection runs BEFORE the current attempt is persisted so "new device /
  * country" isn't matched against the row we just wrote. When signals fire it
  * emits `auth.security.alert` for the notification layer to act on. Nothing
- * here can break login — it runs off the emitted event, after the response.
+ * here can break login - it runs off the emitted event, after the response.
  */
 @Injectable()
 export class AuthAuditListener {
@@ -48,7 +48,7 @@ export class AuthAuditListener {
       })
 
       // If the user already cleared an email-OTP step-up for this login, they've
-      // confirmed it's them — recording the device is enough, skip the alert.
+      // confirmed it's them - recording the device is enough, skip the alert.
       if (signals.length > 0 && !event.stepUpVerified) {
         this.eventEmitter.emit(
           AUTH_EVENTS.SECURITY_ALERT,
@@ -81,7 +81,7 @@ export class AuthAuditListener {
         ipAddress: event.ipAddress,
       })
 
-      // Only alert a real account owner — never notify on an unknown email,
+      // Only alert a real account owner - never notify on an unknown email,
       // which would leak whether it is registered.
       if (signals.length > 0 && event.userId != null) {
         this.eventEmitter.emit(

@@ -131,7 +131,7 @@ export class SecurityAlertListener {
   async handleStepUpBlocked(event: StepUpBlockedEvent) {
     this.logger.warn(
       `[SECURITY] Step-up FAILED for user ${event.userId} from ` +
-        `${event.location || event.ipAddress || 'Unknown'} — password may be compromised`
+        `${event.location || event.ipAddress || 'Unknown'} - password may be compromised`
     )
 
     await this.notifications.notifySecurity({

@@ -57,7 +57,7 @@ export const LoginLogs = {
 
   /**
    * True if the user has ever logged in successfully from this exact device
-   * fingerprint — the basis for "new device" detection.
+   * fingerprint - the basis for "new device" detection.
    */
   async hasSeenDevice(
     userId: number,

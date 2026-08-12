@@ -37,7 +37,7 @@ export class LoginService {
   /**
    * A throwaway argon2 hash used to verify against when no user is found, so a
    * login attempt for a non-existent email costs the same time as one for a
-   * real account — closing the timing side-channel that would otherwise reveal
+   * real account - closing the timing side-channel that would otherwise reveal
    * whether an email is registered. Computed once and cached.
    */
   private async getDummyPasswordHash(): Promise<string> {

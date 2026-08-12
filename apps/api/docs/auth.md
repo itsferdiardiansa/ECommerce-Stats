@@ -1,4 +1,4 @@
-# Authentication Architecture — Zero-Trust & Split-Token Binding
+# Authentication Architecture - Zero-Trust & Split-Token Binding
 
 ## 1. Executive Overview
 
