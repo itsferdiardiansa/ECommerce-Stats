@@ -49,18 +49,25 @@ import { useAuth } from '@/features/auth/context/AuthContext'
 import { useLogout } from '@/features/auth/hooks/useAuthMutations'
 import { Icons } from './Icons'
 import { OrgSwitcher } from './OrgSwitcher'
-
-const mockUser = {
-  fullName: 'its_ferdi',
-  email: 'example@example.com',
-  initials: 'IF',
-}
+import { useProfile } from '@/features/account/hooks/useAccountQueries'
 
 export default function AppSidebar() {
   const pathname = usePathname()
   const isAccount = pathname.startsWith('/account')
   const items = isAccount ? accountNavItems : navItems
   const router = useRouter()
+  const { data: profile } = useProfile()
+
+  const displayName = profile?.username ?? profile?.name ?? '—'
+  const email = profile?.email ?? ''
+  const initials =
+    (profile?.name || profile?.username || '?')
+      .split(/[\s_@.]+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0])
+      .join('')
+      .toUpperCase() || '?'
   const { isOpen } = useMediaQuery()
   const { accessToken, clear } = useAuth()
   const { mutate: logout, isPending: isLoggingOut } = useLogout()
@@ -186,15 +193,15 @@ export default function AppSidebar() {
                   >
                     <Avatar className="h-8 w-8 rounded-lg">
                       <AvatarFallback className="rounded-lg">
-                        {mockUser.initials}
+                        {initials}
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-medium">
-                        {mockUser.fullName}
+                        {displayName}
                       </span>
                       <span className="text-muted-foreground truncate text-xs">
-                        {mockUser.email}
+                        {email}
                       </span>
                     </div>
                     <IconChevronsDown className="ml-auto size-4" />
@@ -211,15 +218,15 @@ export default function AppSidebar() {
                       <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8 rounded-lg">
                           <AvatarFallback className="rounded-lg">
-                            {mockUser.initials}
+                            {initials}
                           </AvatarFallback>
                         </Avatar>
                         <div className="grid flex-1 text-left text-sm leading-tight">
                           <span className="truncate font-medium">
-                            {mockUser.fullName}
+                            {displayName}
                           </span>
                           <span className="text-muted-foreground truncate text-xs">
-                            {mockUser.email}
+                            {email}
                           </span>
                         </div>
                       </div>
