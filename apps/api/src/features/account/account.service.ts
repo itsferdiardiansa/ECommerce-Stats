@@ -11,6 +11,7 @@ import {
   getUserSettings,
   upsertUserSettings,
   getUserCredentials,
+  getProfile,
   listUserAddresses,
   getUserAddressById,
   createUserAddress,
@@ -155,6 +156,25 @@ export class AccountService {
   async listConnections(userId: number) {
     const rows = await OAuthAccounts.findMany({ where: { userId } })
     return rows.map(a => ({ id: a.id, provider: a.provider, scope: a.scope }))
+  }
+
+  async exportData(userId: number) {
+    const [profile, settings, addresses, connections, activity] =
+      await Promise.all([
+        getProfile(userId),
+        this.getSettings(userId),
+        this.listAddresses(userId),
+        this.listConnections(userId),
+        this.listActivity(userId, { limit: 50 }),
+      ])
+    return {
+      exportedAt: new Date().toISOString(),
+      profile,
+      settings,
+      addresses,
+      connections,
+      recentActivity: activity.items,
+    }
   }
 
   async unlinkConnection(userId: number, provider: string, i18n: I18nContext) {

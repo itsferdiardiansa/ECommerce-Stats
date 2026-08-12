@@ -2129,6 +2129,35 @@
           "response": []
         },
         {
+          "name": "Export My Data",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/account/export",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "account",
+                "export"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "List Connections",
           "request": {
             "method": "GET",

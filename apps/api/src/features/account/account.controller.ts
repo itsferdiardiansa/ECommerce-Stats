@@ -117,6 +117,16 @@ export class AccountController {
     return success(i18n.t('common.success.generic'), data)
   }
 
+  @Get('export')
+  @HttpCode(HttpStatus.OK)
+  async exportData(
+    @CurrentUser() user: CurrentUserPayload,
+    @I18n() i18n: I18nContext
+  ) {
+    const data = await this.account.exportData(user.id)
+    return success(i18n.t('common.success.generic'), data)
+  }
+
   @Get('connections')
   @HttpCode(HttpStatus.OK)
   async connections(
