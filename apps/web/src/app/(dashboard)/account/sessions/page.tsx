@@ -22,6 +22,7 @@ import {
   useSudo,
 } from '@/features/account/context/SudoContext'
 import { useSessions } from '@/features/account/hooks/useAccountQueries'
+import { useFormatters } from '@/features/account/hooks/useFormatters'
 import {
   useRevokeOtherSessions,
   useRevokeSession,
@@ -30,18 +31,6 @@ import { FormError } from '@/features/auth/components/FormError'
 
 const errText = (e: unknown, fallback: string) =>
   e instanceof ApiError ? e.message : e ? fallback : null
-
-function loginTime(iso: string) {
-  return new Date(iso).toLocaleString('en-US', {
-    month: 'short',
-    day: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  })
-}
 
 function lastSeen(iso: string | null) {
   if (!iso) return 'unknown'
@@ -57,6 +46,7 @@ function lastSeen(iso: string | null) {
 
 export default function SessionsPage() {
   const sudo = useSudo()
+  const { formatDateTime } = useFormatters()
   const { data: sessions, error: loadError, isLoading } = useSessions()
   const revoke = useRevokeSession()
   const revokeOthersMutation = useRevokeOtherSessions()
@@ -144,7 +134,7 @@ export default function SessionsPage() {
           <div className="flex items-center gap-2">
             <Clock className="size-4 shrink-0" />
             <span className="truncate">
-              Login: {loginTime(s.createdAt)} · Last Seen:{' '}
+              Login: {formatDateTime(s.createdAt)} · Last Seen:{' '}
               {lastSeen(s.lastUsedAt)}
             </span>
           </div>

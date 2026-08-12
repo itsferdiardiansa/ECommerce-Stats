@@ -11,10 +11,8 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import type { ActivityEntry } from '@/features/account/api/account.api'
-import {
-  activityDateTime,
-  activityTitle,
-} from '@/features/account/lib/activity'
+import { activityTitle } from '@/features/account/lib/activity'
+import { useFormatters } from '@/features/account/hooks/useFormatters'
 
 export function ActivityDetailDialog({
   entry,
@@ -24,6 +22,7 @@ export function ActivityDetailDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const router = useRouter()
+  const { formatDateTime } = useFormatters()
 
   return (
     <Dialog open={entry !== null} onOpenChange={onOpenChange}>
@@ -32,7 +31,7 @@ export function ActivityDetailDialog({
           <>
             <DialogHeader className="space-y-1">
               <p className="text-muted-foreground text-sm">
-                {activityDateTime(entry.createdAt)}
+                {formatDateTime(entry.createdAt)}
               </p>
               <DialogTitle>{activityTitle(entry)}</DialogTitle>
             </DialogHeader>

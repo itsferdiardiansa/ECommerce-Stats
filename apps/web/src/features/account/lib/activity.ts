@@ -30,13 +30,3 @@ export function activitySubtitle(e: ActivityEntry): string {
     'Unknown device'
   )
 }
-
-export function activityDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('en-US', {
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
-}

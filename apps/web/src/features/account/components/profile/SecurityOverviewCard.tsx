@@ -11,17 +11,13 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useProfile } from '../../hooks/useAccountQueries'
+import { useFormatters } from '../../hooks/useFormatters'
 
 export function SecurityOverviewCard() {
   const { data: profile } = useProfile()
+  const { formatDate } = useFormatters()
 
-  const memberSince = profile
-    ? new Date(profile.createdAt).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })
-    : '…'
+  const memberSince = profile ? formatDate(profile.createdAt) : '…'
 
   return (
     <Card>
