@@ -14,7 +14,7 @@ import { accountApi } from '@/features/account/api/account.api'
 import { accountKeys } from '@/features/account/api/account.keys'
 import { useSudoAuthorize } from '@/features/account/hooks/useAccountMutations'
 import { useAuth } from '@/features/auth/context/AuthContext'
-import { SudoPrompt } from '@/features/account/components/SudoPrompt'
+import { SudoPrompt } from '@/features/account/components/security/SudoPrompt'
 
 export class SudoCancelledError extends Error {
   constructor() {

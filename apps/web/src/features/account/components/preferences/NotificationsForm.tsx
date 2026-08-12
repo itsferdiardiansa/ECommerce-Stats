@@ -14,8 +14,8 @@ import { Switch } from '@/components/ui/form/switch'
 import { Label } from '@/components/ui/form/label'
 import { ApiError } from '@/lib/api-client'
 import { FormError } from '@/features/auth/components/FormError'
-import { useAccountSettings } from '../hooks/useAccountQueries'
-import { useUpdateSettings } from '../hooks/useAccountMutations'
+import { useAccountSettings } from '../../hooks/useAccountQueries'
+import { useUpdateSettings } from '../../hooks/useAccountMutations'
 
 type ToggleKey = 'alertsEmail' | 'weeklyReport' | 'marketingOptIn'
 

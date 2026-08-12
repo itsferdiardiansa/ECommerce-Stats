@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { PreferencesForm } from '@/features/account/components/PreferencesForm'
+import { PreferencesForm } from '@/features/account/components/preferences/PreferencesForm'
 
 export const metadata: Metadata = {
   title: 'Preferences',

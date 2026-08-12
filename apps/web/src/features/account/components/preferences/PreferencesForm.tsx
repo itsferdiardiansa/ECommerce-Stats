@@ -17,13 +17,13 @@ import { Form } from '@/components/ui/form'
 import { Loading } from '@/components/ui/loading'
 import { ApiError } from '@/lib/api-client'
 import { FormError } from '@/features/auth/components/FormError'
-import { SelectField } from './form-fields'
+import { SelectField } from '../form-fields'
 import {
   preferencesSchema,
   type PreferencesValues,
-} from '../schemas/preferences.schema'
-import { useAccountSettings } from '../hooks/useAccountQueries'
-import { useUpdateSettings } from '../hooks/useAccountMutations'
+} from '../../schemas/preferences.schema'
+import { useAccountSettings } from '../../hooks/useAccountQueries'
+import { useUpdateSettings } from '../../hooks/useAccountMutations'
 
 const errText = (e: unknown, fallback: string) =>
   e instanceof ApiError ? e.message : e ? fallback : null

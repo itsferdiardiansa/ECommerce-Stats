@@ -18,13 +18,13 @@ import { Loading } from '@/components/ui/loading'
 import { ApiError } from '@/lib/api-client'
 import { FormError } from '@/features/auth/components/FormError'
 import type { AccountSettingsUpdate } from '@/features/account/api/account.api'
-import { SelectField, TextField, TextareaField } from './form-fields'
+import { SelectField, TextField, TextareaField } from '../form-fields'
 import {
   personalDetailsSchema,
   type PersonalDetailsValues,
-} from '../schemas/personal-details.schema'
-import { useAccountSettings } from '../hooks/useAccountQueries'
-import { useUpdateSettings } from '../hooks/useAccountMutations'
+} from '../../schemas/personal-details.schema'
+import { useAccountSettings } from '../../hooks/useAccountQueries'
+import { useUpdateSettings } from '../../hooks/useAccountMutations'
 
 const errText = (e: unknown, fallback: string) =>
   e instanceof ApiError ? e.message : e ? fallback : null

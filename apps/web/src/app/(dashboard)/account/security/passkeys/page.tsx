@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { PasskeysManager } from '@/features/account/components/PasskeysManager'
+import { PasskeysManager } from '@/features/account/components/security/PasskeysManager'
 
 export const metadata: Metadata = {
   title: 'Passkeys',

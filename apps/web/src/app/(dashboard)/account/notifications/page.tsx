@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { NotificationsForm } from '@/features/account/components/NotificationsForm'
+import { NotificationsForm } from '@/features/account/components/preferences/NotificationsForm'
 
 export const metadata: Metadata = {
   title: 'Notifications',

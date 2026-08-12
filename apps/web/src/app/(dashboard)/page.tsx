@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Greeting } from './Greeting'
+import { Greeting } from '@/features/dashboard/components/Greeting'
 
 export const metadata: Metadata = {
   description: 'Your account and store at a glance.',

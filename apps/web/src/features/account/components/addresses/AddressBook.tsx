@@ -21,15 +21,15 @@ import {
 import { ApiError } from '@/lib/api-client'
 import { FormError } from '@/features/auth/components/FormError'
 import type { Address, AddressInput } from '@/features/account/api/account.api'
-import { SelectField, SwitchField, TextField } from './form-fields'
-import { addressSchema, type AddressValues } from '../schemas/address.schema'
-import { useAddresses } from '../hooks/useAccountQueries'
+import { SelectField, SwitchField, TextField } from '../form-fields'
+import { addressSchema, type AddressValues } from '../../schemas/address.schema'
+import { useAddresses } from '../../hooks/useAccountQueries'
 import {
   useCreateAddress,
   useUpdateAddress,
   useDeleteAddress,
   useSetDefaultAddress,
-} from '../hooks/useAccountMutations'
+} from '../../hooks/useAccountMutations'
 
 const errText = (e: unknown, fallback: string) =>
   e instanceof ApiError ? e.message : e ? fallback : null

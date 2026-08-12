@@ -9,7 +9,7 @@ import { Loading } from '@/components/ui/loading'
 import { ApiError } from '@/lib/api-client'
 import { FormError } from '@/features/auth/components/FormError'
 import type { ActivityEntry } from '@/features/account/api/account.api'
-import { useActivity } from '../hooks/useAccountQueries'
+import { useActivity } from '../../hooks/useAccountQueries'
 import { ActivityRow } from './ActivityRow'
 import { ActivityDetailDialog } from './ActivityDetailDialog'
 

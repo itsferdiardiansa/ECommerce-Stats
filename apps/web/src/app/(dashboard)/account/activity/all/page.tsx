@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import { AllActivity } from '@/features/account/components/AllActivity'
+import { AllActivity } from '@/features/account/components/activity/AllActivity'
 
 export const metadata: Metadata = {
   title: 'All activity',

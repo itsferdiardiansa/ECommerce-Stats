@@ -17,8 +17,8 @@ import {
 import { ApiError } from '@/lib/api-client'
 import { FormError } from '@/features/auth/components/FormError'
 import GoogleIcon from '@/assets/icons/brands/google.svg'
-import { useConnections } from '../hooks/useAccountQueries'
-import { useUnlinkConnection } from '../hooks/useAccountMutations'
+import { useConnections } from '../../hooks/useAccountQueries'
+import { useUnlinkConnection } from '../../hooks/useAccountMutations'
 
 const errText = (e: unknown, fallback: string) =>
   e instanceof ApiError ? e.message : e ? fallback : null

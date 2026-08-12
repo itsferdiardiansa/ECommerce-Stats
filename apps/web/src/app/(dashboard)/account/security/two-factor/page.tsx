@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { CopyableCode } from '@/features/account/components/CopyableCode'
+import { CopyableCode } from '@/features/account/components/security/CopyableCode'
 import {
   SudoCancelledError,
   useSudo,

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { ActivityLog } from '@/features/account/components/ActivityLog'
+import { ActivityLog } from '@/features/account/components/activity/ActivityLog'
 
 export const metadata: Metadata = {
   title: 'Activity',

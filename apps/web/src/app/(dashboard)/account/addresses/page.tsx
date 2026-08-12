@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { AddressBook } from '@/features/account/components/AddressBook'
+import { AddressBook } from '@/features/account/components/addresses/AddressBook'
 
 export const metadata: Metadata = {
   title: 'Addresses',
