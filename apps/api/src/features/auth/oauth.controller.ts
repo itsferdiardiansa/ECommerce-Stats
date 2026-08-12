@@ -101,7 +101,8 @@ export class OAuthController {
           cookieState,
           i18n,
           ipAddress,
-          userAgent
+          userAgent,
+          req.cookies?.deviceSecret as string | undefined
         )
 
       res.cookie('refreshToken', refreshToken, this.getCookieOptions())

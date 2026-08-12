@@ -54,7 +54,8 @@ export class LoginService {
     i18n: I18nContext,
     ipAddress?: string,
     userAgent?: string,
-    trustedDeviceToken?: string
+    trustedDeviceToken?: string,
+    reuseDeviceSecret?: string
   ) {
     const user = await getUserByEmail(data.email)
 
@@ -154,7 +155,8 @@ export class LoginService {
       role,
       orgId,
       userAgent,
-      ipAddress
+      ipAddress,
+      reuseDeviceSecret
     )
 
     this.eventEmitter.emit(
@@ -197,7 +199,8 @@ export class LoginService {
     response: AuthenticationResponseJSON,
     i18n: I18nContext,
     ipAddress?: string,
-    userAgent?: string
+    userAgent?: string,
+    reuseDeviceSecret?: string
   ) {
     const userId = await this.passkeyService.finishDiscoverableAuthentication(
       challengeId,
@@ -224,7 +227,8 @@ export class LoginService {
       primary?.role ?? null,
       primary?.organizationId ?? null,
       userAgent,
-      ipAddress
+      ipAddress,
+      reuseDeviceSecret
     )
 
     this.eventEmitter.emit(

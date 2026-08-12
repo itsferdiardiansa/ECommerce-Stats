@@ -51,6 +51,7 @@ interface StoredSession {
   role: string | null
   orgId: string | null
   deviceFingerprint: string
+  deviceKey: string | null
 }
 
 interface RefreshRotationResult {
@@ -64,6 +65,7 @@ interface RefreshRotationResult {
 export class AuthService {
   private readonly passwordMinAgeMs: number
   private readonly refreshReplayGraceSeconds = 30
+  private readonly sessionListIdleMs = 3 * 24 * 60 * 60 * 1000
 
   constructor(
     private readonly redisService: RedisService,
@@ -111,6 +113,8 @@ export class AuthService {
       ipAddress
     )
 
+    const deviceKey = deviceSecretHash
+
     const accessPayload: AccessTokenPayload = {
       sub: user.id,
       email: user.email,
@@ -126,20 +130,17 @@ export class AuthService {
     const refreshToken = this.jwtService.signRefreshToken(jti)
     const refreshTokenHash = await argon2.hash(refreshToken)
 
-    const lockKey = `session:init:${user.id}:${deviceFingerprint}`
+    const lockKey = `session:init:${user.id}:${deviceKey}`
     const locked = await this.acquireLock(lockKey, jti)
     try {
-      const existingSession = await Sessions.findByFingerprint(
-        user.id,
-        deviceFingerprint
-      )
+      const existingSession = await Sessions.findByDeviceKey(user.id, deviceKey)
 
       if (existingSession && existingSession.jti !== jti) {
         await this.sessionStore.delete(existingSession.jti)
       }
 
       await Promise.all([
-        Sessions.upsertByFingerprint({
+        Sessions.upsertByDeviceKey({
           userId: user.id,
           jti,
           refreshTokenHash,
@@ -148,6 +149,7 @@ export class AuthService {
           ipAddress,
           userAgent,
           deviceFingerprint,
+          deviceKey,
           expires,
         }),
         this.sessionStore.set(
@@ -160,6 +162,7 @@ export class AuthService {
             role,
             orgId,
             deviceFingerprint,
+            deviceKey,
           },
           refreshTtl
         ),
@@ -245,11 +248,15 @@ export class AuthService {
     userAgent?: string,
     existingDeviceSecret?: string
   ): Promise<RefreshRotationResult> {
-    const reusedSession = await this.redisService.get<{ userId: number }>(
-      `revoked_jti:${jti}`
-    )
+    const reusedSession = await this.redisService.get<{
+      userId: number
+      deviceKey?: string | null
+    }>(`revoked_jti:${jti}`)
     if (reusedSession) {
-      await this.revokeAllSessions(reusedSession.userId)
+      await this.revokeDeviceSession(
+        reusedSession.userId,
+        reusedSession.deviceKey ?? null
+      )
       this.eventEmitter.emit(
         'auth.security.compromise',
         new SecurityCompromiseEvent(
@@ -272,18 +279,10 @@ export class AuthService {
     let role: string | null = null
     let orgId: string | null = null
     let storedFingerprint: string
+    let storedDeviceKey: string | null = null
 
     if (sessionData) {
       if (sessionData.isRevoked) {
-        await this.revokeAllSessions(sessionData.userId)
-        this.eventEmitter.emit(
-          'auth.security.compromise',
-          new SecurityCompromiseEvent(
-            sessionData.userId,
-            ipAddress || null,
-            userAgent || null
-          )
-        )
         throw new UnauthorizedException(i18n.t('auth.errors.session_revoked'))
       }
       if (new Date(sessionData.expires) <= new Date()) {
@@ -294,6 +293,7 @@ export class AuthService {
       role = sessionData.role
       orgId = sessionData.orgId
       storedFingerprint = sessionData.deviceFingerprint
+      storedDeviceKey = sessionData.deviceKey ?? null
     } else {
       const dbSession = await Sessions.findByJti(jti)
       if (!dbSession) {
@@ -302,15 +302,6 @@ export class AuthService {
         )
       }
       if (dbSession.isRevoked) {
-        await this.revokeAllSessions(dbSession.userId)
-        this.eventEmitter.emit(
-          'auth.security.compromise',
-          new SecurityCompromiseEvent(
-            dbSession.userId,
-            ipAddress || null,
-            userAgent || null
-          )
-        )
         throw new UnauthorizedException(i18n.t('auth.errors.session_revoked'))
       }
       if (dbSession.expires <= new Date()) {
@@ -321,6 +312,7 @@ export class AuthService {
       role = dbSession.role
       orgId = dbSession.orgId
       storedFingerprint = dbSession.deviceFingerprint
+      storedDeviceKey = dbSession.deviceKey ?? null
     }
 
     const isValid = await argon2.verify(storedHash, data.refreshToken)
@@ -349,7 +341,7 @@ export class AuthService {
       Sessions.revokeByJti(jti),
       this.redisService.set(
         `revoked_jti:${jti}`,
-        { userId },
+        { userId, deviceKey: storedDeviceKey },
         this.jwtService.getRefreshExpiresIn()
       ),
     ])
@@ -519,7 +511,14 @@ export class AuthService {
   ) {
     const activeSessions = await Sessions.findActiveByUserId(userId)
 
-    const formattedSessions = activeSessions.map(session => ({
+    const idleCutoff = new Date(Date.now() - this.sessionListIdleMs)
+    const visibleSessions = activeSessions.filter(
+      session =>
+        session.jti === currentJti ||
+        (session.lastUsedAt ?? session.createdAt) >= idleCutoff
+    )
+
+    const formattedSessions = visibleSessions.map(session => ({
       id: session.jti,
       isCurrent: session.jti === currentJti,
       ipAddress: session.ipAddress,
@@ -569,6 +568,20 @@ export class AuthService {
         defaultValue: 'Successfully signed out of selected devices.',
       }),
     }
+  }
+
+  async revokeDeviceSession(userId: number, deviceKey: string | null) {
+    if (!deviceKey) return
+    const session = await Sessions.findByDeviceKey(userId, deviceKey)
+    if (!session || session.isRevoked) return
+    await this.tokenDenylist.deny(
+      session.jti,
+      this.jwtService.getAccessExpiresIn()
+    )
+    await Promise.all([
+      this.sessionStore.delete(session.jti),
+      Sessions.revokeByJti(session.jti),
+    ])
   }
 
   async revokeAllSessions(userId: number) {

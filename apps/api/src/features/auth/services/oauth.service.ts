@@ -102,7 +102,8 @@ export class OAuthService {
     cookieState: string | undefined,
     i18n: I18nContext,
     ipAddress?: string,
-    userAgent?: string
+    userAgent?: string,
+    reuseDeviceSecret?: string
   ) {
     if (!this.google) {
       throw new UnauthorizedException(i18n.t('auth.errors.oauth_disabled'))
@@ -143,7 +144,8 @@ export class OAuthService {
         primary?.role ?? null,
         primary?.organizationId ?? null,
         userAgent,
-        ipAddress
+        ipAddress,
+        reuseDeviceSecret
       )
 
     this.eventEmitter.emit(

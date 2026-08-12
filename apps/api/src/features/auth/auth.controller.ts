@@ -150,7 +150,8 @@ export class AuthController {
       i18n,
       ipAddress,
       userAgent,
-      trustedDeviceToken
+      trustedDeviceToken,
+      req.cookies?.deviceSecret as string | undefined
     )
 
     if ('stepUpRequired' in loginResult) {
@@ -193,6 +194,7 @@ export class AuthController {
     @I18n() i18n: I18nContext,
     @Ip() ipAddress: string,
     @Headers('user-agent') userAgent: string,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response
   ) {
     const {
@@ -208,7 +210,8 @@ export class AuthController {
       i18n,
       ipAddress,
       userAgent,
-      dto.trustDevice
+      dto.trustDevice,
+      req.cookies?.deviceSecret as string | undefined
     )
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
@@ -246,6 +249,7 @@ export class AuthController {
     @I18n() i18n: I18nContext,
     @Ip() ipAddress: string,
     @Headers('user-agent') userAgent: string,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response
   ) {
     const {
@@ -260,7 +264,8 @@ export class AuthController {
       i18n,
       ipAddress,
       userAgent,
-      dto.trustDevice
+      dto.trustDevice,
+      req.cookies?.deviceSecret as string | undefined
     )
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
@@ -292,6 +297,7 @@ export class AuthController {
     @I18n() i18n: I18nContext,
     @Ip() ipAddress: string,
     @Headers('user-agent') userAgent: string,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response
   ) {
     const { refreshToken, rawDeviceSecret, ...result } =
@@ -300,7 +306,8 @@ export class AuthController {
         dto.response as unknown as AuthenticationResponseJSON,
         i18n,
         ipAddress,
-        userAgent
+        userAgent,
+        req.cookies?.deviceSecret as string | undefined
       )
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
