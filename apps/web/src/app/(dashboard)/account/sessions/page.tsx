@@ -5,6 +5,14 @@ import { Clock, Globe, MapPin, Monitor, Smartphone } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Loading } from '@/components/ui/loading'
 import type { SessionInfo } from '@/features/account/api/account.api'
 import { toast } from 'sonner'
@@ -53,6 +61,9 @@ export default function SessionsPage() {
   const revoke = useRevokeSession()
   const revokeOthersMutation = useRevokeOtherSessions()
   const [actionError, setActionError] = useState<string | null>(null)
+  const [pending, setPending] = useState<
+    { kind: 'one'; id: string; name: string } | { kind: 'others' } | null
+  >(null)
 
   const error =
     actionError ?? errText(loadError, 'Could not load your sessions.')
@@ -68,15 +79,18 @@ export default function SessionsPage() {
     }
   }
 
-  function revokeOne(id: string) {
-    void run(() => revoke.mutateAsync(id), 'Signed out of that device.')
-  }
-
-  function revokeOthers() {
-    void run(
-      () => revokeOthersMutation.mutateAsync(),
-      'Signed out of all other devices.'
-    )
+  function confirmPending() {
+    const p = pending
+    setPending(null)
+    if (!p) return
+    if (p.kind === 'one') {
+      void run(() => revoke.mutateAsync(p.id), 'Signed out of that device.')
+    } else {
+      void run(
+        () => revokeOthersMutation.mutateAsync(),
+        'Signed out of all other devices.'
+      )
+    }
   }
 
   const current = (sessions ?? []).filter(s => s.isCurrent)
@@ -107,7 +121,13 @@ export default function SessionsPage() {
               variant="outline"
               size="sm"
               className="shrink-0"
-              onClick={() => revokeOne(s.id)}
+              onClick={() =>
+                setPending({
+                  kind: 'one',
+                  id: s.id,
+                  name: s.deviceName ?? s.browser ?? 'this device',
+                })
+              }
             >
               Sign out
             </Button>
@@ -171,10 +191,41 @@ export default function SessionsPage() {
       </div>
 
       {hasOthers ? (
-        <Button variant="outline" onClick={revokeOthers}>
+        <Button
+          variant="outline"
+          onClick={() => setPending({ kind: 'others' })}
+        >
           Sign out all other devices
         </Button>
       ) : null}
+
+      <Dialog
+        open={pending !== null}
+        onOpenChange={open => !open && setPending(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {pending?.kind === 'others'
+                ? 'Sign out all other devices?'
+                : 'Sign out this device?'}
+            </DialogTitle>
+            <DialogDescription>
+              {pending?.kind === 'others'
+                ? 'Every device except the one you are using now will be signed out and need to sign in again.'
+                : `${pending?.kind === 'one' ? pending.name : 'This device'} will be signed out and will need to sign in again.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPending(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmPending}>
+              Sign out
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
