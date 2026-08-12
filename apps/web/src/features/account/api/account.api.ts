@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api-client'
+import { cursorQuery, type CursorPage } from '@/lib/pagination'
 
 const auth = (token: string) => ({ Authorization: `Bearer ${token}` })
 
@@ -35,6 +36,7 @@ export interface Profile {
   avatar: string | null
   phone: string | null
   emailVerifiedAt: string | null
+  phoneVerifiedAt: string | null
   isTwoFactorEnabled: boolean
   createdAt: string
   organization: {
@@ -90,9 +92,43 @@ export interface AddressInput {
   isDefault?: boolean
 }
 
+export interface ActivityEntry {
+  id: number
+  isSuccess: boolean
+  reason: string | null
+  ipAddress: string | null
+  location: string | null
+  country: string | null
+  os: string | null
+  device: string | null
+  createdAt: string
+}
+
+export type ActivityPage = CursorPage<ActivityEntry>
+
+export interface Connection {
+  id: string
+  provider: string
+  scope: string | null
+}
+
 export const accountApi = {
   getMe: (token: string) =>
     apiFetch<Profile>('/auth/me', { headers: auth(token) }),
+
+  listActivity: (token: string, params?: { cursor?: number; limit?: number }) =>
+    apiFetch<ActivityPage>(`/account/activity${cursorQuery(params)}`, {
+      headers: auth(token),
+    }),
+
+  listConnections: (token: string) =>
+    apiFetch<Connection[]>('/account/connections', { headers: auth(token) }),
+
+  unlinkConnection: (token: string, provider: string) =>
+    apiFetch<Connection[]>(`/account/connections/${provider}`, {
+      method: 'DELETE',
+      headers: auth(token),
+    }),
 
   getSettings: (token: string) =>
     apiFetch<AccountSettings>('/account/settings', { headers: auth(token) }),

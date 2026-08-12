@@ -6,4 +6,6 @@ export const accountKeys = {
   sudo: () => [...accountKeys.all, 'sudo'] as const,
   settings: () => [...accountKeys.all, 'settings'] as const,
   addresses: () => [...accountKeys.all, 'addresses'] as const,
+  activity: () => [...accountKeys.all, 'activity'] as const,
+  connections: () => [...accountKeys.all, 'connections'] as const,
 }

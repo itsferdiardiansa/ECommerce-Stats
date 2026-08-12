@@ -5,6 +5,7 @@ import { accountApi } from '@/features/account/api/account.api'
 import type {
   AccountSettingsUpdate,
   AddressInput,
+  SessionInfo,
 } from '@/features/account/api/account.api'
 import { accountKeys } from '@/features/account/api/account.keys'
 import { useAuth } from '@/features/auth/context/AuthContext'
@@ -101,7 +102,18 @@ export function useRevokeSession() {
   return useMutation({
     mutationFn: (id: string) =>
       accountApi.revokeSession(accessToken as string, id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: accountKeys.sessions() }),
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: accountKeys.sessions() })
+      const previous = qc.getQueryData<SessionInfo[]>(accountKeys.sessions())
+      qc.setQueryData<SessionInfo[]>(accountKeys.sessions(), old =>
+        (old ?? []).filter(s => s.id !== id)
+      )
+      return { previous }
+    },
+    onError: (_e, _id, ctx) => {
+      if (ctx?.previous) qc.setQueryData(accountKeys.sessions(), ctx.previous)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: accountKeys.sessions() }),
   })
 }
 
@@ -110,7 +122,18 @@ export function useRevokeOtherSessions() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: () => accountApi.revokeOtherSessions(accessToken as string),
-    onSuccess: () => qc.invalidateQueries({ queryKey: accountKeys.sessions() }),
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: accountKeys.sessions() })
+      const previous = qc.getQueryData<SessionInfo[]>(accountKeys.sessions())
+      qc.setQueryData<SessionInfo[]>(accountKeys.sessions(), old =>
+        (old ?? []).filter(s => s.isCurrent)
+      )
+      return { previous }
+    },
+    onError: (_e, _vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(accountKeys.sessions(), ctx.previous)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: accountKeys.sessions() }),
   })
 }
 
@@ -165,5 +188,16 @@ export function useSetDefaultAddress() {
       accountApi.setDefaultAddress(accessToken as string, id),
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: accountKeys.addresses() }),
+  })
+}
+
+export function useUnlinkConnection() {
+  const { accessToken } = useAuth()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (provider: string) =>
+      accountApi.unlinkConnection(accessToken as string, provider),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: accountKeys.connections() }),
   })
 }

@@ -167,7 +167,14 @@ export default function ProfilePage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Email address</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                Email address
+                {profile?.emailVerifiedAt ? (
+                  <Badge variant="secondary">Verified</Badge>
+                ) : (
+                  <Badge variant="outline">Unverified</Badge>
+                )}
+              </CardTitle>
               <CardDescription>
                 Used to sign in and for security notices.
               </CardDescription>
@@ -196,7 +203,16 @@ export default function ProfilePage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Phone number</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                Phone number
+                {profile?.phone ? (
+                  profile.phoneVerifiedAt ? (
+                    <Badge variant="secondary">Verified</Badge>
+                  ) : (
+                    <Badge variant="outline">Unverified</Badge>
+                  )
+                ) : null}
+              </CardTitle>
               <CardDescription>
                 Used for account recovery and alerts.
               </CardDescription>
