@@ -214,7 +214,7 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "login"]
             },
-            "description": "Login with email and password. Returns access + refresh tokens for a trusted sign-in. If the sign-in looks risky (new device/location), returns { stepUpRequired: true, challengeId } instead and emails a one-time code \u2014 complete it via 'Step Up (Verify OTP)'. The test script auto-saves either access_token or step_up_challenge_id.\n\nCAPTCHA (Cloudflare Turnstile): off unless CAPTCHA_ENABLED=true on the API. When on, captchaToken is required only AFTER this IP has failed ~3 logins within 15 min (below that it is ignored, so captchaToken is optional). With the default Turnstile TEST secret (always-passes) any token value works, so the included dummy token passes \u2014 to exercise the 403 'captcha required' path, set TURNSTILE_SECRET_KEY=2x0000000000000000000000000000000AA (always-fails) or send an empty captchaToken."
+            "description": "Login with email and password. Returns access + refresh tokens for a trusted sign-in. If the sign-in looks risky (new device/location), returns { stepUpRequired: true, challengeId } instead and emails a one-time code - complete it via 'Step Up (Verify OTP)'. The test script auto-saves either access_token or step_up_challenge_id.\n\nCAPTCHA (Cloudflare Turnstile): off unless CAPTCHA_ENABLED=true on the API. When on, captchaToken is required only AFTER this IP has failed ~3 logins within 15 min (below that it is ignored, so captchaToken is optional). With the default Turnstile TEST secret (always-passes) any token value works, so the included dummy token passes - to exercise the 403 'captcha required' path, set TURNSTILE_SECRET_KEY=2x0000000000000000000000000000000AA (always-fails) or send an empty captchaToken."
           },
           "response": [],
           "event": [
@@ -476,7 +476,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{access_token}}",
-                "description": "Required \u2014 valid access token"
+                "description": "Required - valid access token"
               },
               {
                 "key": "Accept-Language",
@@ -721,7 +721,7 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "forgot-password"]
             },
-            "description": "Public. Always returns the same generic success (enumeration-safe). If the email exists, a single-use cryptographic reset token is emailed (view in Mailpit at http://localhost:8025) \u2014 copy it into {{reset_token}} for \"Reset Password\". Rate-limited like login."
+            "description": "Public. Always returns the same generic success (enumeration-safe). If the email exists, a single-use cryptographic reset token is emailed (view in Mailpit at http://localhost:8025) - copy it into {{reset_token}} for \"Reset Password\". Rate-limited like login."
           },
           "response": []
         },
@@ -929,7 +929,7 @@
     },
     {
       "name": "OAuth (Google)",
-      "description": "Sign in / sign up with Google (OpenID Connect, authorization-code + PKCE). These endpoints are browser-driven redirects, not JSON APIs \u2014 trigger the sign-in from a real browser. They are documented here for reference. Requires GOOGLE_CLIENT_ID/SECRET set on the API.",
+      "description": "Sign in / sign up with Google (OpenID Connect, authorization-code + PKCE). These endpoints are browser-driven redirects, not JSON APIs - trigger the sign-in from a real browser. They are documented here for reference. Requires GOOGLE_CLIENT_ID/SECRET set on the API.",
       "item": [
         {
           "name": "Google Sign-in (Redirect)",
@@ -941,7 +941,7 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "oauth", "google"]
             },
-            "description": "Starts the Google login. Responds 302 to Google's consent screen (sets a short-lived CSRF state + PKCE verifier in Redis). Open this URL in a browser \u2014 one button serves both sign-in and sign-up; the callback decides create-vs-login."
+            "description": "Starts the Google login. Responds 302 to Google's consent screen (sets a short-lived CSRF state + PKCE verifier in Redis). Open this URL in a browser - one button serves both sign-in and sign-up; the callback decides create-vs-login."
           },
           "response": []
         },
@@ -965,7 +965,7 @@
                 }
               ]
             },
-            "description": "Google redirects here after consent. Verifies state, exchanges the code, resolves-or-creates the user, sets httpOnly refreshToken + deviceSecret cookies, then 302s to the web app (OAUTH_SUCCESS_REDIRECT). On failure it 302s to OAUTH_FAILURE_REDIRECT. Invoked by Google automatically \u2014 not called by hand."
+            "description": "Google redirects here after consent. Verifies state, exchanges the code, resolves-or-creates the user, sets httpOnly refreshToken + deviceSecret cookies, then 302s to the web app (OAUTH_SUCCESS_REDIRECT). On failure it 302s to OAUTH_FAILURE_REDIRECT. Invoked by Google automatically - not called by hand."
           },
           "response": []
         }
