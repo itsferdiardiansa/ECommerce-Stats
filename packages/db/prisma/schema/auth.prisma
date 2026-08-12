@@ -32,6 +32,7 @@ model Session {
   userAgent        String?
 
   deviceFingerprint String
+  deviceKey         String?
 
   lastUsedAt       DateTime?
   isRevoked        Boolean   @default(false)
@@ -41,7 +42,7 @@ model Session {
   @@index([userId])
   @@index([jti])
   @@index([expires, isRevoked])
-  @@unique([userId, deviceFingerprint])
+  @@unique([userId, deviceKey])
   @@schema("auth")
 }
 

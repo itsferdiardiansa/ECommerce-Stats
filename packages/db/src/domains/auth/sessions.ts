@@ -6,16 +6,16 @@ export const Sessions = {
     return db.session.create({ data })
   },
 
-  async upsertByFingerprint(data: Prisma.SessionUncheckedCreateInput) {
-    if (!data.deviceFingerprint) {
-      throw new Error('deviceFingerprint is required for upsertByFingerprint')
+  async upsertByDeviceKey(data: Prisma.SessionUncheckedCreateInput) {
+    if (!data.deviceKey) {
+      throw new Error('deviceKey is required for upsertByDeviceKey')
     }
 
     return db.session.upsert({
       where: {
-        userId_deviceFingerprint: {
+        userId_deviceKey: {
           userId: data.userId,
-          deviceFingerprint: data.deviceFingerprint,
+          deviceKey: data.deviceKey,
         },
       },
       update: {
@@ -24,6 +24,7 @@ export const Sessions = {
         expires: data.expires,
         ipAddress: data.ipAddress,
         userAgent: data.userAgent,
+        deviceFingerprint: data.deviceFingerprint,
         lastUsedAt: new Date(),
         isRevoked: false,
       },
@@ -31,10 +32,10 @@ export const Sessions = {
     })
   },
 
-  async findByFingerprint(userId: number, deviceFingerprint: string) {
+  async findByDeviceKey(userId: number, deviceKey: string) {
     return db.session.findUnique({
       where: {
-        userId_deviceFingerprint: { userId, deviceFingerprint },
+        userId_deviceKey: { userId, deviceKey },
       },
     })
   },
