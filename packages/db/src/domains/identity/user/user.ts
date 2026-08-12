@@ -103,6 +103,7 @@ export async function getProfile(userId: number) {
       avatar: true,
       phone: true,
       emailVerifiedAt: true,
+      phoneVerifiedAt: true,
       isTwoFactorEnabled: true,
       createdAt: true,
     },

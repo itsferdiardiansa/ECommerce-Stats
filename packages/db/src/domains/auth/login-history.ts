@@ -129,6 +129,12 @@ export const LoginLogs = {
     })
   },
 
+  async countForUser(userId: number, since?: Date) {
+    return db.loginHistory.count({
+      where: { userId, ...(since ? { createdAt: { gte: since } } : {}) },
+    })
+  },
+
   async getRecentAttempts(userId: number, minutes = 15) {
     const since = new Date(Date.now() - minutes * 60 * 1000)
 
