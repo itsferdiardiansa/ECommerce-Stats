@@ -12,12 +12,15 @@ import {
   updateUser,
 } from '@rufieltics/db/domains/identity/user'
 import type { UserFilterParams } from '@rufieltics/db/domains/identity/user'
+import { AuthService } from '../auth/auth.service'
 import type { UpdateUserDto } from './dto/update-user.dto'
 import type { AdminUpdateUserDto } from './dto/admin-update-user.dto'
 import type { ListUserDto } from './dto/list-user.dto'
 
 @Injectable()
 export class UsersService {
+  constructor(private readonly authService: AuthService) {}
+
   async findOne(id: number, i18n: I18nContext) {
     const user = await getUserById(id)
 
@@ -75,7 +78,9 @@ export class UsersService {
     }
 
     try {
-      return await deleteUser(id)
+      const result = await deleteUser(id)
+      await this.authService.revokeAllSessions(id)
+      return result
     } catch (error) {
       if (error instanceof Error && error.message === 'User not found') {
         throw new NotFoundException(i18n.t('users.errors.user_not_found'))

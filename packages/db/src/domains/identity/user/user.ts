@@ -273,11 +273,14 @@ export async function deleteUser(id: number) {
   }
 
   // Perform soft delete
+  const now = new Date()
   return db.user.update({
     where: { id },
     data: {
-      deletedAt: new Date(),
-      isActive: false, // Also deactivate the user
+      deletedAt: now,
+      isActive: false,
+      email: `deleted+${id}.${now.getTime()}@deleted.invalid`,
+      username: `deleted_${id}_${now.getTime()}`,
     },
     select: {
       id: true,
