@@ -185,7 +185,6 @@ export const accountApi = {
     id: number,
     data: {
       name?: string
-      phone?: string | null
       avatar?: string | null
     }
   ) =>
