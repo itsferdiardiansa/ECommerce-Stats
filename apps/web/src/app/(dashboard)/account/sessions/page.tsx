@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Loading } from '@/components/ui/loading'
+import type { SessionInfo } from '@/features/account/api/account.api'
 import { toast } from 'sonner'
 import { ApiError } from '@/lib/api-client'
 import {
@@ -78,7 +79,63 @@ export default function SessionsPage() {
     )
   }
 
-  const hasOthers = (sessions ?? []).some(s => !s.isCurrent)
+  const current = (sessions ?? []).filter(s => s.isCurrent)
+  const others = (sessions ?? []).filter(s => !s.isCurrent)
+  const hasOthers = others.length > 0
+
+  function renderSession(s: SessionInfo) {
+    const DeviceIcon = s.deviceType === 'desktop' ? Monitor : Smartphone
+    return (
+      <Card key={s.id} className="gap-0 overflow-hidden py-0">
+        <CardHeader className="bg-muted/40 flex flex-row items-center justify-between gap-3 space-y-0 border-b py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <DeviceIcon className="text-muted-foreground size-5 shrink-0" />
+            <span className="truncate font-medium">
+              {s.deviceName ?? 'Unknown device'}
+            </span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-muted-foreground truncate text-sm">
+              {s.os ?? 'Unknown OS'}
+            </span>
+          </div>
+          {s.isCurrent ? (
+            <Badge variant="secondary" className="shrink-0">
+              Current session
+            </Badge>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => revokeOne(s.id)}
+            >
+              Sign out
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="text-muted-foreground space-y-1.5 py-4 text-sm">
+          <div className="flex items-center gap-2">
+            <Globe className="size-4 shrink-0" />
+            <span className="truncate">
+              Browser: {s.browser ?? 'Unknown'} · IP address:{' '}
+              {s.ipAddress ?? 'Unknown'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="size-4 shrink-0" />
+            <span className="truncate">
+              Login: {loginTime(s.createdAt)} · Last Seen:{' '}
+              {lastSeen(s.lastUsedAt)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <MapPin className="size-4 shrink-0" />
+            <span>Location: {s.location ?? 'Unknown'}</span>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -97,59 +154,19 @@ export default function SessionsPage() {
         ) : sessions.length === 0 ? (
           <p className="text-muted-foreground text-sm">No active sessions.</p>
         ) : (
-          sessions.map(s => {
-            const DeviceIcon = s.deviceType === 'desktop' ? Monitor : Smartphone
-            return (
-              <Card key={s.id} className="gap-0 overflow-hidden py-0">
-                <CardHeader className="bg-muted/40 flex flex-row items-center justify-between gap-3 space-y-0 border-b py-3">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <DeviceIcon className="text-muted-foreground size-5 shrink-0" />
-                    <span className="truncate font-medium">
-                      {s.deviceName ?? 'Unknown device'}
-                    </span>
-                    <span className="text-muted-foreground">·</span>
-                    <span className="text-muted-foreground truncate text-sm">
-                      {s.os ?? 'Unknown OS'}
-                    </span>
-                  </div>
-                  {s.isCurrent ? (
-                    <Badge variant="secondary" className="shrink-0">
-                      Current session
-                    </Badge>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() => revokeOne(s.id)}
-                    >
-                      Sign out
-                    </Button>
-                  )}
-                </CardHeader>
-                <CardContent className="text-muted-foreground space-y-1.5 py-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Globe className="size-4 shrink-0" />
-                    <span className="truncate">
-                      Browser: {s.browser ?? 'Unknown'} · IP address:{' '}
-                      {s.ipAddress ?? 'Unknown'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="size-4 shrink-0" />
-                    <span className="truncate">
-                      Login: {loginTime(s.createdAt)} · Last Seen:{' '}
-                      {lastSeen(s.lastUsedAt)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="size-4 shrink-0" />
-                    <span>Location: {s.location ?? 'Unknown'}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })
+          <>
+            {current.map(renderSession)}
+            {current.length > 0 && hasOthers ? (
+              <div className="flex items-center gap-3 pt-2">
+                <span className="bg-border h-px flex-1" />
+                <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                  Other devices
+                </span>
+                <span className="bg-border h-px flex-1" />
+              </div>
+            ) : null}
+            {others.map(renderSession)}
+          </>
         )}
       </div>
 

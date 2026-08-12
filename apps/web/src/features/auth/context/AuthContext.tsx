@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react'
 import { authApi } from '../api/auth.api'
+import { ApiError } from '@/lib/api-client'
 import type { AuthUser } from '../types'
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
@@ -45,10 +46,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (bootstrapped.current) return
     bootstrapped.current = true
-    authApi
-      .refresh()
-      .then(res => setSession(res.accessToken, null))
-      .catch(() => setStatus('unauthenticated'))
+    let cancelled = false
+
+    const attempt = async (retriesLeft: number) => {
+      try {
+        const res = await authApi.refresh()
+        if (!cancelled) setSession(res.accessToken, null)
+      } catch (e) {
+        if (cancelled) return
+        const isAuthRejection = e instanceof ApiError && e.status === 401
+        if (isAuthRejection || retriesLeft <= 0) {
+          setStatus('unauthenticated')
+          return
+        }
+        setTimeout(() => void attempt(retriesLeft - 1), 1500)
+      }
+    }
+
+    void attempt(2)
+    return () => {
+      cancelled = true
+    }
   }, [setSession])
 
   const value = useMemo(
