@@ -58,7 +58,7 @@ export default function AppSidebar() {
   const router = useRouter()
   const { data: profile } = useProfile()
 
-  const displayName = profile?.username ?? profile?.name ?? '—'
+  const displayName = profile?.name ?? profile?.username ?? '-'
   const email = profile?.email ?? ''
   const initials =
     (profile?.name || profile?.username || '?')
