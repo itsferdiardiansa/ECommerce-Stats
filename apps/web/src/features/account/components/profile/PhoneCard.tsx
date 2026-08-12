@@ -8,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/form/input'
 import { Label } from '@/components/ui/form/label'
@@ -29,16 +28,7 @@ export function PhoneCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          Phone number
-          {profile?.phone ? (
-            profile.phoneVerifiedAt ? (
-              <Badge variant="secondary">Verified</Badge>
-            ) : (
-              <Badge variant="outline">Unverified</Badge>
-            )
-          ) : null}
-        </CardTitle>
+        <CardTitle>Phone number</CardTitle>
         <CardDescription>Used for account recovery and alerts.</CardDescription>
       </CardHeader>
       <CardContent>
