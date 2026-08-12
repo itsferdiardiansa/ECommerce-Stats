@@ -59,6 +59,20 @@ export function TextField<T extends FieldValues>({
               autoComplete={autoComplete}
               disabled={disabled}
               {...field}
+              onClick={
+                type === 'date'
+                  ? e => {
+                      const el = e.currentTarget as HTMLInputElement & {
+                        showPicker?: () => void
+                      }
+                      try {
+                        el.showPicker?.()
+                      } catch {
+                        el.focus()
+                      }
+                    }
+                  : undefined
+              }
             />
           </FormControl>
           {description ? (
