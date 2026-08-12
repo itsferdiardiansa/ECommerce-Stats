@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
@@ -24,6 +23,7 @@ import {
 } from '../../schemas/preferences.schema'
 import { useAccountSettings } from '../../hooks/useAccountQueries'
 import { useUpdateSettings } from '../../hooks/useAccountMutations'
+import type { AccountSettings } from '../../api/account.api'
 
 const errText = (e: unknown, fallback: string) =>
   e instanceof ApiError ? e.message : e ? fallback : null
@@ -36,10 +36,14 @@ const CURRENCIES = ['USD', 'EUR', 'GBP', 'IDR', 'SGD'].map(c => ({
   value: c,
   label: c,
 }))
-const DATE_FORMATS = ['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD'].map(d => ({
-  value: d,
-  label: d,
-}))
+const DATE_FORMATS = [
+  { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY (08/12/2026)' },
+  { value: 'DD/MM/YYYY', label: 'DD/MM/YYYY (12/08/2026)' },
+  { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD (2026-08-12)' },
+  { value: 'MMM D, YYYY', label: 'MMM D, YYYY (Aug 12, 2026)' },
+  { value: 'MMMM D, YYYY', label: 'MMMM D, YYYY (August 12, 2026)' },
+  { value: 'D MMM YYYY', label: 'D MMM YYYY (12 Aug 2026)' },
+]
 const WEEK_START = ['Sunday', 'Monday'].map(w => ({ value: w, label: w }))
 const TIMEZONES = [
   'UTC',
@@ -79,25 +83,61 @@ const DEFAULTS: PreferencesValues = {
   weekStartsOn: 'Monday',
 }
 
+function orDefault<K extends keyof PreferencesValues>(
+  value: string | undefined,
+  allowed: readonly string[],
+  key: K
+): PreferencesValues[K] {
+  return (
+    value && allowed.includes(value) ? value : DEFAULTS[key]
+  ) as PreferencesValues[K]
+}
+
 export function PreferencesForm() {
   const { data, isLoading, error: loadError } = useAccountSettings()
+
+  if (!data) {
+    return loadError && !isLoading ? (
+      <FormError
+        message={errText(loadError, 'Could not load your settings.')}
+      />
+    ) : (
+      <Loading />
+    )
+  }
+
+  return <PreferencesFormInner settings={data} />
+}
+
+function PreferencesFormInner({ settings }: { settings: AccountSettings }) {
   const update = useUpdateSettings()
 
   const form = useForm<PreferencesValues>({
     resolver: zodResolver(preferencesSchema),
-    defaultValues: DEFAULTS,
+    defaultValues: {
+      languagePref: orDefault(
+        settings.languagePref,
+        LANGUAGES.map(l => l.value),
+        'languagePref'
+      ),
+      currencyPref: orDefault(
+        settings.currencyPref,
+        CURRENCIES.map(c => c.value),
+        'currencyPref'
+      ),
+      defaultTimezone: settings.defaultTimezone || DEFAULTS.defaultTimezone,
+      dateFormat: orDefault(
+        settings.dateFormat,
+        DATE_FORMATS.map(d => d.value),
+        'dateFormat'
+      ),
+      weekStartsOn: orDefault(
+        settings.weekStartsOn,
+        WEEK_START.map(w => w.value),
+        'weekStartsOn'
+      ),
+    },
   })
-
-  useEffect(() => {
-    if (!data) return
-    form.reset({
-      languagePref: data.languagePref as PreferencesValues['languagePref'],
-      currencyPref: data.currencyPref as PreferencesValues['currencyPref'],
-      defaultTimezone: data.defaultTimezone,
-      dateFormat: data.dateFormat as PreferencesValues['dateFormat'],
-      weekStartsOn: data.weekStartsOn as PreferencesValues['weekStartsOn'],
-    })
-  }, [data, form])
 
   function onSubmit(values: PreferencesValues) {
     update.mutate(values, {
@@ -109,19 +149,9 @@ export function PreferencesForm() {
     })
   }
 
-  if (isLoading || !data) {
-    return loadError ? (
-      <FormError
-        message={errText(loadError, 'Could not load your settings.')}
-      />
-    ) : (
-      <Loading />
-    )
-  }
-
-  const zoneOptions = TIMEZONES.includes(data.defaultTimezone)
+  const zoneOptions = TIMEZONES.includes(settings.defaultTimezone)
     ? TIMEZONES
-    : [data.defaultTimezone, ...TIMEZONES]
+    : [settings.defaultTimezone, ...TIMEZONES]
 
   return (
     <Form {...form}>

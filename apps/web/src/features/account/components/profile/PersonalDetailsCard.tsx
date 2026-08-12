@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
@@ -17,7 +16,10 @@ import { Form } from '@/components/ui/form'
 import { Loading } from '@/components/ui/loading'
 import { ApiError } from '@/lib/api-client'
 import { FormError } from '@/features/auth/components/FormError'
-import type { AccountSettingsUpdate } from '@/features/account/api/account.api'
+import type {
+  AccountSettings,
+  AccountSettingsUpdate,
+} from '@/features/account/api/account.api'
 import { SelectField, TextField, TextareaField } from '../form-fields'
 import {
   personalDetailsSchema,
@@ -38,21 +40,43 @@ const GENDERS = [
 
 export function PersonalDetailsCard() {
   const { data, isLoading, error: loadError } = useAccountSettings()
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Personal details</CardTitle>
+        <CardDescription>
+          A little more about you. Only you can see these.
+        </CardDescription>
+      </CardHeader>
+      {!data ? (
+        <CardContent>
+          {loadError && !isLoading ? (
+            <FormError
+              message={errText(loadError, 'Could not load your details.')}
+            />
+          ) : (
+            <Loading />
+          )}
+        </CardContent>
+      ) : (
+        <PersonalDetailsFormInner settings={data} />
+      )}
+    </Card>
+  )
+}
+
+function PersonalDetailsFormInner({ settings }: { settings: AccountSettings }) {
   const update = useUpdateSettings()
 
   const form = useForm<PersonalDetailsValues>({
     resolver: zodResolver(personalDetailsSchema),
-    defaultValues: { bio: '', birthDate: '', gender: '' },
+    defaultValues: {
+      bio: settings.bio ?? '',
+      birthDate: settings.birthDate ? settings.birthDate.slice(0, 10) : '',
+      gender: settings.gender ?? '',
+    },
   })
-
-  useEffect(() => {
-    if (!data) return
-    form.reset({
-      bio: data.bio ?? '',
-      birthDate: data.birthDate ? data.birthDate.slice(0, 10) : '',
-      gender: data.gender ?? '',
-    })
-  }, [data, form])
 
   function onSubmit(values: PersonalDetailsValues) {
     const payload: AccountSettingsUpdate = {
@@ -68,64 +92,44 @@ export function PersonalDetailsCard() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Personal details</CardTitle>
-        <CardDescription>
-          A little more about you. Only you can see these.
-        </CardDescription>
-      </CardHeader>
-      {isLoading || !data ? (
-        <CardContent>
-          {loadError ? (
-            <FormError
-              message={errText(loadError, 'Could not load your details.')}
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="flex flex-col gap-6"
+      >
+        <CardContent className="space-y-4">
+          <TextareaField
+            control={form.control}
+            name="bio"
+            label="Bio"
+            maxLength={500}
+            placeholder="Tell us a little about yourself"
+            disabled={update.isPending}
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField
+              control={form.control}
+              name="birthDate"
+              label="Date of birth"
+              type="date"
+              disabled={update.isPending}
             />
-          ) : (
-            <Loading />
-          )}
+            <SelectField
+              control={form.control}
+              name="gender"
+              label="Gender"
+              options={GENDERS}
+              placeholder="Select"
+              disabled={update.isPending}
+            />
+          </div>
         </CardContent>
-      ) : (
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="flex flex-col gap-6"
-          >
-            <CardContent className="space-y-4">
-              <TextareaField
-                control={form.control}
-                name="bio"
-                label="Bio"
-                maxLength={500}
-                placeholder="Tell us a little about yourself"
-                disabled={update.isPending}
-              />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <TextField
-                  control={form.control}
-                  name="birthDate"
-                  label="Date of birth"
-                  type="date"
-                  disabled={update.isPending}
-                />
-                <SelectField
-                  control={form.control}
-                  name="gender"
-                  label="Gender"
-                  options={GENDERS}
-                  placeholder="Select"
-                  disabled={update.isPending}
-                />
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" loading={update.isPending}>
-                Save details
-              </Button>
-            </CardFooter>
-          </form>
-        </Form>
-      )}
-    </Card>
+        <CardFooter>
+          <Button type="submit" loading={update.isPending}>
+            Save details
+          </Button>
+        </CardFooter>
+      </form>
+    </Form>
   )
 }

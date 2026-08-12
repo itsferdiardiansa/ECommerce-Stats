@@ -10,28 +10,31 @@ export function useFormatters() {
   const toDate = (value: string | Date) =>
     typeof value === 'string' ? new Date(value) : value
 
-  const parts = (d: Date) => {
-    const p = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).formatToParts(d)
-    const get = (t: string) => p.find(x => x.type === t)?.value ?? ''
-    return { y: get('year'), m: get('month'), d: get('day') }
-  }
+  const part = (d: Date, opts: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat('en-US', { timeZone, ...opts }).format(d)
 
   const formatDate = (value: string | Date) => {
     const d = toDate(value)
     if (Number.isNaN(d.getTime())) return ''
-    const { y, m, d: day } = parts(d)
+    const yyyy = part(d, { year: 'numeric' })
+    const mm = part(d, { month: '2-digit' })
+    const dd = part(d, { day: '2-digit' })
+    const day = part(d, { day: 'numeric' })
+    const mmm = part(d, { month: 'short' })
+    const mmmm = part(d, { month: 'long' })
     switch (dateFormat) {
       case 'DD/MM/YYYY':
-        return `${day}/${m}/${y}`
+        return `${dd}/${mm}/${yyyy}`
       case 'YYYY-MM-DD':
-        return `${y}-${m}-${day}`
+        return `${yyyy}-${mm}-${dd}`
+      case 'MMM D, YYYY':
+        return `${mmm} ${day}, ${yyyy}`
+      case 'MMMM D, YYYY':
+        return `${mmmm} ${day}, ${yyyy}`
+      case 'D MMM YYYY':
+        return `${day} ${mmm} ${yyyy}`
       default:
-        return `${m}/${day}/${y}`
+        return `${mm}/${dd}/${yyyy}`
     }
   }
 

@@ -12,7 +12,16 @@ export const UpdateAccountSettingsSchema = z.object({
   currencyPref: z.enum(['USD', 'EUR', 'GBP', 'IDR', 'SGD']).optional(),
   defaultTimezone: z.string().max(64).optional(),
   weekStartsOn: z.enum(['Sunday', 'Monday']).optional(),
-  dateFormat: z.enum(['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD']).optional(),
+  dateFormat: z
+    .enum([
+      'MM/DD/YYYY',
+      'DD/MM/YYYY',
+      'YYYY-MM-DD',
+      'MMM D, YYYY',
+      'MMMM D, YYYY',
+      'D MMM YYYY',
+    ])
+    .optional(),
   alertsEmail: z.boolean().optional(),
   weeklyReport: z.boolean().optional(),
   marketingOptIn: z.boolean().optional(),
