@@ -124,6 +124,17 @@ export const accountApi = {
   listConnections: (token: string) =>
     apiFetch<Connection[]>('/account/connections', { headers: auth(token) }),
 
+  exportData: (token: string) =>
+    apiFetch<Record<string, unknown>>('/account/export', {
+      headers: auth(token),
+    }),
+
+  deleteAccount: (token: string, id: number) =>
+    apiFetch<unknown>(`/users/${id}`, {
+      method: 'DELETE',
+      headers: auth(token),
+    }),
+
   unlinkConnection: (token: string, provider: string) =>
     apiFetch<Connection[]>(`/account/connections/${provider}`, {
       method: 'DELETE',

@@ -10,6 +10,7 @@ import { EmailCard } from '@/features/account/components/profile/EmailCard'
 import { PhoneCard } from '@/features/account/components/profile/PhoneCard'
 import { OrganizationCard } from '@/features/account/components/profile/OrganizationCard'
 import { SecurityOverviewCard } from '@/features/account/components/profile/SecurityOverviewCard'
+import { DangerZoneCard } from '@/features/account/components/profile/DangerZoneCard'
 
 export default function ProfilePage() {
   const { error: loadError, isLoading } = useProfile()
@@ -42,6 +43,7 @@ export default function ProfilePage() {
           <PhoneCard />
           <OrganizationCard />
           <SecurityOverviewCard />
+          <DangerZoneCard />
         </>
       )}
     </div>
