@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@source '../**/*.{ts,tsx}';
+
 @import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
@@ -119,6 +121,10 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  input[type='date']::-webkit-calendar-picker-indicator {
+    margin-inline-start: auto;
+    cursor: pointer;
   }
 }
 

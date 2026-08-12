@@ -34,7 +34,7 @@ export function generateTrustedDeviceToken(): string {
 
 /**
  * SHA-256 of a trusted-device token for storage/lookup. Fast hashing is correct
- * here — the token is already high-entropy random, unlike a password.
+ * here - the token is already high-entropy random, unlike a password.
  */
 export function hashTrustedDeviceToken(token: string): string {
   return createHash('sha256').update(token).digest('hex')

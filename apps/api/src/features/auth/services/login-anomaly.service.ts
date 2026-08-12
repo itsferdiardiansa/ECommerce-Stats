@@ -28,7 +28,7 @@ export interface FailureContext {
 }
 
 /**
- * Risk assessment for login attempts. Pure detection — it never sends
+ * Risk assessment for login attempts. Pure detection - it never sends
  * notifications or mutates auth state.
  *
  * Hot paths are served from Redis so detection stays cheap at high request
@@ -64,7 +64,7 @@ export class LoginAnomalyService {
 
   /**
    * Read-only risk evaluation for a successful password check. Used to decide
-   * whether to challenge (step-up) *before* a session is issued — it does NOT
+   * whether to challenge (step-up) *before* a session is issued - it does NOT
    * mutate the known-factor cache, so calling it can't mark the current device
    * as "known" and suppress its own signal.
    */

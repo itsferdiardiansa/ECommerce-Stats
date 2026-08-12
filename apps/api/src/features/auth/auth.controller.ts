@@ -40,16 +40,23 @@ import { CurrentUser } from '@/common/decorators/current-user.decorator'
 import { RequireSudo } from '@/common/decorators/require-sudo.decorator'
 import type { CurrentUserPayload } from '@/common/decorators/current-user.decorator'
 import { MyLockoutResponseDto } from './dto/my-lockout-response.dto'
+import { getProfile } from '@rufieltics/db/domains/identity/user'
+import { OrganizationMembers } from '@rufieltics/db/domains/identity/organization'
 import { VerificationStore } from '@/modules/redis/stores'
 import { JwtService } from '@/modules/jwt/jwt.service'
 import configuration from '@/config/configuration'
-import { authThrottle, stepUpThrottle } from '@/common/helpers/throttle.helper'
+import {
+  authThrottle,
+  passkeyThrottle,
+  stepUpThrottle,
+} from '@/common/helpers/throttle.helper'
 
 const config = configuration()
 
 @Controller('auth')
 export class AuthController {
   private readonly AUTH_COOKIE_PATH = '/api/v1/auth'
+  private readonly DEVICE_COOKIE_PATH = '/api/v1'
 
   constructor(
     private readonly authService: AuthService,
@@ -65,9 +72,16 @@ export class AuthController {
     return {
       httpOnly: true,
       secure: config.nodeEnv === 'production',
-      sameSite: 'strict',
+      sameSite: config.nodeEnv === 'production' ? 'strict' : 'lax',
       path: this.AUTH_COOKIE_PATH,
       maxAge: this.jwtService.getRefreshExpiresIn() * 1000,
+    }
+  }
+
+  private getDeviceCookieOptions(): CookieOptions {
+    return {
+      ...this.getCookieOptions(),
+      path: this.DEVICE_COOKIE_PATH,
     }
   }
 
@@ -75,7 +89,7 @@ export class AuthController {
     return {
       httpOnly: true,
       secure: config.nodeEnv === 'production',
-      sameSite: 'strict',
+      sameSite: config.nodeEnv === 'production' ? 'strict' : 'lax',
       path: this.AUTH_COOKIE_PATH,
       maxAge: ttlSeconds * 1000,
     }
@@ -136,7 +150,8 @@ export class AuthController {
       i18n,
       ipAddress,
       userAgent,
-      trustedDeviceToken
+      trustedDeviceToken,
+      req.cookies?.deviceSecret as string | undefined
     )
 
     if ('stepUpRequired' in loginResult) {
@@ -155,7 +170,7 @@ export class AuthController {
     const { refreshToken, rawDeviceSecret, ...result } = loginResult
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
-    res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
+    res.cookie('deviceSecret', rawDeviceSecret, this.getDeviceCookieOptions())
 
     return success(i18n.t('auth.login.success'), result)
   }
@@ -179,6 +194,7 @@ export class AuthController {
     @I18n() i18n: I18nContext,
     @Ip() ipAddress: string,
     @Headers('user-agent') userAgent: string,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response
   ) {
     const {
@@ -194,11 +210,12 @@ export class AuthController {
       i18n,
       ipAddress,
       userAgent,
-      dto.trustDevice
+      dto.trustDevice,
+      req.cookies?.deviceSecret as string | undefined
     )
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
-    res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
+    res.cookie('deviceSecret', rawDeviceSecret, this.getDeviceCookieOptions())
     if (trustedDeviceToken) {
       res.cookie(
         'trustedDevice',
@@ -211,7 +228,7 @@ export class AuthController {
   }
 
   @Post('login/passkey/options')
-  @Throttle(authThrottle())
+  @Throttle(passkeyThrottle())
   @HttpCode(HttpStatus.OK)
   async passkeyLoginOptions(
     @Body() dto: PasskeyOptionsDto,
@@ -225,13 +242,14 @@ export class AuthController {
   }
 
   @Post('login/passkey/verify')
-  @Throttle(authThrottle())
+  @Throttle(passkeyThrottle())
   @HttpCode(HttpStatus.OK)
   async passkeyLoginVerify(
     @Body() dto: VerifyPasskeyLoginDto,
     @I18n() i18n: I18nContext,
     @Ip() ipAddress: string,
     @Headers('user-agent') userAgent: string,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response
   ) {
     const {
@@ -246,11 +264,12 @@ export class AuthController {
       i18n,
       ipAddress,
       userAgent,
-      dto.trustDevice
+      dto.trustDevice,
+      req.cookies?.deviceSecret as string | undefined
     )
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
-    res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
+    res.cookie('deviceSecret', rawDeviceSecret, this.getDeviceCookieOptions())
     if (trustedDeviceToken) {
       res.cookie(
         'trustedDevice',
@@ -263,7 +282,7 @@ export class AuthController {
   }
 
   @Post('login/passkey/discover')
-  @Throttle(authThrottle())
+  @Throttle(passkeyThrottle())
   @HttpCode(HttpStatus.OK)
   async passkeyDiscover(@I18n() i18n: I18nContext) {
     const result = await this.loginService.beginPasskeyDiscovery()
@@ -271,13 +290,14 @@ export class AuthController {
   }
 
   @Post('login/passkey/authenticate')
-  @Throttle(authThrottle())
+  @Throttle(passkeyThrottle())
   @HttpCode(HttpStatus.OK)
   async passkeyAuthenticate(
     @Body() dto: PasswordlessAuthDto,
     @I18n() i18n: I18nContext,
     @Ip() ipAddress: string,
     @Headers('user-agent') userAgent: string,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response
   ) {
     const { refreshToken, rawDeviceSecret, ...result } =
@@ -286,11 +306,12 @@ export class AuthController {
         dto.response as unknown as AuthenticationResponseJSON,
         i18n,
         ipAddress,
-        userAgent
+        userAgent,
+        req.cookies?.deviceSecret as string | undefined
       )
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
-    res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
+    res.cookie('deviceSecret', rawDeviceSecret, this.getDeviceCookieOptions())
 
     return success(i18n.t('auth.login.success'), result)
   }
@@ -312,16 +333,19 @@ export class AuthController {
       )
     }
 
+    const existingDeviceSecret = req.cookies?.deviceSecret as string | undefined
+
     const { refreshToken, rawDeviceSecret, ...result } =
       await this.authService.refreshToken(
         { refreshToken: token },
         i18n,
         ipAddress,
-        userAgent
+        userAgent,
+        existingDeviceSecret
       )
 
     res.cookie('refreshToken', refreshToken, this.getCookieOptions())
-    res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
+    res.cookie('deviceSecret', rawDeviceSecret, this.getDeviceCookieOptions())
 
     return success(i18n.t('auth.refresh.success'), result)
   }
@@ -337,7 +361,7 @@ export class AuthController {
   ) {
     await this.authService.logout(user.jti)
     res.clearCookie('refreshToken', { path: this.AUTH_COOKIE_PATH })
-    res.clearCookie('deviceSecret', { path: this.AUTH_COOKIE_PATH })
+    res.clearCookie('deviceSecret', { path: this.DEVICE_COOKIE_PATH })
     return success(i18n.t('auth.logout.success'), null)
   }
 
@@ -356,12 +380,36 @@ export class AuthController {
     const result = await this.authService.changePassword(
       user.id,
       user.jti,
+      user.fph,
       dto.password,
       i18n,
       ipAddress,
       userAgent
     )
     return success(result.message, null)
+  }
+
+  @Get('me')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ActiveUserGuard)
+  async me(@CurrentUser() user: CurrentUserPayload, @I18n() i18n: I18nContext) {
+    const profile = await getProfile(user.id)
+    const memberships = await OrganizationMembers.listByUser(user.id)
+    const primary = memberships[0] ?? null
+    const organization = primary
+      ? {
+          id: primary.organization.id,
+          name: primary.organization.name,
+          role: primary.role,
+          memberCount: await OrganizationMembers.countByOrg(
+            primary.organizationId
+          ),
+        }
+      : null
+    return success(i18n.t('common.success.generic'), {
+      ...profile,
+      organization,
+    })
   }
 
   @Get('trusted-devices')
@@ -448,7 +496,7 @@ export class AuthController {
 
     if (dto.jtis.includes(user.jti)) {
       res.clearCookie('refreshToken', { path: this.AUTH_COOKIE_PATH })
-      res.clearCookie('deviceSecret', { path: this.AUTH_COOKIE_PATH })
+      res.clearCookie('deviceSecret', { path: this.DEVICE_COOKIE_PATH })
     }
 
     return success(result.message, null)

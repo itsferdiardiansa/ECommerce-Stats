@@ -5,8 +5,8 @@ import Providers from '@/components/layout/Providers'
 import ThemeProvider from '@/components/layout/theme-toggle/ThemeProvider'
 import { fontVariables } from '@/lib/font'
 import { cn } from '@/lib/utils'
+import { appName } from '@/config/site'
 import './globals.css'
-import './theme.css'
 
 const META_THEME_COLORS = {
   light: '#ffffff',
@@ -14,8 +14,8 @@ const META_THEME_COLORS = {
 }
 
 export const metadata: Metadata = {
-  title: 'E-commerce Analytics Dashboard',
-  description: 'An analytics dashboard template for e-commerce businesses.',
+  title: { default: appName, template: `${appName} | %s` },
+  description: 'Manage your account, security, and store analytics.',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: META_THEME_COLORS.light },
     { media: '(prefers-color-scheme: dark)', color: META_THEME_COLORS.dark },

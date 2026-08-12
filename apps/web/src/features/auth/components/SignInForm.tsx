@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Form } from '@/components/ui/Form'
+import { Form } from '@/components/ui/form'
 import { Button } from '@/components/ui/button'
 import { useLogin } from '../hooks/useAuthMutations'
 import { useAuth } from '../context/AuthContext'
@@ -18,16 +18,31 @@ import { PasskeyAutofill } from './PasskeyAutofill'
 import { GoogleButton } from './GoogleButton'
 import { Turnstile } from './Turnstile'
 import { env } from '@/config/env'
+import { safeNextPath } from '@/lib/next-path'
 
-export function SignInForm() {
+export function SignInForm({ next }: { next?: string }) {
   const router = useRouter()
   const { setSession } = useAuth()
   const { mutate, isPending, isSuccess, error } = useLogin()
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [captchaKey, setCaptchaKey] = useState(0)
   const [captchaError, setCaptchaError] = useState<string | null>(null)
+  const [locked, setLocked] = useState(false)
+  const lockRef = useRef(false)
   const awaitingCaptcha = env.captcha.enabled && !captchaToken
-  const formDisabled = awaitingCaptcha || isPending || isSuccess
+  const busy = locked || isPending || isSuccess
+  const formDisabled = awaitingCaptcha || busy
+
+  const acquire = () => {
+    if (lockRef.current) return false
+    lockRef.current = true
+    setLocked(true)
+    return true
+  }
+  const release = () => {
+    lockRef.current = false
+    setLocked(false)
+  }
 
   const form = useForm<SignInValues>({
     resolver: zodResolver(signInSchema),
@@ -36,6 +51,7 @@ export function SignInForm() {
 
   function onSubmit(values: SignInValues) {
     if (awaitingCaptcha) return
+    if (!acquire()) return
     mutate(
       { ...values, captchaToken: captchaToken ?? undefined },
       {
@@ -47,13 +63,17 @@ export function SignInForm() {
               methods: res.availableMethods.join(','),
               email: values.email,
             })
+            if (next) params.set('next', next)
             router.push(`/sign-in/challenge?${params.toString()}`)
             return
           }
           setSession(res.accessToken, { email: values.email })
-          router.push('/security')
+          router.push(safeNextPath(next))
         },
-        onError: () => setCaptchaKey(k => k + 1),
+        onError: () => {
+          release()
+          setCaptchaKey(k => k + 1)
+        },
       }
     )
   }
@@ -106,7 +126,7 @@ export function SignInForm() {
         <Button
           type="submit"
           className="w-full"
-          disabled={awaitingCaptcha}
+          disabled={formDisabled}
           loading={isPending || isSuccess}
         >
           {isPending ? 'Signing in…' : 'Sign in'}
@@ -117,8 +137,13 @@ export function SignInForm() {
           <span className="text-muted-foreground text-xs">or</span>
           <span className="bg-border h-px flex-1" />
         </div>
-        <GoogleButton />
-        <PasskeyAutofill />
+        <GoogleButton disabled={busy} onStart={acquire} />
+        <PasskeyAutofill
+          next={next}
+          disabled={busy}
+          onStart={acquire}
+          onStop={release}
+        />
       </form>
     </Form>
   )

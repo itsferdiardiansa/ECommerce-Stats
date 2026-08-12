@@ -155,8 +155,12 @@ export class MfaService {
     this.emitMethodChange(userId, 'totp', false, ipAddress, userAgent)
   }
 
-  async beginPasskeyEnrolment(userId: number, i18n: I18nContext) {
-    return this.passkeyService.beginRegistration(userId, i18n)
+  async beginPasskeyEnrolment(
+    userId: number,
+    i18n: I18nContext,
+    attachment?: 'platform' | 'cross-platform'
+  ) {
+    return this.passkeyService.beginRegistration(userId, i18n, attachment)
   }
 
   async confirmPasskeyEnrolment(

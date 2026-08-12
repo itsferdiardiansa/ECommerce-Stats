@@ -2,6 +2,8 @@ import { env } from '@/config/env'
 
 const BASE_URL = env.apiUrl
 
+const DEFAULT_TIMEOUT_MS = 15000
+
 /** Thrown for any non-2xx API response; carries the server's message + status. */
 export class ApiError extends Error {
   readonly status: number
@@ -15,6 +17,14 @@ export class ApiError extends Error {
   }
 }
 
+/** Thrown when a request exceeds its timeout and the user doesn't retry. */
+export class TimeoutError extends Error {
+  constructor(message = 'The request timed out.') {
+    super(message)
+    this.name = 'TimeoutError'
+  }
+}
+
 interface ApiEnvelope<T> {
   message?: string
   data?: T
@@ -22,14 +32,53 @@ interface ApiEnvelope<T> {
 }
 
 export interface ApiRequest extends Omit<RequestInit, 'body'> {
-  /** JSON-serializable payload — sets Content-Type and serializes for you. */
+  /** JSON-serializable payload - sets Content-Type and serializes for you. */
   json?: unknown
   /** Raw body, when `json` isn't appropriate (form data, etc.). */
   body?: BodyInit | null
   /** Bearer token for the Authorization header. */
   token?: string
-  /** Abort the request after this many milliseconds. */
+  /** Abort after this many ms. Defaults to 15s; pass 0 to disable. */
   timeoutMs?: number
+  /** Skip the automatic refresh-on-401 retry (used by the refresh call itself). */
+  skipAuthRefresh?: boolean
+  /** Skip the timeout retry prompt; a plain TimeoutError is thrown instead. */
+  skipTimeoutPrompt?: boolean
+}
+
+type RefreshFn = () => Promise<string | null>
+type UnauthorizedFn = () => void
+type TimeoutFn = (actions: { retry: () => void; giveUp: () => void }) => void
+
+let refreshFn: RefreshFn | null = null
+let unauthorizedFn: UnauthorizedFn | null = null
+let timeoutFn: TimeoutFn | null = null
+
+export function configureApiAuth(handlers: {
+  refresh: RefreshFn
+  onUnauthorized: UnauthorizedFn
+}) {
+  refreshFn = handlers.refresh
+  unauthorizedFn = handlers.onUnauthorized
+}
+
+/** Wire up how a request timeout surfaces to the user (e.g. a retry toast). */
+export function configureApiTimeout(handler: TimeoutFn | null) {
+  timeoutFn = handler
+}
+
+function accessTokenExpired(authorization: string | undefined): boolean {
+  if (!authorization) return false
+  const segment = authorization.slice(7).split('.')[1]
+  if (!segment) return false
+  try {
+    const base64 = segment.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
+    const payload = JSON.parse(atob(padded)) as { exp?: number }
+    return typeof payload.exp === 'number' && Date.now() >= payload.exp * 1000
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -50,32 +99,65 @@ export async function apiFetch<T>(
     headers,
     signal,
     credentials,
+    skipAuthRefresh,
+    skipTimeoutPrompt,
     ...rest
   } = options
 
-  const controller = timeoutMs != null ? new AbortController() : undefined
+  const effectiveTimeout =
+    timeoutMs === 0 ? undefined : (timeoutMs ?? DEFAULT_TIMEOUT_MS)
+  const useOwnTimeout = signal == null && effectiveTimeout != null
+  let timedOut = false
+  const controller = useOwnTimeout ? new AbortController() : undefined
   const timer = controller
-    ? setTimeout(() => controller.abort(), timeoutMs)
+    ? setTimeout(() => {
+        timedOut = true
+        controller.abort()
+      }, effectiveTimeout)
     : undefined
 
-  try {
-    const res = await fetch(`${BASE_URL}${path}`, {
+  const baseHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(headers as Record<string, string> | undefined),
+  }
+  const authenticated = 'Authorization' in baseHeaders
+
+  const send = (requestHeaders: Record<string, string>) =>
+    fetch(`${BASE_URL}${path}`, {
       ...rest,
       credentials: credentials ?? 'include',
       signal: signal ?? controller?.signal,
       body: json !== undefined ? JSON.stringify(json) : body,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...headers,
-      },
+      headers: requestHeaders,
     })
 
-    let envelope: ApiEnvelope<T> = {}
+  const readEnvelope = async (res: Response): Promise<ApiEnvelope<T>> => {
     try {
-      envelope = (await res.json()) as ApiEnvelope<T>
+      return (await res.json()) as ApiEnvelope<T>
     } catch {
-      // no/invalid JSON body
+      return {}
+    }
+  }
+
+  try {
+    let res = await send(baseHeaders)
+    let envelope = await readEnvelope(res)
+
+    if (res.status === 401 && authenticated && !skipAuthRefresh && refreshFn) {
+      const sessionInvalid = envelope.error?.code === 'SESSION_INVALID'
+      if (sessionInvalid || accessTokenExpired(baseHeaders.Authorization)) {
+        const newToken = await refreshFn()
+        if (newToken) {
+          res = await send({
+            ...baseHeaders,
+            Authorization: `Bearer ${newToken}`,
+          })
+          envelope = await readEnvelope(res)
+        } else {
+          unauthorizedFn?.()
+        }
+      }
     }
 
     if (!res.ok) {
@@ -87,6 +169,19 @@ export async function apiFetch<T>(
     }
 
     return envelope.data as T
+  } catch (err) {
+    const aborted = (err as { name?: string } | null)?.name === 'AbortError'
+    const isTimeout = timedOut && aborted
+    if (!isTimeout) throw err
+    if (skipTimeoutPrompt || !timeoutFn) throw new TimeoutError()
+    return await new Promise<T>((resolve, reject) => {
+      timeoutFn?.({
+        retry: () => {
+          apiFetch<T>(path, options).then(resolve, reject)
+        },
+        giveUp: () => reject(new TimeoutError()),
+      })
+    })
   } finally {
     if (timer) clearTimeout(timer)
   }

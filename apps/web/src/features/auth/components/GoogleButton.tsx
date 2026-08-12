@@ -29,8 +29,12 @@ function GoogleIcon() {
 
 export function GoogleButton({
   label = 'Continue with Google',
+  disabled = false,
+  onStart,
 }: {
   label?: string
+  disabled?: boolean
+  onStart?: () => boolean
 }) {
   const [pending, setPending] = useState(false)
 
@@ -41,8 +45,10 @@ export function GoogleButton({
       type="button"
       variant="outline"
       className="w-full gap-2"
+      disabled={disabled}
       loading={pending}
       onClick={() => {
+        if (onStart && !onStart()) return
         setPending(true)
         window.location.href = `${env.apiUrl}/auth/oauth/google`
       }}

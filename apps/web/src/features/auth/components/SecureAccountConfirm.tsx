@@ -51,7 +51,7 @@ export function SecureAccountConfirm({ token }: { token: string }) {
         <FormError message={error} />
         <p className="text-muted-foreground text-sm">
           This link may have already been used or expired. If you&rsquo;re still
-          worried about your account, reset your password now — it signs out
+          worried about your account, reset your password now - it signs out
           every device and locks out anyone who knew your old password.
         </p>
         <Button asChild className="w-full">

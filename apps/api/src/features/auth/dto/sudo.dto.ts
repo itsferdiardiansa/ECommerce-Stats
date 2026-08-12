@@ -19,5 +19,9 @@ export const SudoSchema = z
       path: ['password'],
     }
   )
+  .refine(v => v.method !== 'totp' || !v.code || /^\d{6}$/.test(v.code), {
+    message: 'auth.validation.code_numeric',
+    path: ['code'],
+  })
 
 export class SudoDto extends createZodDto(SudoSchema) {}

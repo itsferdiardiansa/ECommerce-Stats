@@ -22,7 +22,7 @@ const ALWAYS_DELIVER = new Set<SecurityNotificationKind>([
  * Entry point for security notifications. Deduplicates cheaply in Redis (so a
  * repeated signal doesn't flood the queue or the user's inbox), then enqueues a
  * durable delivery job. Recipient resolution, preference checks, and rendering
- * happen in the worker — keeping this path light.
+ * happen in the worker - keeping this path light.
  */
 @Injectable()
 export class NotificationService {
@@ -88,7 +88,7 @@ export class NotificationService {
 
   /**
    * Collapses repeats within the dedupe window. Deliberate account changes are
-   * never collapsed — each one must reach the owner.
+   * never collapsed - each one must reach the owner.
    */
   private dedupeKey(job: SecurityNotificationJob): string {
     let scope: string

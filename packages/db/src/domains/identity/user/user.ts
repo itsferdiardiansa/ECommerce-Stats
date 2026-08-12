@@ -83,7 +83,7 @@ export async function getSecurityNotificationTarget(userId: number) {
   }
 }
 
-/** Minimal fields needed to mint an access token — no relations. */
+/** Minimal fields needed to mint an access token - no relations. */
 export async function getSessionUser(userId: number) {
   return db.user.findFirst({
     where: { id: userId, deletedAt: null },
@@ -91,7 +91,25 @@ export async function getSessionUser(userId: number) {
   })
 }
 
-/** Credential lookup for re-authentication — no relations, no over-fetch. */
+/** Credential lookup for re-authentication - no relations, no over-fetch. */
+export async function getProfile(userId: number) {
+  return db.user.findFirst({
+    where: { id: userId, deletedAt: null },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      name: true,
+      avatar: true,
+      phone: true,
+      emailVerifiedAt: true,
+      phoneVerifiedAt: true,
+      isTwoFactorEnabled: true,
+      createdAt: true,
+    },
+  })
+}
+
 export async function getUserLockState(userId: number) {
   return db.user.findUnique({
     where: { id: userId },
@@ -255,11 +273,14 @@ export async function deleteUser(id: number) {
   }
 
   // Perform soft delete
+  const now = new Date()
   return db.user.update({
     where: { id },
     data: {
-      deletedAt: new Date(),
-      isActive: false, // Also deactivate the user
+      deletedAt: now,
+      isActive: false,
+      email: `deleted+${id}.${now.getTime()}@deleted.invalid`,
+      username: `deleted_${id}_${now.getTime()}`,
     },
     select: {
       id: true,

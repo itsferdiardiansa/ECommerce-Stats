@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Form } from '@/components/ui/Form'
+import { Form } from '@/components/ui/form'
 import { Button } from '@/components/ui/button'
 import { useForgotPassword } from '../hooks/useAuthMutations'
 import {
@@ -77,7 +77,7 @@ export function ForgotPasswordForm() {
             className="rounded-md bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400"
           >
             If an account exists for that email, we&apos;ve sent a link to reset
-            your password. Check your inbox — the link expires in{' '}
+            your password. Check your inbox - the link expires in{' '}
             {LINK_VALIDITY_MINUTES} minutes.
           </p>
         )}

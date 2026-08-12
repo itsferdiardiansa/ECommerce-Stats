@@ -75,6 +75,16 @@
       "key": "reset_token",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "passkey_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "address_id",
+      "value": "1",
+      "type": "string"
     }
   ],
   "item": [
@@ -204,7 +214,7 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "login"]
             },
-            "description": "Login with email and password. Returns access + refresh tokens for a trusted sign-in. If the sign-in looks risky (new device/location), returns { stepUpRequired: true, challengeId } instead and emails a one-time code — complete it via 'Step Up (Verify OTP)'. The test script auto-saves either access_token or step_up_challenge_id.\n\nCAPTCHA (Cloudflare Turnstile): off unless CAPTCHA_ENABLED=true on the API. When on, captchaToken is required only AFTER this IP has failed ~3 logins within 15 min (below that it is ignored, so captchaToken is optional). With the default Turnstile TEST secret (always-passes) any token value works, so the included dummy token passes — to exercise the 403 'captcha required' path, set TURNSTILE_SECRET_KEY=2x0000000000000000000000000000000AA (always-fails) or send an empty captchaToken."
+            "description": "Login with email and password. Returns access + refresh tokens for a trusted sign-in. If the sign-in looks risky (new device/location), returns { stepUpRequired: true, challengeId } instead and emails a one-time code - complete it via 'Step Up (Verify OTP)'. The test script auto-saves either access_token or step_up_challenge_id.\n\nCAPTCHA (Cloudflare Turnstile): off unless CAPTCHA_ENABLED=true on the API. When on, captchaToken is required only AFTER this IP has failed ~3 logins within 15 min (below that it is ignored, so captchaToken is optional). With the default Turnstile TEST secret (always-passes) any token value works, so the included dummy token passes - to exercise the 403 'captcha required' path, set TURNSTILE_SECRET_KEY=2x0000000000000000000000000000000AA (always-fails) or send an empty captchaToken."
           },
           "response": [],
           "event": [
@@ -317,6 +327,104 @@
           ]
         },
         {
+          "name": "Passwordless: Begin Passkey Login (Discover)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept-Language", "value": "en" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n}" },
+            "url": {
+              "raw": "{{base_url}}/auth/login/passkey/discover",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "passkey", "discover"]
+            },
+            "description": "Passwordless start. No body. Returns { challengeId, options } for a discoverable-credential ceremony. The browser turns options into an assertion (Touch ID / security key), which is why the follow-up cannot be produced in Postman. Saves challengeId to {{passkey_login_challenge_id}}."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const d = pm.response.json().data;",
+                  "    if (d && d.challengeId) {",
+                  "        pm.collectionVariables.set('passkey_login_challenge_id', d.challengeId);",
+                  "        console.log('passkey_login_challenge_id saved');",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Passwordless: Authenticate (browser assertion required)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept-Language", "value": "en" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{passkey_login_challenge_id}}\",\n  \"response\": {}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login/passkey/authenticate",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "passkey", "authenticate"]
+            },
+            "description": "STUB - cannot be run from Postman. `response` must be a real WebAuthn assertion produced by a browser authenticator (Touch ID / Windows Hello / security key); there is no way to mint one here. On success it sets refreshToken + deviceSecret cookies and returns { accessToken, expiresIn }."
+          },
+          "response": []
+        },
+        {
+          "name": "Passkey Login Options - Step-up (browser)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept-Language", "value": "en" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{step_up_challenge_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login/passkey/options",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "passkey", "options"]
+            },
+            "description": "Step-up passkey (password-first login that then asks for a passkey). Returns assertion options for the given step-up challengeId. The assertion itself is browser-only."
+          },
+          "response": []
+        },
+        {
+          "name": "Passkey Login Verify - Step-up (browser assertion required)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept-Language", "value": "en" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{step_up_challenge_id}}\",\n  \"response\": {},\n  \"trustDevice\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login/passkey/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "passkey", "verify"]
+            },
+            "description": "STUB - cannot be run from Postman. Completes step-up passkey login; `response` must be a real browser WebAuthn assertion. Documented for completeness."
+          },
+          "response": []
+        },
+        {
           "name": "Refresh Token",
           "request": {
             "method": "POST",
@@ -368,7 +476,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{access_token}}",
-                "description": "Required — valid access token"
+                "description": "Required - valid access token"
               },
               {
                 "key": "Accept-Language",
@@ -613,7 +721,7 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "forgot-password"]
             },
-            "description": "Public. Always returns the same generic success (enumeration-safe). If the email exists, a single-use cryptographic reset token is emailed (view in Mailpit at http://localhost:8025) — copy it into {{reset_token}} for \"Reset Password\". Rate-limited like login."
+            "description": "Public. Always returns the same generic success (enumeration-safe). If the email exists, a single-use cryptographic reset token is emailed (view in Mailpit at http://localhost:8025) - copy it into {{reset_token}} for \"Reset Password\". Rate-limited like login."
           },
           "response": []
         },
@@ -821,7 +929,7 @@
     },
     {
       "name": "OAuth (Google)",
-      "description": "Sign in / sign up with Google (OpenID Connect, authorization-code + PKCE). These endpoints are browser-driven redirects, not JSON APIs — trigger the sign-in from a real browser. They are documented here for reference. Requires GOOGLE_CLIENT_ID/SECRET set on the API.",
+      "description": "Sign in / sign up with Google (OpenID Connect, authorization-code + PKCE). These endpoints are browser-driven redirects, not JSON APIs - trigger the sign-in from a real browser. They are documented here for reference. Requires GOOGLE_CLIENT_ID/SECRET set on the API.",
       "item": [
         {
           "name": "Google Sign-in (Redirect)",
@@ -833,7 +941,7 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "oauth", "google"]
             },
-            "description": "Starts the Google login. Responds 302 to Google's consent screen (sets a short-lived CSRF state + PKCE verifier in Redis). Open this URL in a browser — one button serves both sign-in and sign-up; the callback decides create-vs-login."
+            "description": "Starts the Google login. Responds 302 to Google's consent screen (sets a short-lived CSRF state + PKCE verifier in Redis). Open this URL in a browser - one button serves both sign-in and sign-up; the callback decides create-vs-login."
           },
           "response": []
         },
@@ -857,7 +965,7 @@
                 }
               ]
             },
-            "description": "Google redirects here after consent. Verifies state, exchanges the code, resolves-or-creates the user, sets httpOnly refreshToken + deviceSecret cookies, then 302s to the web app (OAUTH_SUCCESS_REDIRECT). On failure it 302s to OAUTH_FAILURE_REDIRECT. Invoked by Google automatically — not called by hand."
+            "description": "Google redirects here after consent. Verifies state, exchanges the code, resolves-or-creates the user, sets httpOnly refreshToken + deviceSecret cookies, then 302s to the web app (OAUTH_SUCCESS_REDIRECT). On failure it 302s to OAUTH_FAILURE_REDIRECT. Invoked by Google automatically - not called by hand."
           },
           "response": []
         }
@@ -1151,6 +1259,234 @@
       ]
     },
     {
+      "name": "Passkeys",
+      "item": [
+        {
+          "name": "List Passkeys",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/passkeys",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys"]
+            },
+            "description": "Lists the current user's passkeys (id, name, aaguid, transports, deviceType, backedUp, createdAt, lastUsedAt). No sudo required. Saves the first id to {{passkey_id}}."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const list = pm.response.json().data.passkeys || [];",
+                  "    if (list.length) {",
+                  "        pm.collectionVariables.set('passkey_id', list[0].id);",
+                  "        console.log('passkey_id set to', list[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Begin Passkey Registration (This Device)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/passkeys/options",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys", "options"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attachment\": \"platform\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Requires sudo. authenticatorAttachment=platform steers the browser to the built-in authenticator (Touch ID / Windows Hello). Returns WebAuthn creation options; the ceremony itself must run in a browser."
+          },
+          "response": []
+        },
+        {
+          "name": "Begin Passkey Registration (Another Device)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/passkeys/options",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys", "options"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attachment\": \"cross-platform\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Requires sudo. authenticatorAttachment=cross-platform makes the browser show its native cross-device (QR) / security-key flow. Attachment is optional; omit it to let the user choose."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Passkey Registration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/passkeys/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys", "verify"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"response\": {\n    \"id\": \"...\",\n    \"rawId\": \"...\",\n    \"type\": \"public-key\",\n    \"response\": {}\n  },\n  \"name\": \"My passkey\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Requires sudo. `response` is the RegistrationResponseJSON produced by the browser WebAuthn ceremony and cannot be generated in Postman. `name` is optional; when omitted the UI shows the provider name from the AAGUID."
+          },
+          "response": []
+        },
+        {
+          "name": "Rename Passkey",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/passkeys/{{passkey_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys", "{{passkey_id}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My MacBook\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Requires sudo. Renames the passkey. Run List Passkeys first to populate {{passkey_id}}."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Passkey",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/mfa/passkeys/{{passkey_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys", "{{passkey_id}}"]
+            },
+            "description": "Requires sudo. Removes the passkey. Run List Passkeys first to populate {{passkey_id}}."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Admin - Lockout Management",
       "description": "Admin-only endpoints for managing verification lockouts",
       "item": [
@@ -1358,6 +1694,337 @@
               "path": ["auth", "my-lockout"]
             },
             "description": "Check your own verification lockout status. Returns whether you're locked, the reason, expiry time, and remaining seconds/minutes. Authenticated users only."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Account",
+      "item": [
+        {
+          "name": "Get Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/account/settings",
+              "host": ["{{base_url}}"],
+              "path": ["account", "settings"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Settings",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/account/settings",
+              "host": ["{{base_url}}"],
+              "path": ["account", "settings"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bio\": \"Hi there\",\n  \"birthDate\": \"1990-05-01\",\n  \"gender\": \"male\",\n  \"languagePref\": \"en\",\n  \"currencyPref\": \"USD\",\n  \"defaultTimezone\": \"Asia/Jakarta\",\n  \"weekStartsOn\": \"Monday\",\n  \"dateFormat\": \"DD/MM/YYYY\",\n  \"alertsEmail\": true,\n  \"weeklyReport\": false,\n  \"marketingOptIn\": false\n}"
+            },
+            "description": "Partial update of profile preferences + notification toggles."
+          },
+          "response": []
+        },
+        {
+          "name": "List Addresses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/account/addresses",
+              "host": ["{{base_url}}"],
+              "path": ["account", "addresses"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Address",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/account/addresses",
+              "host": ["{{base_url}}"],
+              "path": ["account", "addresses"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Home\",\n  \"type\": \"shipping\",\n  \"street1\": \"123 Main St\",\n  \"street2\": \"Apt 4\",\n  \"city\": \"Jakarta\",\n  \"state\": \"DKI\",\n  \"postalCode\": \"10110\",\n  \"country\": \"Indonesia\",\n  \"phone\": \"+62812345678\",\n  \"isDefault\": true\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Address",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/account/addresses/{{address_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["account", "addresses", "{{address_id}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"city\": \"Bandung\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set Default Address",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/account/addresses/{{address_id}}/default",
+              "host": ["{{base_url}}"],
+              "path": ["account", "addresses", "{{address_id}}", "default"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Address",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/account/addresses/{{address_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["account", "addresses", "{{address_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Activity (paginated)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/account/activity?limit=5&cursor=",
+              "host": ["{{base_url}}"],
+              "path": ["account", "activity"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                },
+                {
+                  "key": "cursor",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Cursor-paginated login history for the last 28 days. Response: { items, nextCursor, total }."
+          },
+          "response": []
+        },
+        {
+          "name": "Export My Data",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/account/export",
+              "host": ["{{base_url}}"],
+              "path": ["account", "export"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Account (requires sudo)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["users", "{{user_id}}"]
+            },
+            "description": "Soft-deletes the current account. Sudo-guarded: call POST /auth/sudo first. Revokes all sessions and frees the email/username."
+          },
+          "response": []
+        },
+        {
+          "name": "List Connections",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/account/connections",
+              "host": ["{{base_url}}"],
+              "path": ["account", "connections"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Unlink Connection",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/account/connections/google",
+              "host": ["{{base_url}}"],
+              "path": ["account", "connections", "google"]
+            },
+            "description": "Disconnect an OAuth provider. Blocked if it is the only sign-in method."
           },
           "response": []
         }

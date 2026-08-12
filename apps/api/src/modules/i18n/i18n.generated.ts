@@ -5,6 +5,23 @@
 import type { Path } from "nestjs-i18n";
 /* prettier-ignore */
 export type I18nTranslations = {
+    "account": {
+        "settings": {
+            "updated": string;
+        };
+        "address": {
+            "created": string;
+            "updated": string;
+            "deleted": string;
+            "default_set": string;
+            "not_found": string;
+        };
+        "connection": {
+            "unlinked": string;
+            "not_found": string;
+            "last_method": string;
+        };
+    };
     "admin": {
         "lockouts": {
             "list_success": string;
@@ -111,6 +128,8 @@ export type I18nTranslations = {
             "too_many_attempts": string;
             "invalid_code": string;
             "invalid_passkey": string;
+            "attempts_remaining": string;
+            "attempts_last": string;
             "passkey_options": string;
         };
         "password": {

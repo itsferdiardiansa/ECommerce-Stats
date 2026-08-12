@@ -238,7 +238,7 @@ Logout and invalidate current session/token.
 
 ### 9. **Forgot Password** (POST `/auth/forgot-password`)
 
-Public. Starts account recovery. **Enumeration-safe** — always returns the same generic success whether or not the email exists. When it does, a **single-use cryptographic token** (256-bit, stored only as a SHA-256 hash, short TTL) is emailed. In dev, read it from **Mailpit** (`http://localhost:8025`) and copy into `{{reset_token}}`. Rate-limited like login.
+Public. Starts account recovery. **Enumeration-safe** - always returns the same generic success whether or not the email exists. When it does, a **single-use cryptographic token** (256-bit, stored only as a SHA-256 hash, short TTL) is emailed. In dev, read it from **Mailpit** (`http://localhost:8025`) and copy into `{{reset_token}}`. Rate-limited like login.
 
 **Request body:**
 
@@ -288,7 +288,7 @@ Confirms the code sent to the new address and updates the account email (marked 
 
 ## OAuth (Google) Endpoints
 
-Sign in / sign up with Google using OpenID Connect (**authorization-code + PKCE**, verified server-side). These are **browser-driven redirects**, not JSON APIs — trigger them from a real browser, not from Postman's request runner. One button serves both sign-in and sign-up; the callback decides create-vs-login.
+Sign in / sign up with Google using OpenID Connect (**authorization-code + PKCE**, verified server-side). These are **browser-driven redirects**, not JSON APIs - trigger them from a real browser, not from Postman's request runner. One button serves both sign-in and sign-up; the callback decides create-vs-login.
 
 **Setup:** set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` on the API, and register `GOOGLE_REDIRECT_URI` (`http://localhost:6001/api/v1/auth/oauth/google/callback`) as an authorized redirect URI in the Google Cloud console. When `GOOGLE_CLIENT_ID` is unset the endpoints are disabled.
 

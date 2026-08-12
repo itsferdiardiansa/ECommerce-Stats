@@ -65,14 +65,6 @@ export default async function SecureAccountPage({
           >
             This security link is invalid, already used, or has expired.
           </p>
-          {/* <p className="text-muted-foreground text-sm">
-            If you&rsquo;re still worried about your account, reset your
-            password now — it signs out every device and locks out anyone who
-            knew your old password.
-          </p> */}
-          {/* <Button asChild className="w-full">
-            <Link href="/forgot-password">Reset your password</Link>
-          </Button> */}
           <p className="text-muted-foreground text-center text-xs">
             Still need help? Contact support.
           </p>

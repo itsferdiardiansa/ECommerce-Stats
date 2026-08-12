@@ -302,7 +302,8 @@ export class StepUpService {
     i18n: I18nContext,
     ipAddress?: string,
     userAgent?: string,
-    trustDevice = false
+    trustDevice = false,
+    reuseDeviceSecret?: string
   ) {
     const challenge =
       await this.stepUpStore.getChallenge<StepUpChallenge>(challengeId)
@@ -369,7 +370,13 @@ export class StepUpService {
       )
     }
 
-    return this.completeStepUp(challenge, ipAddress, userAgent, trustDevice)
+    return this.completeStepUp(
+      challenge,
+      ipAddress,
+      userAgent,
+      trustDevice,
+      reuseDeviceSecret
+    )
   }
 
   /** Issues assertion options for a passkey step-up already under way. */
@@ -396,7 +403,8 @@ export class StepUpService {
     i18n: I18nContext,
     ipAddress?: string,
     userAgent?: string,
-    trustDevice = false
+    trustDevice = false,
+    reuseDeviceSecret?: string
   ) {
     const challenge =
       await this.stepUpStore.getChallenge<StepUpChallenge>(challengeId)
@@ -417,7 +425,8 @@ export class StepUpService {
     const verifiedUserId = await this.passkeyService.finishAuthentication(
       'login',
       challengeId,
-      response
+      response,
+      userAgent
     )
 
     if (verifiedUserId !== challenge.userId) {
@@ -439,7 +448,13 @@ export class StepUpService {
     await this.voidStepUpChallenge(challengeId, challenge.userId)
     await this.stepUpStore.resetUserFailures(challenge.userId)
 
-    return this.completeStepUp(challenge, ipAddress, userAgent, trustDevice)
+    return this.completeStepUp(
+      challenge,
+      ipAddress,
+      userAgent,
+      trustDevice,
+      reuseDeviceSecret
+    )
   }
 
   private stepUpExpectsKey(challenge: StepUpChallenge): string {
@@ -457,23 +472,29 @@ export class StepUpService {
     challenge: StepUpChallenge,
     ipAddress: string | undefined,
     userAgent: string | undefined,
-    trustDevice: boolean
+    trustDevice: boolean,
+    reuseDeviceSecret?: string
   ) {
     const sessionUserAgent = challenge.userAgent ?? userAgent
     const sessionIpAddress = challenge.ipAddress ?? ipAddress
 
-    const { geo, deviceFingerprint, ...session } =
-      await this.authService.initiateSession(
-        {
-          id: challenge.userId,
-          email: challenge.email,
-          isStaff: challenge.isStaff,
-        },
-        challenge.role,
-        challenge.orgId,
-        sessionUserAgent,
-        sessionIpAddress
-      )
+    const {
+      geo,
+      deviceFingerprint,
+      jti: _jti,
+      ...session
+    } = await this.authService.initiateSession(
+      {
+        id: challenge.userId,
+        email: challenge.email,
+        isStaff: challenge.isStaff,
+      },
+      challenge.role,
+      challenge.orgId,
+      sessionUserAgent,
+      sessionIpAddress,
+      reuseDeviceSecret
+    )
 
     this.eventEmitter.emit(
       AUTH_EVENTS.LOGIN_SUCCESS,

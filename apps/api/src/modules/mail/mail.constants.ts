@@ -5,7 +5,7 @@ export const MAIL_QUEUE = 'mail'
  * on jump ahead of fire-and-forget notifications.
  */
 export const MailPriority = {
-  HIGH: 1, // OTP / verification / password reset — user is waiting
+  HIGH: 1, // OTP / verification / password reset - user is waiting
   NORMAL: 5, // security notifications, welcome, etc.
   LOW: 10,
 } as const

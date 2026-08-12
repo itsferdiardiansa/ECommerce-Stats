@@ -6,8 +6,8 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/Form'
-import { Input } from '@/components/ui/Input'
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/form/input'
 
 interface TextFieldProps<T extends FieldValues> {
   control: Control<T>
@@ -20,6 +20,7 @@ interface TextFieldProps<T extends FieldValues> {
   description?: string
   maxLength?: number
   disabled?: boolean
+  sanitize?: (value: string) => string
 }
 
 /** Reusable labelled text field wired to react-hook-form + the Form a11y layer. */
@@ -34,6 +35,7 @@ export function TextField<T extends FieldValues>({
   description,
   maxLength,
   disabled,
+  sanitize,
 }: TextFieldProps<T>) {
   return (
     <FormField
@@ -51,6 +53,11 @@ export function TextField<T extends FieldValues>({
               maxLength={maxLength}
               disabled={disabled}
               {...field}
+              onChange={
+                sanitize
+                  ? e => field.onChange(sanitize(e.target.value))
+                  : field.onChange
+              }
             />
           </FormControl>
           {description ? (

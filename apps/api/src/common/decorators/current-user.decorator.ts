@@ -9,6 +9,7 @@ export interface CurrentUserPayload {
   role: string | null
   orgId: string | null
   jti: string
+  fph: string
 }
 
 interface RequestWithUser {

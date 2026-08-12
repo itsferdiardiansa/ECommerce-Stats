@@ -79,3 +79,34 @@ export function formatDevice(userAgent?: string | null): string | null {
   if (!ua.browser.name && !ua.os.name) return null
   return `${ua.browser.name ?? 'Unknown browser'} on ${ua.os.name ?? 'Unknown OS'}`
 }
+
+export interface DeviceDescription {
+  browser: string | null
+  os: string | null
+  deviceType: 'desktop' | 'mobile' | 'tablet'
+  deviceName: string | null
+  location: string | null
+}
+
+export function describeSession(
+  userAgent?: string | null,
+  ipAddress?: string | null
+): DeviceDescription {
+  const ua = new UAParser(userAgent ?? '').getResult()
+  const rawType = ua.device.type
+  const deviceType =
+    rawType === 'mobile' || rawType === 'tablet' ? rawType : 'desktop'
+  const deviceName =
+    ua.device.model ??
+    ua.device.vendor ??
+    (deviceType === 'desktop' ? (ua.os.name ?? 'Computer') : null)
+  const geo = ipAddress ? geoip.lookup(ipAddress) : null
+
+  return {
+    browser: ua.browser.name ?? null,
+    os: ua.os.name ?? null,
+    deviceType,
+    deviceName,
+    location: geo?.country || null,
+  }
+}

@@ -17,7 +17,7 @@ export type SecurityMethod = 'totp' | 'passkey' | 'trusted_device'
 
 /**
  * The delivery *intent* placed on the queue. The worker resolves the recipient,
- * checks the user's preference, and renders the email — keeping those DB reads
+ * checks the user's preference, and renders the email - keeping those DB reads
  * off the request-adjacent path. Deduplication happens before enqueue.
  */
 export interface SecurityNotificationJob {

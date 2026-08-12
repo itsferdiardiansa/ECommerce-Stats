@@ -3,7 +3,7 @@ import type { MailTransport, MailMessage } from '../mail-transport.interface'
 
 /**
  * Default transport for local/dev and any environment without SMTP configured.
- * It doesn't send anything — it logs the message that *would* be sent, so the
+ * It doesn't send anything - it logs the message that *would* be sent, so the
  * full notification path is observable end-to-end without a mail provider.
  */
 @Injectable()

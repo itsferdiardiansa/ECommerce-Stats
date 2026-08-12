@@ -1,0 +1,17 @@
+{
+  "settings": {
+    "updated": "Your settings have been saved."
+  },
+  "address": {
+    "created": "Address added.",
+    "updated": "Address updated.",
+    "deleted": "Address removed.",
+    "default_set": "Default address updated.",
+    "not_found": "That address could not be found."
+  },
+  "connection": {
+    "unlinked": "Account disconnected.",
+    "not_found": "That connection could not be found.",
+    "last_method": "This is your only way to sign in. Add a password or a passkey before disconnecting it."
+  }
+}

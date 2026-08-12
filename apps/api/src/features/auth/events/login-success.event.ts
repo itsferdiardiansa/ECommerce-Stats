@@ -13,7 +13,7 @@ export class LoginSuccessEvent {
     public readonly userAgent: string | null,
     public readonly deviceFingerprint: string,
     public readonly geo: LoginGeo,
-    // True when the login passed an email-OTP step-up challenge — the user has
+    // True when the login passed an email-OTP step-up challenge - the user has
     // already confirmed the risky sign-in, so no "suspicious login" alert is sent.
     public readonly stepUpVerified = false
   ) {}

@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Form } from '@/components/ui/Form'
+import { Form } from '@/components/ui/form'
 import { Button } from '@/components/ui/button'
 import { useResetPassword } from '../hooks/useAuthMutations'
 import {

@@ -20,6 +20,7 @@ import type {
 import { Passkeys } from '@rufieltics/db/domains/auth'
 import { getUserCredentials } from '@rufieltics/db/domains/identity/user'
 import { WebauthnStore } from '@/modules/redis/stores'
+import { formatDevice } from '@/utils/fingerprint'
 
 interface RegChallenge {
   challenge: string
@@ -63,7 +64,11 @@ export class PasskeyService {
     )
   }
 
-  async beginRegistration(userId: number, i18n: I18nContext) {
+  async beginRegistration(
+    userId: number,
+    i18n: I18nContext,
+    attachment?: 'platform' | 'cross-platform'
+  ) {
     const user = await getUserCredentials(userId)
     if (!user) {
       throw new NotFoundException(i18n.t('users.errors.user_not_found'))
@@ -84,12 +89,14 @@ export class PasskeyService {
         transports: p.transports as AuthenticatorTransportFuture[],
       })),
       authenticatorSelection: {
-        // Discoverable credential required so it can be offered for passwordless
-        // (conditional UI) login without the user typing an identifier first.
         residentKey: 'required',
         userVerification: 'required',
       },
     })
+
+    if (attachment === 'cross-platform') {
+      options.hints = ['hybrid', 'security-key']
+    }
 
     await this.webauthnStore.setChallenge(
       'reg',
@@ -181,7 +188,8 @@ export class PasskeyService {
   async finishAuthentication(
     scope: string,
     id: string | number,
-    response: AuthenticationResponseJSON
+    response: AuthenticationResponseJSON,
+    userAgent?: string
   ): Promise<number | null> {
     const pending = await this.webauthnStore.getChallenge<AuthChallenge>(
       scope,
@@ -210,7 +218,8 @@ export class PasskeyService {
 
     await Passkeys.updateCounterAndUsed(
       passkey.credentialId,
-      BigInt(verification.authenticationInfo.newCounter)
+      BigInt(verification.authenticationInfo.newCounter),
+      formatDevice(userAgent) ?? undefined
     )
     await this.webauthnStore.deleteChallenge(scope, id)
     return passkey.userId
@@ -218,7 +227,7 @@ export class PasskeyService {
 
   /**
    * Passwordless (conditional UI) options: no user is known yet, so no
-   * allowCredentials — the authenticator offers any resident credential. User
+   * allowCredentials - the authenticator offers any resident credential. User
    * verification is required because the passkey is the sole factor.
    */
   async beginDiscoverableAuthentication(id: string) {
@@ -245,7 +254,8 @@ export class PasskeyService {
    */
   async finishDiscoverableAuthentication(
     id: string,
-    response: AuthenticationResponseJSON
+    response: AuthenticationResponseJSON,
+    userAgent?: string
   ): Promise<number | null> {
     const pending = await this.webauthnStore.getChallenge<DiscoverChallenge>(
       'discover',
@@ -274,7 +284,8 @@ export class PasskeyService {
 
     await Passkeys.updateCounterAndUsed(
       passkey.credentialId,
-      BigInt(verification.authenticationInfo.newCounter)
+      BigInt(verification.authenticationInfo.newCounter),
+      formatDevice(userAgent) ?? undefined
     )
     await this.webauthnStore.deleteChallenge('discover', id)
     return passkey.userId
@@ -287,8 +298,11 @@ export class PasskeyService {
       name: p.name,
       deviceType: p.deviceType,
       backedUp: p.backedUp,
+      aaguid: p.aaguid,
+      transports: p.transports,
       createdAt: p.createdAt,
       lastUsedAt: p.lastUsedAt,
+      lastUsedDevice: p.lastUsedDevice,
     }))
   }
 

@@ -32,6 +32,7 @@ model Session {
   userAgent        String?
 
   deviceFingerprint String
+  deviceKey         String?
 
   lastUsedAt       DateTime?
   isRevoked        Boolean   @default(false)
@@ -41,7 +42,7 @@ model Session {
   @@index([userId])
   @@index([jti])
   @@index([expires, isRevoked])
-  @@unique([userId, deviceFingerprint])
+  @@unique([userId, deviceKey])
   @@schema("auth")
 }
 
@@ -87,9 +88,10 @@ model Passkey {
   transports   String[]
   userHandle   String
   name         String?
-  aaguid       String?
-  createdAt    DateTime  @default(now())
-  lastUsedAt   DateTime?
+  aaguid         String?
+  createdAt      DateTime  @default(now())
+  lastUsedAt     DateTime?
+  lastUsedDevice String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

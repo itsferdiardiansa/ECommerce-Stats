@@ -9,8 +9,8 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/Form'
-import { Input } from '@/components/ui/Input'
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/form/input'
 
 interface PasswordFieldProps<T extends FieldValues> {
   control: Control<T>

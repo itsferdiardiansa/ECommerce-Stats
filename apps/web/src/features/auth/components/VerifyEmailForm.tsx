@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Form } from '@/components/ui/Form'
+import { Form } from '@/components/ui/form'
 import { Button } from '@/components/ui/button'
 import {
   useResendVerification,
@@ -15,6 +15,7 @@ import {
 } from '../schemas/verify-email.schema'
 import { TextField } from './TextField'
 import { FormError } from './FormError'
+import { digitsOnly } from '@/lib/sanitize'
 
 export function VerifyEmailForm({
   defaultEmail = '',
@@ -62,6 +63,7 @@ export function VerifyEmailForm({
           maxLength={6}
           placeholder="123456"
           description="Enter the 6-digit code we emailed you."
+          sanitize={v => digitsOnly(v, 6)}
         />
         <Button
           type="submit"

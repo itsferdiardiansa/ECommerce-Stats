@@ -1,8 +1,10 @@
 'use client'
 import React, { useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'sonner'
 import { ActiveThemeProvider } from './ActiveTheme'
 import { AuthProvider } from '@/features/auth/context/AuthContext'
+import { SessionExpiredProvider } from '@/features/auth/components/SessionExpiredProvider'
 
 export default function Providers({
   activeThemeValue,
@@ -23,7 +25,14 @@ export default function Providers({
   return (
     <QueryClientProvider client={queryClient}>
       <ActiveThemeProvider initialTheme={activeThemeValue}>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <SessionExpiredProvider>{children}</SessionExpiredProvider>
+        </AuthProvider>
+        <Toaster
+          richColors
+          position="bottom-right"
+          toastOptions={{ style: { padding: '0.625rem 0.875rem' } }}
+        />
       </ActiveThemeProvider>
     </QueryClientProvider>
   )

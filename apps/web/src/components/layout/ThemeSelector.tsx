@@ -1,7 +1,7 @@
 'use client'
 
 import { useThemeConfig } from '@/components/layout/ActiveTheme'
-import { Label } from '@/components/ui/label'
+import { Label } from '@/components/ui/form/label'
 import {
   Select,
   SelectContent,
@@ -11,7 +11,7 @@ import {
   SelectSeparator,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from '@/components/ui/form/select'
 
 const DEFAULT_THEMES = [
   {

@@ -17,9 +17,10 @@ export default async function ChallengePage({
     challengeId?: string
     methods?: string
     email?: string
+    next?: string
   }>
 }) {
-  const { challengeId, methods, email } = await searchParams
+  const { challengeId, methods, email, next } = await searchParams
 
   if (!challengeId) {
     redirect('/sign-in')
@@ -47,6 +48,7 @@ export default async function ChallengePage({
           challengeId={challengeId}
           methods={methodList}
           email={email ?? ''}
+          next={next}
         />
       ) : (
         <p

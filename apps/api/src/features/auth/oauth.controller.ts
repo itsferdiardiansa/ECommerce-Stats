@@ -21,6 +21,7 @@ const config = configuration()
 @Controller('auth/oauth')
 export class OAuthController {
   private readonly AUTH_COOKIE_PATH = '/api/v1/auth'
+  private readonly DEVICE_COOKIE_PATH = '/api/v1'
   private readonly OAUTH_STATE_COOKIE = 'oauthState'
   private readonly OAUTH_COOKIE_PATH = '/api/v1/auth/oauth'
 
@@ -33,9 +34,16 @@ export class OAuthController {
     return {
       httpOnly: true,
       secure: config.nodeEnv === 'production',
-      sameSite: 'strict',
+      sameSite: config.nodeEnv === 'production' ? 'strict' : 'lax',
       path: this.AUTH_COOKIE_PATH,
       maxAge: this.jwtService.getRefreshExpiresIn() * 1000,
+    }
+  }
+
+  private getDeviceCookieOptions(): CookieOptions {
+    return {
+      ...this.getCookieOptions(),
+      path: this.DEVICE_COOKIE_PATH,
     }
   }
 
@@ -93,11 +101,12 @@ export class OAuthController {
           cookieState,
           i18n,
           ipAddress,
-          userAgent
+          userAgent,
+          req.cookies?.deviceSecret as string | undefined
         )
 
       res.cookie('refreshToken', refreshToken, this.getCookieOptions())
-      res.cookie('deviceSecret', rawDeviceSecret, this.getCookieOptions())
+      res.cookie('deviceSecret', rawDeviceSecret, this.getDeviceCookieOptions())
       res.redirect(config.security.oauth.successRedirect)
     } catch (err) {
       res.redirect(this.failureUrl(err))

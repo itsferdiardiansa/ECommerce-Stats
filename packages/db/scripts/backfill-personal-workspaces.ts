@@ -24,7 +24,7 @@ async function main() {
   for (const user of users) {
     if (user.memberships.length > 0) {
       console.log(
-        `⏭  Skipping ${user.email} — already has ${user.memberships.length} org(s)`
+        `⏭  Skipping ${user.email} - already has ${user.memberships.length} org(s)`
       )
       skipped++
       continue
@@ -52,7 +52,7 @@ async function main() {
   }
 
   console.log(
-    `\nDone — ${created} workspace(s) created, ${skipped} user(s) skipped.`
+    `\nDone - ${created} workspace(s) created, ${skipped} user(s) skipped.`
   )
 }
 

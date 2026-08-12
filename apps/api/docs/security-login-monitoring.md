@@ -188,7 +188,7 @@ Notification kinds and when they email the owner:
 | `SESSION_COMPROMISE` | refresh-token reuse                     | "unusual session activity"      |
 
 This mirrors the consumer-platform model: a risky sign-in is **challenged**
-(email OTP) and the owner is **notified** either way — confirmed on success, or
+(email OTP) and the owner is **notified** either way - confirmed on success, or
 warned that a password-correct attempt was blocked on failure. New-sign-in and
 blocked notifications dedupe per location (24h).
 
@@ -328,7 +328,7 @@ cannot silently change credentials or strip security methods. This is the
 precondition for 2FA: without it, a future "disable authenticator" endpoint
 would be protected by nothing but a valid access token.
 
-- **Where the grant lives:** Redis, keyed by session `jti` (`sudo:{jti}`) — not
+- **Where the grant lives:** Redis, keyed by session `jti` (`sudo:{jti}`) - not
   a JWT claim. Access tokens are re-minted on refresh, so a claim would keep
   renewing itself; a Redis key expires on its own and is dropped whenever the
   session is deleted.
@@ -359,7 +359,7 @@ consumes the sudo grant.
 ## Account-change notifications
 
 Deliberate changes to how an account is secured always notify the owner, and are
-never collapsed by the dedupe window — each one must arrive.
+never collapsed by the dedupe window - each one must arrive.
 
 | Event                   | Email                      | Template      |
 | ----------------------- | -------------------------- | ------------- |
@@ -564,7 +564,7 @@ Notification emails show "City, Region, Country" via `GeoService`
 (`modules/geo`), resolved in the notification worker (off the request path) and
 Redis-cached per IP. Uses ipinfo.io when `IPINFO_TOKEN` is set (city/region),
 otherwise the offline `geoip-lite` DB (country-level). Falls back to the raw IP
-when nothing resolves. IP geolocation is city-level at best — never a street
+when nothing resolves. IP geolocation is city-level at best - never a street
 address.
 
 ## Data model

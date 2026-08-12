@@ -1,0 +1,17 @@
+{
+  "settings": {
+    "updated": "Pengaturan Anda telah disimpan."
+  },
+  "address": {
+    "created": "Alamat ditambahkan.",
+    "updated": "Alamat diperbarui.",
+    "deleted": "Alamat dihapus.",
+    "default_set": "Alamat utama diperbarui.",
+    "not_found": "Alamat tersebut tidak ditemukan."
+  },
+  "connection": {
+    "unlinked": "Akun diputuskan.",
+    "not_found": "Koneksi tersebut tidak ditemukan.",
+    "last_method": "Ini satu-satunya cara Anda masuk. Tambahkan kata sandi atau passkey sebelum memutuskannya."
+  }
+}

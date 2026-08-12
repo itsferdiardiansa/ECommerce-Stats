@@ -14,7 +14,7 @@ export interface CodeEmailProps {
 
 /**
  * Shared layout for one-time-code emails (email verification, sign-in step-up).
- * The wording differs per use case and locale — it's injected via props from
+ * The wording differs per use case and locale - it's injected via props from
  * the copy layer, so this component stays purely presentational.
  */
 export function CodeEmail(props: CodeEmailProps) {

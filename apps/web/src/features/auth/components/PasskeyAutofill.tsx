@@ -10,6 +10,7 @@ import type { AuthenticationResponseJSON } from '@simplewebauthn/browser'
 import { Fingerprint } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ApiError } from '@/lib/api-client'
+import { safeNextPath } from '@/lib/next-path'
 import { authApi } from '../api/auth.api'
 import { useAuth } from '../context/AuthContext'
 import { FormError } from './FormError'
@@ -19,7 +20,17 @@ import { FormError } from './FormError'
  * offers the passkey in the email field's autofill; the button is an explicit
  * (modal) fallback. Both verify a discoverable assertion and issue a session.
  */
-export function PasskeyAutofill() {
+export function PasskeyAutofill({
+  next,
+  disabled = false,
+  onStart,
+  onStop,
+}: {
+  next?: string
+  disabled?: boolean
+  onStart?: () => boolean
+  onStop?: () => void
+}) {
   const router = useRouter()
   const { setSession } = useAuth()
   const [error, setError] = useState<string | null>(null)
@@ -35,7 +46,7 @@ export function PasskeyAutofill() {
       response,
     })
     setSession(session.accessToken, null)
-    router.push('/security')
+    router.push(safeNextPath(next))
   }
 
   // Arm conditional UI (autofill) once, in the background.
@@ -51,9 +62,15 @@ export function PasskeyAutofill() {
           optionsJSON: options,
           useBrowserAutofill: true,
         })
-        if (!cancelled) await complete(challengeId, response)
+        if (cancelled) return
+        if (onStart && !onStart()) return
+        try {
+          await complete(challengeId, response)
+        } catch {
+          onStop?.()
+        }
       } catch {
-        // No passkey chosen / autofill aborted / superseded — stay silent.
+        // No passkey chosen / autofill aborted / superseded - stay silent.
       }
     })()
     return () => {
@@ -63,6 +80,7 @@ export function PasskeyAutofill() {
 
   // Explicit modal picker (supersedes the armed conditional ceremony).
   async function onClick() {
+    if (onStart && !onStart()) return
     setError(null)
     setPending(true)
     try {
@@ -76,6 +94,7 @@ export function PasskeyAutofill() {
           : 'Passkey sign-in was cancelled or unavailable.'
       )
       setPending(false)
+      onStop?.()
     }
   }
 
@@ -86,6 +105,7 @@ export function PasskeyAutofill() {
         variant="outline"
         className="w-full"
         onClick={onClick}
+        disabled={disabled}
         loading={pending}
       >
         {pending ? null : <Fingerprint className="size-4" aria-hidden="true" />}

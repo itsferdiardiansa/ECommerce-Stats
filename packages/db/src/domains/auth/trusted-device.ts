@@ -38,7 +38,7 @@ export const TrustedDevices = {
 
   /**
    * Revoke every trusted device matching these device fingerprints (used when a
-   * session is revoked — the device is no longer trusted). Returns the removed
+   * session is revoked - the device is no longer trusted). Returns the removed
    * records so callers can evict their token hashes from the cache.
    */
   async revokeByFingerprints(userId: number, fingerprints: string[]) {

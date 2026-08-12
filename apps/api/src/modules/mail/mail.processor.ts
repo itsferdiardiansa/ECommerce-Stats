@@ -8,7 +8,7 @@ import type { MailMessage } from './mail-transport.interface'
 /**
  * The single choke point for outbound email: every message is delivered here,
  * off the request path. Concurrency + rate limiter protect the provider (tune
- * `limiter` to your ESP's limit — e.g. Resend/SES per-second caps). A thrown
+ * `limiter` to your ESP's limit - e.g. Resend/SES per-second caps). A thrown
  * send re-queues with exponential backoff.
  */
 @Processor(MAIL_QUEUE, {

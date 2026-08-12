@@ -37,7 +37,7 @@ export class LoginService {
   /**
    * A throwaway argon2 hash used to verify against when no user is found, so a
    * login attempt for a non-existent email costs the same time as one for a
-   * real account — closing the timing side-channel that would otherwise reveal
+   * real account - closing the timing side-channel that would otherwise reveal
    * whether an email is registered. Computed once and cached.
    */
   private async getDummyPasswordHash(): Promise<string> {
@@ -54,7 +54,8 @@ export class LoginService {
     i18n: I18nContext,
     ipAddress?: string,
     userAgent?: string,
-    trustedDeviceToken?: string
+    trustedDeviceToken?: string,
+    reuseDeviceSecret?: string
   ) {
     const user = await getUserByEmail(data.email)
 
@@ -144,14 +145,19 @@ export class LoginService {
       )
     }
 
-    const { geo, deviceFingerprint, ...session } =
-      await this.authService.initiateSession(
-        user,
-        role,
-        orgId,
-        userAgent,
-        ipAddress
-      )
+    const {
+      geo,
+      deviceFingerprint,
+      jti: _jti,
+      ...session
+    } = await this.authService.initiateSession(
+      user,
+      role,
+      orgId,
+      userAgent,
+      ipAddress,
+      reuseDeviceSecret
+    )
 
     this.eventEmitter.emit(
       AUTH_EVENTS.LOGIN_SUCCESS,
@@ -193,11 +199,13 @@ export class LoginService {
     response: AuthenticationResponseJSON,
     i18n: I18nContext,
     ipAddress?: string,
-    userAgent?: string
+    userAgent?: string,
+    reuseDeviceSecret?: string
   ) {
     const userId = await this.passkeyService.finishDiscoverableAuthentication(
       challengeId,
-      response
+      response,
+      userAgent
     )
     const user = userId ? await getSessionUser(userId) : null
     if (!user) {
@@ -209,14 +217,19 @@ export class LoginService {
     const memberships = await OrganizationMembers.listByUser(user.id)
     const primary = pickPrimaryMembership(memberships)
 
-    const { geo, deviceFingerprint, ...session } =
-      await this.authService.initiateSession(
-        user,
-        primary?.role ?? null,
-        primary?.organizationId ?? null,
-        userAgent,
-        ipAddress
-      )
+    const {
+      geo,
+      deviceFingerprint,
+      jti: _jti,
+      ...session
+    } = await this.authService.initiateSession(
+      user,
+      primary?.role ?? null,
+      primary?.organizationId ?? null,
+      userAgent,
+      ipAddress,
+      reuseDeviceSecret
+    )
 
     this.eventEmitter.emit(
       AUTH_EVENTS.LOGIN_SUCCESS,

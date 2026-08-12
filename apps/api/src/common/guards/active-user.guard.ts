@@ -35,28 +35,32 @@ export class ActiveUserGuard implements CanActivate {
     const authHeader = request.headers.authorization
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException(
-        i18n?.t('common.errors.unauthorized') || 'Unauthorized'
-      )
+      throw new UnauthorizedException({
+        message: i18n?.t('common.errors.unauthorized') || 'Unauthorized',
+        code: 'SESSION_INVALID',
+      })
     }
 
     const token = authHeader.slice(7)
     const payload = this.jwtService.verifyAccessToken(token)
 
     if (await this.tokenDenylist.isDenied(payload.jti)) {
-      throw new UnauthorizedException(
-        i18n?.t('common.errors.unauthorized') || 'Unauthorized'
-      )
+      throw new UnauthorizedException({
+        message: i18n?.t('common.errors.unauthorized') || 'Unauthorized',
+        code: 'SESSION_INVALID',
+      })
     }
 
     const rawDeviceSecret =
       request.cookies?.deviceSecret || request.headers['x-device-secret']
 
     if (!rawDeviceSecret) {
-      throw new UnauthorizedException(
-        i18n?.t('auth.errors.missing_device_secret') ||
-          'Missing device binding credentials'
-      )
+      throw new UnauthorizedException({
+        message:
+          i18n?.t('auth.errors.missing_device_secret') ||
+          'Missing device binding credentials',
+        code: 'SESSION_INVALID',
+      })
     }
 
     const incomingHash = createHash('sha256')
@@ -64,10 +68,12 @@ export class ActiveUserGuard implements CanActivate {
       .digest('hex')
 
     if (incomingHash !== payload.fph) {
-      throw new UnauthorizedException(
-        i18n?.t('auth.errors.token_binding_failed') ||
-          'Token binding validation failed'
-      )
+      throw new UnauthorizedException({
+        message:
+          i18n?.t('auth.errors.token_binding_failed') ||
+          'Token binding validation failed',
+        code: 'SESSION_INVALID',
+      })
     }
 
     const userAgent = request.headers['user-agent'] || ''
@@ -80,10 +86,12 @@ export class ActiveUserGuard implements CanActivate {
     )
 
     if (currentEnvHash !== payload.env) {
-      throw new UnauthorizedException(
-        i18n?.t('auth.errors.invalid_client') ||
-          'Token binding environment mismatch'
-      )
+      throw new UnauthorizedException({
+        message:
+          i18n?.t('auth.errors.invalid_client') ||
+          'Token binding environment mismatch',
+        code: 'SESSION_INVALID',
+      })
     }
 
     request.user = {

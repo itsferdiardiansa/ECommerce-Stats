@@ -66,6 +66,9 @@ export interface PasskeySummary {
   name: string | null
   deviceType: string
   backedUp: boolean
+  aaguid: string | null
+  transports: string[]
   createdAt: string
   lastUsedAt: string | null
+  lastUsedDevice: string | null
 }
