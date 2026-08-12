@@ -113,13 +113,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/register",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "register"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
             },
             "description": "Register a new user account. User will be created with isActive=false and requires email verification. A 6-digit verification code will be sent to the provided email address."
           },
@@ -162,13 +157,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/verify-email",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "verify-email"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify-email"]
             },
             "description": "Verify email address with the 6-digit code received via email. Upon successful verification, the user's isActive will be set to true and emailVerifiedAt will be updated."
           },
@@ -194,13 +184,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/resend-verification",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "resend-verification"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "resend-verification"]
             },
             "description": "Resend verification code to the email address. The previous code will be invalidated and a new 6-digit code will be sent. Rate limited to 3 requests per hour per email."
           },
@@ -226,13 +211,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
             },
             "description": "Login with email and password. Returns access + refresh tokens for a trusted sign-in. If the sign-in looks risky (new device/location), returns { stepUpRequired: true, challengeId } instead and emails a one-time code \u2014 complete it via 'Step Up (Verify OTP)'. The test script auto-saves either access_token or step_up_challenge_id.\n\nCAPTCHA (Cloudflare Turnstile): off unless CAPTCHA_ENABLED=true on the API. When on, captchaToken is required only AFTER this IP has failed ~3 logins within 15 min (below that it is ignored, so captchaToken is optional). With the default Turnstile TEST secret (always-passes) any token value works, so the included dummy token passes \u2014 to exercise the 403 'captcha required' path, set TURNSTILE_SECRET_KEY=2x0000000000000000000000000000000AA (always-fails) or send an empty captchaToken."
           },
@@ -285,15 +265,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/login/step-up/verify",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "login",
-                "step-up",
-                "verify"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "step-up", "verify"]
             },
             "description": "Public, non-consuming. Used by the SSR challenge page to decide what to render. Returns data.valid = true while the challenge still exists (not expired), false once it has lapsed - so an expired link shows a 'session expired, back to sign in' message instead of the code fields."
           },
@@ -319,14 +292,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/login/step-up",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "login",
-                "step-up"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "step-up"]
             },
             "description": "Completes a step-up challenge. Set trustDevice: true to be remembered on this browser - trust is opt-in, so leaving it out means the next sign-in from a new device or location is challenged again. The method field is required: use \"email\" here, \"totp\" or \"recovery\" for a 2FA account."
           },
@@ -360,6 +327,104 @@
           ]
         },
         {
+          "name": "Passwordless: Begin Passkey Login (Discover)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept-Language", "value": "en" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n}" },
+            "url": {
+              "raw": "{{base_url}}/auth/login/passkey/discover",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "passkey", "discover"]
+            },
+            "description": "Passwordless start. No body. Returns { challengeId, options } for a discoverable-credential ceremony. The browser turns options into an assertion (Touch ID / security key), which is why the follow-up cannot be produced in Postman. Saves challengeId to {{passkey_login_challenge_id}}."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const d = pm.response.json().data;",
+                  "    if (d && d.challengeId) {",
+                  "        pm.collectionVariables.set('passkey_login_challenge_id', d.challengeId);",
+                  "        console.log('passkey_login_challenge_id saved');",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Passwordless: Authenticate (browser assertion required)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept-Language", "value": "en" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{passkey_login_challenge_id}}\",\n  \"response\": {}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login/passkey/authenticate",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "passkey", "authenticate"]
+            },
+            "description": "STUB - cannot be run from Postman. `response` must be a real WebAuthn assertion produced by a browser authenticator (Touch ID / Windows Hello / security key); there is no way to mint one here. On success it sets refreshToken + deviceSecret cookies and returns { accessToken, expiresIn }."
+          },
+          "response": []
+        },
+        {
+          "name": "Passkey Login Options - Step-up (browser)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept-Language", "value": "en" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{step_up_challenge_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login/passkey/options",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "passkey", "options"]
+            },
+            "description": "Step-up passkey (password-first login that then asks for a passkey). Returns assertion options for the given step-up challengeId. The assertion itself is browser-only."
+          },
+          "response": []
+        },
+        {
+          "name": "Passkey Login Verify - Step-up (browser assertion required)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept-Language", "value": "en" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{step_up_challenge_id}}\",\n  \"response\": {},\n  \"trustDevice\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login/passkey/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "passkey", "verify"]
+            },
+            "description": "STUB - cannot be run from Postman. Completes step-up passkey login; `response` must be a real browser WebAuthn assertion. Documented for completeness."
+          },
+          "response": []
+        },
+        {
           "name": "Refresh Token",
           "request": {
             "method": "POST",
@@ -379,13 +444,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/refresh",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "refresh"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
             },
             "description": "Exchange a valid refresh token for a new access + refresh token pair. The used refresh token is immediately invalidated (single-use rotation). If the same refresh token is used twice, both are revoked."
           },
@@ -430,13 +490,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/logout",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "logout"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
             },
             "description": "Revokes the current session. Deletes the refresh token from Redis and marks the DB session as isRevoked=true. Subsequent /auth/refresh calls with the same token will return 401."
           },
@@ -475,14 +530,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/sessions/others",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "sessions",
-                "others"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sessions", "others"]
             }
           },
           "response": []
@@ -514,13 +563,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/sessions",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "sessions"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sessions"]
             }
           },
           "response": []
@@ -543,13 +587,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/sessions",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "sessions"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sessions"]
             }
           },
           "response": []
@@ -593,13 +632,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/sudo",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "sudo"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sudo"]
             },
             "description": "Proves identity again before a destructive action. Guarded routes return 403 with error.code=SUDO_REQUIRED until this succeeds."
           },
@@ -623,13 +657,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/sudo",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "sudo"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sudo"]
             },
             "description": "Returns { active, expiresIn } so the client can prompt before showing a risky form."
           },
@@ -662,13 +691,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/password",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "password"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "password"]
             },
             "description": "Requires sudo. Rejects reuse of the last 5 passwords, signs out all other devices, untrusts their browsers, and emails the owner."
           },
@@ -694,13 +718,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/forgot-password",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "forgot-password"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "forgot-password"]
             },
             "description": "Public. Always returns the same generic success (enumeration-safe). If the email exists, a single-use cryptographic reset token is emailed (view in Mailpit at http://localhost:8025) \u2014 copy it into {{reset_token}} for \"Reset Password\". Rate-limited like login."
           },
@@ -726,13 +745,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/reset-password",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "reset-password"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "reset-password"]
             },
             "description": "Public. Consumes the single-use token from the reset email, sets the new password, and revokes ALL sessions. Works for OAuth-only users setting a first password. Invalid/expired token returns a generic error."
           },
@@ -758,13 +772,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/secure-account",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "secure-account"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "secure-account"]
             },
             "description": "Public. Consumes the token from the 'This wasn't me - secure my account' link in a security-alert email. Locks the account (no factor can sign in), revokes ALL sessions and trusted devices, and emails a password-reset recovery link. Idempotent: re-clicking an already-locked account is a no-op 200 (survives a browser restart). The token lapses on its 72h TTL, and a later password reset invalidates it. Restored once the user completes the reset."
           },
@@ -790,14 +799,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/secure-account/verify",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "secure-account",
-                "verify"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "secure-account", "verify"]
             },
             "description": "Public, non-consuming. Used by the SSR page load to decide what to render. Returns data.state: 'valid' (show the confirm button), 'already_secured' (account already locked - reload after a freeze), or 'invalid' (expired, or the user already reset their password since the link was minted)."
           },
@@ -831,14 +834,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/email/change",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "email",
-                "change"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "email", "change"]
             },
             "description": "Requires sudo. Sends a 6-digit confirmation code to the NEW email address (Mailpit). Rejects an address already in use. Run \"Sudo (Re-authenticate)\" first."
           },
@@ -872,15 +869,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/email/change/confirm",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "email",
-                "change",
-                "confirm"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "email", "change", "confirm"]
             },
             "description": "Confirms the code sent to the new email and updates the account email (marks it verified). Attempt-capped and single-use."
           },
@@ -904,13 +894,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/trusted-devices",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "trusted-devices"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "trusted-devices"]
             }
           },
           "response": []
@@ -933,14 +918,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/trusted-devices/{{trusted_device_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "trusted-devices",
-                "{{trusted_device_id}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "trusted-devices", "{{trusted_device_id}}"]
             },
             "description": "Requires sudo. Emails the owner that a security method was removed."
           },
@@ -959,14 +938,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/auth/oauth/google",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "oauth",
-                "google"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "oauth", "google"]
             },
             "description": "Starts the Google login. Responds 302 to Google's consent screen (sets a short-lived CSRF state + PKCE verifier in Redis). Open this URL in a browser \u2014 one button serves both sign-in and sign-up; the callback decides create-vs-login."
           },
@@ -979,15 +952,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/auth/oauth/google/callback?code={{oauth_code}}&state={{oauth_state}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "oauth",
-                "google",
-                "callback"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["auth", "oauth", "google", "callback"],
               "query": [
                 {
                   "key": "code",
@@ -1026,13 +992,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/mfa",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "mfa"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa"]
             },
             "description": "Shows whether TOTP is enabled/pending and how many recovery codes remain."
           },
@@ -1071,14 +1032,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/mfa/totp",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "mfa",
-                "totp"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "totp"]
             },
             "description": "Requires sudo. Returns the base32 secret and an otpauth:// URI. Two-factor is NOT enabled yet - confirm a code first. Paste the URI into any QR generator, or type the secret into your authenticator app manually."
           },
@@ -1122,15 +1077,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/mfa/totp/confirm",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "mfa",
-                "totp",
-                "confirm"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "totp", "confirm"]
             },
             "body": {
               "mode": "raw",
@@ -1158,14 +1106,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/mfa/recovery-codes",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "mfa",
-                "recovery-codes"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "recovery-codes"]
             },
             "description": "Requires sudo. Issues a new set and invalidates every previous code."
           },
@@ -1189,14 +1131,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/mfa/totp",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "mfa",
-                "totp"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "totp"]
             },
             "description": "Requires sudo. Removes the authenticator and all recovery codes, and emails the owner."
           },
@@ -1241,14 +1177,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/login/step-up",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "login",
-                "step-up"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "step-up"]
             },
             "body": {
               "mode": "raw",
@@ -1281,14 +1211,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/login/step-up",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "login",
-                "step-up"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login", "step-up"]
             },
             "body": {
               "mode": "raw",
@@ -1321,13 +1245,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/sudo",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "sudo"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "sudo"]
             },
             "body": {
               "mode": "raw",
@@ -1360,14 +1279,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/mfa/passkeys",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "mfa",
-                "passkeys"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys"]
             },
             "description": "Lists the current user's passkeys (id, name, aaguid, transports, deviceType, backedUp, createdAt, lastUsedAt). No sudo required. Saves the first id to {{passkey_id}}."
           },
@@ -1413,15 +1326,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/mfa/passkeys/options",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "mfa",
-                "passkeys",
-                "options"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys", "options"]
             },
             "body": {
               "mode": "raw",
@@ -1459,15 +1365,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/mfa/passkeys/options",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "mfa",
-                "passkeys",
-                "options"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys", "options"]
             },
             "body": {
               "mode": "raw",
@@ -1505,15 +1404,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/mfa/passkeys/verify",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "mfa",
-                "passkeys",
-                "verify"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys", "verify"]
             },
             "body": {
               "mode": "raw",
@@ -1551,15 +1443,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/mfa/passkeys/{{passkey_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "mfa",
-                "passkeys",
-                "{{passkey_id}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys", "{{passkey_id}}"]
             },
             "body": {
               "mode": "raw",
@@ -1592,15 +1477,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/mfa/passkeys/{{passkey_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "mfa",
-                "passkeys",
-                "{{passkey_id}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "mfa", "passkeys", "{{passkey_id}}"]
             },
             "description": "Requires sudo. Removes the passkey. Run List Passkeys first to populate {{passkey_id}}."
           },
@@ -1629,13 +1507,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/admin/lockouts?page=1&limit=10&status=active",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "admin",
-                "lockouts"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["admin", "lockouts"],
               "query": [
                 {
                   "key": "page",
@@ -1698,13 +1571,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/admin/lockouts?status=cleared&page=1&limit=10",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "admin",
-                "lockouts"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["admin", "lockouts"],
               "query": [
                 {
                   "key": "status",
@@ -1740,13 +1608,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/admin/lockouts?email=john.doe@example.com&status=all",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "admin",
-                "lockouts"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["admin", "lockouts"],
               "query": [
                 {
                   "key": "email",
@@ -1780,14 +1643,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/admin/lockouts/1",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "admin",
-                "lockouts",
-                "1"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["admin", "lockouts", "1"]
             },
             "description": "Get detailed information about a specific lockout by ID. Admin privileges required."
           },
@@ -1809,14 +1666,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/admin/lockouts/1",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "admin",
-                "lockouts",
-                "1"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["admin", "lockouts", "1"]
             },
             "description": "Manually clear a lockout to allow the user to attempt verification again. Admin privileges required. Records the admin ID who cleared the lockout and removes it from both database and Redis."
           },
@@ -1839,13 +1690,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/auth/my-lockout",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "my-lockout"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "my-lockout"]
             },
             "description": "Check your own verification lockout status. Returns whether you're locked, the reason, expiry time, and remaining seconds/minutes. Authenticated users only."
           },
@@ -1874,13 +1720,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/account/settings",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "account",
-                "settings"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["account", "settings"]
             }
           },
           "response": []
@@ -1907,13 +1748,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/account/settings",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "account",
-                "settings"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["account", "settings"]
             },
             "body": {
               "mode": "raw",
@@ -1941,13 +1777,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/account/addresses",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "account",
-                "addresses"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["account", "addresses"]
             }
           },
           "response": []
@@ -1974,13 +1805,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/account/addresses",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "account",
-                "addresses"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["account", "addresses"]
             },
             "body": {
               "mode": "raw",
@@ -2011,14 +1837,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/account/addresses/{{address_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "account",
-                "addresses",
-                "{{address_id}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["account", "addresses", "{{address_id}}"]
             },
             "body": {
               "mode": "raw",
@@ -2045,15 +1865,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/account/addresses/{{address_id}}/default",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "account",
-                "addresses",
-                "{{address_id}}",
-                "default"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["account", "addresses", "{{address_id}}", "default"]
             }
           },
           "response": []
@@ -2076,14 +1889,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/account/addresses/{{address_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "account",
-                "addresses",
-                "{{address_id}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["account", "addresses", "{{address_id}}"]
             }
           },
           "response": []
@@ -2106,13 +1913,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/account/activity?limit=5&cursor=",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "account",
-                "activity"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["account", "activity"],
               "query": [
                 {
                   "key": "limit",
@@ -2146,14 +1948,34 @@
             ],
             "url": {
               "raw": "{{base_url}}/account/export",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "account",
-                "export"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["account", "export"]
             }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Account (requires sudo)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Device-Secret",
+                "value": "{{device_secret}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["users", "{{user_id}}"]
+            },
+            "description": "Soft-deletes the current account. Sudo-guarded: call POST /auth/sudo first. Revokes all sessions and frees the email/username."
           },
           "response": []
         },
@@ -2175,13 +1997,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/account/connections",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "account",
-                "connections"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["account", "connections"]
             }
           },
           "response": []
@@ -2204,14 +2021,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/account/connections/google",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "account",
-                "connections",
-                "google"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["account", "connections", "google"]
             },
             "description": "Disconnect an OAuth provider. Blocked if it is the only sign-in method."
           },
@@ -2244,13 +2055,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/register",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "register"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
             },
             "description": "Test validation error messages in Indonesian. Should return all validation errors translated to Bahasa Indonesia."
           },
@@ -2276,13 +2082,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/verify-email",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "verify-email"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify-email"]
             },
             "description": "Test verification with invalid code. Should return error message."
           },
@@ -2308,13 +2109,8 @@
             },
             "url": {
               "raw": "{{base_url}}/auth/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
             },
             "description": "Test login with unverified account (isActive=false). Should return error indicating account needs verification."
           },
