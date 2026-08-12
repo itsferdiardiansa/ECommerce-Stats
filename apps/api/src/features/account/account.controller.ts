@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   ParseIntPipe,
   HttpCode,
   HttpStatus,
@@ -99,5 +100,41 @@ export class AccountController {
   ) {
     const data = await this.account.setDefaultAddress(user.id, id, i18n)
     return success(i18n.t('account.address.default_set'), data)
+  }
+
+  @Get('activity')
+  @HttpCode(HttpStatus.OK)
+  async activity(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('cursor') cursor: string | undefined,
+    @Query('limit') limit: string | undefined,
+    @I18n() i18n: I18nContext
+  ) {
+    const data = await this.account.listActivity(user.id, {
+      cursor: cursor ? Number(cursor) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    })
+    return success(i18n.t('common.success.generic'), data)
+  }
+
+  @Get('connections')
+  @HttpCode(HttpStatus.OK)
+  async connections(
+    @CurrentUser() user: CurrentUserPayload,
+    @I18n() i18n: I18nContext
+  ) {
+    const data = await this.account.listConnections(user.id)
+    return success(i18n.t('common.success.generic'), data)
+  }
+
+  @Delete('connections/:provider')
+  @HttpCode(HttpStatus.OK)
+  async unlinkConnection(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('provider') provider: string,
+    @I18n() i18n: I18nContext
+  ) {
+    const data = await this.account.unlinkConnection(user.id, provider, i18n)
+    return success(i18n.t('account.connection.unlinked'), data)
   }
 }

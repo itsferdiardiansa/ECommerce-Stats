@@ -16,6 +16,11 @@ export type I18nTranslations = {
             "default_set": string;
             "not_found": string;
         };
+        "connection": {
+            "unlinked": string;
+            "not_found": string;
+            "last_method": string;
+        };
     };
     "admin": {
         "lockouts": {
