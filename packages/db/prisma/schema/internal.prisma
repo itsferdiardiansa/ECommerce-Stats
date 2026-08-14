@@ -1,0 +1,145 @@
+enum StaffStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+
+  @@schema("internal")
+}
+
+model StaffAccount {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  name         String
+  passwordHash String?
+  isSuperAdmin Boolean     @default(false)
+  status       StaffStatus @default(INVITED)
+  mfaEnabled   Boolean     @default(false)
+  lastLoginAt  DateTime?
+
+  createdById  String?
+  createdBy    StaffAccount?  @relation("StaffCreatedBy", fields: [createdById], references: [id])
+  createdStaff StaffAccount[] @relation("StaffCreatedBy")
+
+  roles     StaffAccountRole[]
+  sessions  StaffSession[]
+  totp      StaffTotp?
+  passkeys  StaffPasskey[]
+  auditLogs AdminAuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@schema("internal")
+}
+
+model StaffRole {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  name        String
+  description String?
+  isSystem    Boolean @default(false)
+
+  permissions StaffRolePermission[]
+  members     StaffAccountRole[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@schema("internal")
+}
+
+model Permission {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  description String?
+
+  roles StaffRolePermission[]
+
+  @@schema("internal")
+}
+
+model StaffRolePermission {
+  roleId       String
+  role         StaffRole  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@schema("internal")
+}
+
+model StaffAccountRole {
+  staffAccountId String
+  staffAccount   StaffAccount @relation(fields: [staffAccountId], references: [id], onDelete: Cascade)
+  roleId         String
+  role           StaffRole    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedById   String?
+  assignedAt     DateTime     @default(now())
+
+  @@id([staffAccountId, roleId])
+  @@schema("internal")
+}
+
+model StaffSession {
+  id               String   @id @default(cuid())
+  staffAccountId   String
+  staffAccount     StaffAccount @relation(fields: [staffAccountId], references: [id], onDelete: Cascade)
+  jti              String   @unique
+  refreshTokenHash String
+  ipAddress        String?
+  userAgent        String?
+  expires          DateTime
+  isRevoked        Boolean  @default(false)
+  lastUsedAt       DateTime?
+  createdAt        DateTime @default(now())
+
+  @@index([staffAccountId])
+  @@index([expires, isRevoked])
+  @@schema("internal")
+}
+
+model StaffTotp {
+  id             String    @id @default(cuid())
+  staffAccountId String    @unique
+  staffAccount   StaffAccount @relation(fields: [staffAccountId], references: [id], onDelete: Cascade)
+  secret         String
+  confirmedAt    DateTime?
+  lastUsedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@schema("internal")
+}
+
+model StaffPasskey {
+  id             String   @id @default(cuid())
+  staffAccountId String
+  staffAccount   StaffAccount @relation(fields: [staffAccountId], references: [id], onDelete: Cascade)
+  credentialId   String   @unique
+  publicKey      Bytes
+  counter        BigInt   @default(0)
+  transports     String?
+  deviceType     String?
+  backedUp       Boolean  @default(false)
+  name           String?
+  lastUsedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+  @@index([staffAccountId])
+  @@schema("internal")
+}
+
+model AdminAuditLog {
+  id             String   @id @default(cuid())
+  staffAccountId String?
+  staffAccount   StaffAccount? @relation(fields: [staffAccountId], references: [id])
+  action         String
+  targetType     String?
+  targetId       String?
+  metadata       Json?
+  ipAddress      String?
+  createdAt      DateTime @default(now())
+
+  @@index([action])
+  @@index([targetType, targetId])
+  @@schema("internal")
+}
