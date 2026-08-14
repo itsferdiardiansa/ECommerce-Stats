@@ -13,6 +13,9 @@ node_modules
 .project
 .classpath
 .c9/
+
+# Claude Code (local settings, not versioned)
+.claude/
 *.launch
 .settings/
 *.sublime-workspace
