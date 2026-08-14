@@ -20,6 +20,8 @@ export interface EmailVars {
   'verification-code': CodeVars
   'step-up-otp': CodeVars
   'password-reset': LinkVars
+  'staff-invite': LinkVars
+  'staff-totp-reset': LinkVars
   'email-change': CodeVars
   'new-sign-in': AlertVars
   'blocked-attempt': AlertVars
@@ -45,6 +47,8 @@ const COMPONENTS: Record<EmailName, AnyComponent> = {
   'verification-code': CodeEmail as unknown as AnyComponent,
   'step-up-otp': CodeEmail as unknown as AnyComponent,
   'password-reset': LinkEmail as unknown as AnyComponent,
+  'staff-invite': LinkEmail as unknown as AnyComponent,
+  'staff-totp-reset': LinkEmail as unknown as AnyComponent,
   'email-change': CodeEmail as unknown as AnyComponent,
   'new-sign-in': AlertEmail as unknown as AnyComponent,
   'blocked-attempt': AlertEmail as unknown as AnyComponent,
@@ -66,8 +70,14 @@ function isCodeEmail(
   )
 }
 
-function isLinkEmail(name: EmailName): name is 'password-reset' {
-  return name === 'password-reset'
+function isLinkEmail(
+  name: EmailName
+): name is 'password-reset' | 'staff-invite' | 'staff-totp-reset' {
+  return (
+    name === 'password-reset' ||
+    name === 'staff-invite' ||
+    name === 'staff-totp-reset'
+  )
 }
 
 type MethodEmailName = 'security-method-enabled' | 'security-method-disabled'
@@ -99,7 +109,13 @@ export async function renderEmail<N extends EmailName>(
     : isLinkEmail(name)
       ? (linkCopy[key][name] as unknown as Build)
       : (copy[key][
-          name as Exclude<EmailName, MethodEmailName | 'password-reset'>
+          name as Exclude<
+            EmailName,
+            | MethodEmailName
+            | 'password-reset'
+            | 'staff-invite'
+            | 'staff-totp-reset'
+          >
         ] as unknown as Build)
 
   const { subject, ...strings } = build(vars)

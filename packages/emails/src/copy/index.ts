@@ -88,7 +88,7 @@ export interface MethodStrings {
 }
 
 type CodeName = 'verification-code' | 'step-up-otp' | 'email-change'
-type LinkName = 'password-reset'
+type LinkName = 'password-reset' | 'staff-invite' | 'staff-totp-reset'
 type MethodName = 'security-method-enabled' | 'security-method-disabled'
 type AlertName =
   | 'new-sign-in'
@@ -116,6 +116,30 @@ const enLink: LinkBuilders = {
     footer:
       "If you didn't request this, you can safely ignore this email - your password won't change.",
   }),
+  'staff-invite': v => ({
+    subject: 'You have been invited to Rufieltics Admin',
+    preview: 'Set up your staff account',
+    heading: 'You have been invited',
+    greeting: `Hi ${v.name},`,
+    body: 'You have been invited to the Rufieltics platform admin console. Set your password and enrol your authenticator app to get started.',
+    buttonLabel: 'Set up your account',
+    expiry: `This invite expires in ${Math.round(v.minutes / 1440)} days and can be used once.`,
+    fallback: 'If the button does not work, paste this link into your browser:',
+    footer:
+      "If you weren't expecting this invitation, you can safely ignore this email.",
+  }),
+  'staff-totp-reset': v => ({
+    subject: 'Reset your authenticator',
+    preview: 'Set up a new authenticator app',
+    heading: 'Reset your authenticator',
+    greeting: `Hi ${v.name},`,
+    body: 'We received a request to reset the authenticator (2FA) on your admin account. Click below to scan a new QR code and confirm a fresh 6-digit code.',
+    buttonLabel: 'Reset authenticator',
+    expiry: `This link expires in ${Math.round(v.minutes / 1)} minutes and can be used once.`,
+    fallback: 'If the button does not work, paste this link into your browser:',
+    footer:
+      "If you didn't request this, ignore this email - your current authenticator keeps working.",
+  }),
 }
 
 const idLink: LinkBuilders = {
@@ -131,6 +155,32 @@ const idLink: LinkBuilders = {
       'Jika tombol tidak berfungsi, tempel tautan ini ke peramban Anda:',
     footer:
       'Jika Anda tidak meminta ini, abaikan email ini - kata sandi Anda tidak akan berubah.',
+  }),
+  'staff-invite': v => ({
+    subject: 'Anda diundang ke Rufieltics Admin',
+    preview: 'Siapkan akun staf Anda',
+    heading: 'Anda telah diundang',
+    greeting: `Hai ${v.name},`,
+    body: 'Anda diundang ke konsol admin platform Rufieltics. Atur kata sandi dan daftarkan aplikasi autentikator Anda untuk memulai.',
+    buttonLabel: 'Siapkan akun Anda',
+    expiry: `Undangan ini kedaluwarsa dalam ${Math.round(v.minutes / 1440)} hari dan hanya dapat digunakan sekali.`,
+    fallback:
+      'Jika tombol tidak berfungsi, tempel tautan ini ke peramban Anda:',
+    footer:
+      'Jika Anda tidak mengharapkan undangan ini, abaikan email ini dengan aman.',
+  }),
+  'staff-totp-reset': v => ({
+    subject: 'Atur ulang autentikator Anda',
+    preview: 'Siapkan aplikasi autentikator baru',
+    heading: 'Atur ulang autentikator Anda',
+    greeting: `Hai ${v.name},`,
+    body: 'Kami menerima permintaan untuk mengatur ulang autentikator (2FA) pada akun admin Anda. Klik di bawah untuk memindai kode QR baru dan mengonfirmasi kode 6 digit yang baru.',
+    buttonLabel: 'Atur ulang autentikator',
+    expiry: `Tautan ini kedaluwarsa dalam ${Math.round(v.minutes / 1)} menit dan hanya dapat digunakan sekali.`,
+    fallback:
+      'Jika tombol tidak berfungsi, tempel tautan ini ke peramban Anda:',
+    footer:
+      'Jika Anda tidak meminta ini, abaikan email ini - autentikator Anda saat ini tetap berfungsi.',
   }),
 }
 

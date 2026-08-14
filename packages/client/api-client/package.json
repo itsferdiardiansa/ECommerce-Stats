@@ -1,0 +1,15 @@
+{
+  "name": "@rufieltics/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared HTTP client (envelope-aware fetch, typed errors, auth refresh, timeout) for Rufieltics web apps",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "@rufieltics/typescript-config": "workspace:^",
+    "typescript": "5.9.3"
+  }
+}

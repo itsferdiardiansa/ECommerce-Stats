@@ -1,0 +1,11 @@
+{
+  "extends": "@rufieltics/typescript-config/base",
+  "compilerOptions": {
+    "lib": ["es2022", "dom"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "noEmit": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}
