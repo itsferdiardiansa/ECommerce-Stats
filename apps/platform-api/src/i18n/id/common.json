@@ -1,0 +1,41 @@
+{
+  "errors": {
+    "internalServerError": "Terjadi kesalahan server internal.",
+    "badRequest": "Permintaan tidak valid.",
+    "unauthorized": "Tidak terautentikasi. Silakan sediakan token akses yang valid.",
+    "forbidden": "Anda tidak memiliki izin untuk melakukan tindakan ini.",
+    "notFound": "Sumber daya tidak ditemukan.",
+    "conflict": "Terjadi konflik. Sumber daya mungkin sudah ada.",
+    "unprocessableEntity": "Entitas tidak dapat diproses",
+    "tooManyRequests": "Terlalu banyak permintaan. Coba lagi nanti.",
+    "serviceUnavailable": "Layanan sedang tidak tersedia."
+  },
+  "success": {
+    "generic": "Berhasil"
+  },
+  "fields": {
+    "email": "Alamat Email",
+    "password": "Kata Sandi",
+    "name": "Nama",
+    "code": "Kode Verifikasi",
+    "inviteToken": "Token Undangan",
+    "mfaToken": "Token MFA",
+    "roleKey": "Peran",
+    "roleKeys": "Peran"
+  },
+  "validation": {
+    "required": "{field} wajib diisi",
+    "invalid": "{field} tidak valid",
+    "minLength": "{field} minimal {min} karakter",
+    "maxLength": "{field} maksimal {max} karakter",
+    "min": "{field} minimal {min}",
+    "max": "{field} maksimal {max}",
+    "minItems": "{field} harus memiliki minimal {min} item",
+    "maxItems": "{field} harus memiliki maksimal {max} item",
+    "email": "{field} harus berupa alamat email yang valid",
+    "url": "{field} harus berupa URL yang valid",
+    "uuid": "{field} harus berupa UUID yang valid",
+    "date": "{field} harus berupa tanggal yang valid",
+    "pattern": "Format {field} tidak sesuai"
+  }
+}

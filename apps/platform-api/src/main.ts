@@ -1,18 +1,17 @@
 import { readFileSync } from 'node:fs'
 import { NestFactory } from '@nestjs/core'
+import { ConfigService } from '@nestjs/config'
 import type { Express } from 'express'
 import { z } from 'zod'
 import cookieParser from 'cookie-parser'
-import { ConfigService } from '@nestjs/config'
+import {
+  AllExceptionsFilter,
+  ValidationPipe,
+  i18nZodErrorMap,
+} from '@rufieltics/api-core'
 import { AppModule } from './app.module'
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter'
-import { ValidationPipe } from './common/pipes/validation.pipe'
-import { SerializeInterceptor } from './common/interceptors/serialize.interceptor'
-import { i18nZodErrorMap } from './common/i18n-zod.map'
-import { assertProductionSecrets } from './config/assert-secrets'
 
 async function bootstrap() {
-  assertProductionSecrets()
   z.config({ customError: i18nZodErrorMap })
 
   const keyFile = process.env.SSL_KEY_FILE
@@ -26,24 +25,20 @@ async function bootstrap() {
     AppModule,
     httpsOptions ? { httpsOptions } : {}
   )
-  const configService = app.get(ConfigService)
+  const config = app.get(ConfigService)
 
   app.enableCors({
-    origin: configService.get<boolean | string>('cors.origin'),
-    credentials: configService.get<boolean>('cors.credentials'),
+    origin: config.get<string>('CORS_ORIGIN', 'http://localhost:3001'),
+    credentials: true,
   })
-
-  // Trust the first proxy so req.ip reflects the real client (X-Forwarded-For)
-  // behind a load balancer - required for correct geo, and per-IP brute-force.
   const httpInstance = app.getHttpAdapter().getInstance() as Express
   httpInstance.set('trust proxy', 1)
-
   app.use(cookieParser())
   app.setGlobalPrefix('api/v1')
   app.useGlobalFilters(new AllExceptionsFilter())
   app.useGlobalPipes(new ValidationPipe())
-  app.useGlobalInterceptors(new SerializeInterceptor())
 
-  await app.listen(configService.get<number>('port') ?? 3000)
+  await app.listen(config.get<number>('PORT', 6002))
 }
+
 void bootstrap()

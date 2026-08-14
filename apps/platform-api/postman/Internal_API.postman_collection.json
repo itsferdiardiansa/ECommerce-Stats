@@ -1,0 +1,352 @@
+{
+  "info": {
+    "name": "Internal / Platform Admin",
+    "_postman_id": "rufieltics-internal-collection",
+    "description": "Platform-operator plane (super-admin + staff), separate from the customer plane. Staff have their own identity/auth (no OAuth, invite-only, mandatory TOTP MFA). Runs on platform-api (default :6002).\n\nFlow: (1) run the CLI `pnpm --filter @rufieltics/platform-api exec tsx scripts/bootstrap-superadmin.ts <email>` and paste the invite token into {{invite_token}}. (2) Staff Setup > Setup (scan the returned otpauth/secret into an authenticator app). (3) Staff Setup > Confirm with the 6-digit {{totp_code}}. (4) Staff Auth > Login then Verify MFA to get a session.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:6002/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "staff_email",
+      "value": "owner@rufieltics.local",
+      "type": "string"
+    },
+    { "key": "staff_password", "value": "SuperSecret12345!", "type": "string" },
+    { "key": "invite_token", "value": "", "type": "string" },
+    { "key": "totp_secret", "value": "", "type": "string" },
+    { "key": "totp_code", "value": "123456", "type": "string" },
+    { "key": "mfa_token", "value": "", "type": "string" },
+    { "key": "staff_access_token", "value": "", "type": "string" },
+    { "key": "staff_id", "value": "", "type": "string" },
+    { "key": "role_key", "value": "support", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": ["{{base_url}}"],
+          "path": ["health"]
+        },
+        "description": "Liveness check for platform-api. Public."
+      },
+      "response": []
+    },
+    {
+      "name": "Staff Setup",
+      "item": [
+        {
+          "name": "Setup (set password + begin TOTP)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inviteToken\": \"{{invite_token}}\",\n  \"password\": \"{{staff_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/staff/auth/setup",
+              "host": ["{{base_url}}"],
+              "path": ["staff", "auth", "setup"]
+            },
+            "description": "Accepts an invite token, sets the password, and returns { otpauthUri, secret }. Scan the otpauthUri (or enter the secret) into an authenticator app, then run Confirm. The base32 secret is saved to {{totp_secret}} for generating codes."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const save = (k, v) => { pm.collectionVariables.set(k, v); if (pm.environment.name) pm.environment.set(k, v); };",
+                  "if (pm.response.code === 200) {",
+                  "    const d = (pm.response.json().data) || pm.response.json();",
+                  "    if (d.secret) { save('totp_secret', d.secret); console.log('totp_secret saved'); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm Setup (activate)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inviteToken\": \"{{invite_token}}\",\n  \"code\": \"{{totp_code}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/staff/auth/setup/confirm",
+              "host": ["{{base_url}}"],
+              "path": ["staff", "auth", "setup", "confirm"]
+            },
+            "description": "Verifies the TOTP code, enables MFA, and activates the account (status ACTIVE). Set {{totp_code}} to the current 6-digit code first."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Staff Auth",
+      "item": [
+        {
+          "name": "Login (saves mfa_token)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{staff_email}}\",\n  \"password\": \"{{staff_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/staff/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["staff", "auth", "login"]
+            },
+            "description": "Password step. Returns { mfaRequired: true, mfaToken }. Complete with Verify MFA."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const save = (k, v) => { pm.collectionVariables.set(k, v); if (pm.environment.name) pm.environment.set(k, v); };",
+                  "if (pm.response.code === 200) {",
+                  "    const d = (pm.response.json().data) || pm.response.json();",
+                  "    if (d.mfaToken) { save('mfa_token', d.mfaToken); console.log('mfa_token saved'); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify MFA (saves staff_access_token)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mfaToken\": \"{{mfa_token}}\",\n  \"code\": \"{{totp_code}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/staff/auth/mfa",
+              "host": ["{{base_url}}"],
+              "path": ["staff", "auth", "mfa"]
+            },
+            "description": "Second factor. Set {{totp_code}} to the current code. Returns { accessToken, expiresIn } and sets an httpOnly refresh cookie."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const save = (k, v) => { pm.collectionVariables.set(k, v); if (pm.environment.name) pm.environment.set(k, v); };",
+                  "if (pm.response.code === 200) {",
+                  "    const d = (pm.response.json().data) || pm.response.json();",
+                  "    if (d.accessToken) { save('staff_access_token', d.accessToken); console.log('staff_access_token saved'); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/staff/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["staff", "auth", "me"]
+            },
+            "description": "Current staff account + resolved permissions (super-admin returns all)."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/staff/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["staff", "auth", "refresh"]
+            },
+            "description": "Rotates the session using the httpOnly refresh cookie set at MFA. Returns a new accessToken."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const save = (k, v) => { pm.collectionVariables.set(k, v); if (pm.environment.name) pm.environment.set(k, v); };",
+                  "if (pm.response.code === 200) {",
+                  "    const d = (pm.response.json().data) || pm.response.json();",
+                  "    if (d.accessToken) { save('staff_access_token', d.accessToken); console.log('staff_access_token refreshed'); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/staff/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["staff", "auth", "logout"]
+            },
+            "description": "Revokes the current staff session and clears the refresh cookie."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Staff Management",
+      "item": [
+        {
+          "name": "Invite Staff (saves invite_token + staff_id)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_access_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"support1@rufieltics.local\",\n  \"name\": \"Support One\",\n  \"roleKeys\": [\"support\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/staff",
+              "host": ["{{base_url}}"],
+              "path": ["staff"]
+            },
+            "description": "Requires the staff.manage permission (super-admin has it). Creates an INVITED staff account and returns { staffId, inviteToken, setupUrl }. Email delivery is a follow-up - the invite token is returned here for testing."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const save = (k, v) => { pm.collectionVariables.set(k, v); if (pm.environment.name) pm.environment.set(k, v); };",
+                  "if (pm.response.code === 201) {",
+                  "    const d = (pm.response.json().data) || pm.response.json();",
+                  "    if (d.inviteToken) save('invite_token', d.inviteToken);",
+                  "    if (d.staffId) save('staff_id', d.staffId);",
+                  "    console.log('invite_token + staff_id saved for the new staff member');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Staff",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/staff",
+              "host": ["{{base_url}}"],
+              "path": ["staff"]
+            },
+            "description": "Requires staff.view. Lists staff with roles and status."
+          },
+          "response": []
+        },
+        {
+          "name": "List Roles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/staff/roles",
+              "host": ["{{base_url}}"],
+              "path": ["staff", "roles"]
+            },
+            "description": "Requires staff.view. Lists system roles (support, billing, read_only) and their permissions."
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_access_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roleKey\": \"{{role_key}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/staff/{{staff_id}}/roles",
+              "host": ["{{base_url}}"],
+              "path": ["staff", "{{staff_id}}", "roles"]
+            },
+            "description": "Requires staff.manage. Assigns a role (by key) to the staff member in {{staff_id}}."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

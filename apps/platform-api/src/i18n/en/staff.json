@@ -1,0 +1,33 @@
+{
+  "errors": {
+    "invite_invalid": "This invite is invalid or has expired.",
+    "invite_used": "This invite is no longer valid.",
+    "code_incorrect": "That code is incorrect. Try again.",
+    "invalid_credentials": "Invalid credentials.",
+    "mfa_expired": "Your sign-in attempt expired. Start over.",
+    "mfa_code_incorrect": "That code is incorrect.",
+    "refresh_invalid": "Invalid refresh token.",
+    "refresh_missing": "No refresh token.",
+    "session_expired": "Session expired. Sign in again.",
+    "email_exists": "A staff account with that email exists.",
+    "account_not_found": "Staff account not found.",
+    "role_not_found": "Role not found.",
+    "reset_invalid": "This reset link is invalid or has expired."
+  },
+  "success": {
+    "setup_ready": "Set your password and scan the authenticator code to continue.",
+    "activated": "Your account is active. You can now sign in.",
+    "mfa_required": "Enter the code from your authenticator app.",
+    "logged_in": "Signed in successfully.",
+    "refreshed": "Session refreshed.",
+    "logged_out": "Signed out.",
+    "profile": "Staff profile loaded.",
+    "invited": "Staff member invited.",
+    "list": "Staff members retrieved.",
+    "roles": "Roles retrieved.",
+    "role_assigned": "Role assigned.",
+    "totp_reset_requested": "If that account exists, a reset link is on its way.",
+    "totp_reset_ready": "Scan the new QR code, then enter the code to confirm.",
+    "totp_reset_done": "Your authenticator has been reset. Sign in again."
+  }
+}

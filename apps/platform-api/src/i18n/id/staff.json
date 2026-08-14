@@ -1,0 +1,33 @@
+{
+  "errors": {
+    "invite_invalid": "Undangan ini tidak valid atau telah kedaluwarsa.",
+    "invite_used": "Undangan ini sudah tidak berlaku.",
+    "code_incorrect": "Kode salah. Silakan coba lagi.",
+    "invalid_credentials": "Kredensial tidak valid.",
+    "mfa_expired": "Percobaan masuk Anda kedaluwarsa. Silakan mulai lagi.",
+    "mfa_code_incorrect": "Kode salah.",
+    "refresh_invalid": "Token refresh tidak valid.",
+    "refresh_missing": "Tidak ada token refresh.",
+    "session_expired": "Sesi berakhir. Silakan masuk lagi.",
+    "email_exists": "Akun staf dengan email tersebut sudah ada.",
+    "account_not_found": "Akun staf tidak ditemukan.",
+    "role_not_found": "Peran tidak ditemukan.",
+    "reset_invalid": "Tautan atur ulang ini tidak valid atau telah kedaluwarsa."
+  },
+  "success": {
+    "setup_ready": "Atur kata sandi dan pindai kode autentikator untuk melanjutkan.",
+    "activated": "Akun Anda aktif. Anda sekarang dapat masuk.",
+    "mfa_required": "Masukkan kode dari aplikasi autentikator Anda.",
+    "logged_in": "Berhasil masuk.",
+    "refreshed": "Sesi diperbarui.",
+    "logged_out": "Berhasil keluar.",
+    "profile": "Profil staf dimuat.",
+    "invited": "Anggota staf diundang.",
+    "list": "Daftar anggota staf berhasil diambil.",
+    "roles": "Daftar peran berhasil diambil.",
+    "role_assigned": "Peran ditetapkan.",
+    "totp_reset_requested": "Jika akun tersebut ada, tautan atur ulang sedang dikirim.",
+    "totp_reset_ready": "Pindai kode QR baru, lalu masukkan kode untuk mengonfirmasi.",
+    "totp_reset_done": "Autentikator Anda telah diatur ulang. Silakan masuk lagi."
+  }
+}

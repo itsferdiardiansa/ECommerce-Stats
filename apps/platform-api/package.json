@@ -1,0 +1,52 @@
+{
+  "name": "@rufieltics/platform-api",
+  "version": "0.0.1",
+  "author": "itsferdiardiansa",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:https": "SSL_KEY_FILE=./certs/localhost-key.pem SSL_CERT_FILE=./certs/localhost.pem nest start --watch",
+    "start:prod": "node dist/main",
+    "lint": "eslint \"src/**/*.ts\" --fix",
+    "format": "prettier --write \"src/**/*.ts\""
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^4.0.3",
+    "@nestjs/core": "^11.0.1",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/throttler": "^6.5.0",
+    "@rufieltics/api-core": "workspace:^",
+    "@rufieltics/auth-core": "workspace:^",
+    "@rufieltics/db": "workspace:^",
+    "@rufieltics/emails": "workspace:^",
+    "cookie-parser": "^1.4.7",
+    "nestjs-i18n": "^10.6.0",
+    "nestjs-zod": "^5.1.1",
+    "nodemailer": "^9.0.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@rufieltics/eslint-config": "workspace:^",
+    "@rufieltics/jest-config": "workspace:^",
+    "@rufieltics/typescript-config": "workspace:^",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.7",
+    "@types/nodemailer": "^8.0.1",
+    "eslint": "^9.18.0",
+    "prettier": "^3.4.2",
+    "source-map-support": "^0.5.21",
+    "ts-loader": "^9.5.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.7.3"
+  },
+  "type": "commonjs"
+}
