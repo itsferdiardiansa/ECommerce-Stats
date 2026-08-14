@@ -1,0 +1,3 @@
+{
+  "extends": "@rufieltics/eslint-config/next"
+}

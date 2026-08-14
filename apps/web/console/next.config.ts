@@ -3,6 +3,7 @@ import { withNx } from '@nx/next/plugins/with-nx'
 
 const baseConfig = {
   reactCompiler: true,
+  transpilePackages: ['@rufieltics/api-client'],
   turbopack: {
     rules: {
       '*.svg': {

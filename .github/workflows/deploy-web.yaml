@@ -12,9 +12,9 @@ on:
           - preview
           - production
       project_dir:
-        description: 'Path to the project directory to deploy (e.g., apps/web)'
+        description: 'Path to the project directory to deploy (e.g., apps/web/console)'
         required: true
-        default: 'apps/web'
+        default: 'apps/web/console'
       project_name:
         description: 'Vercel project name (slug) to deploy to'
         required: true

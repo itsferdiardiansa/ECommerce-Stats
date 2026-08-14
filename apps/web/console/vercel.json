@@ -1,5 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm --filter=@rufieltics/web run build --verbose",
+  "buildCommand": "pnpm --filter=@rufieltics/console run build --verbose",
   "outputDirectory": ".next"
 }
