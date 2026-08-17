@@ -6,6 +6,15 @@ enum StaffStatus {
   @@schema("internal")
 }
 
+enum StaffInvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+
+  @@schema("internal")
+}
+
 model StaffAccount {
   id           String      @id @default(cuid())
   email        String      @unique
@@ -20,15 +29,46 @@ model StaffAccount {
   createdBy    StaffAccount?  @relation("StaffCreatedBy", fields: [createdById], references: [id])
   createdStaff StaffAccount[] @relation("StaffCreatedBy")
 
-  roles     StaffAccountRole[]
-  sessions  StaffSession[]
-  totp      StaffTotp?
-  passkeys  StaffPasskey[]
-  auditLogs AdminAuditLog[]
+  roles           StaffAccountRole[]
+  sessions        StaffSession[]
+  totp            StaffTotp?
+  passkeys        StaffPasskey[]
+  auditLogs       AdminAuditLog[]
+  invitationsSent StaffInvitation[] @relation("InvitedBy")
+  invitation      StaffInvitation?  @relation("InvitationAccount")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([status])
+  @@index([isSuperAdmin, createdAt])
+  @@schema("internal")
+}
+
+model StaffInvitation {
+  id          String                @id @default(cuid())
+  email       String
+  name        String
+  status      StaffInvitationStatus @default(PENDING)
+  roleKeys    String[]              @default([])
+  expiresAt   DateTime
+  resentAt    DateTime?
+  resendCount Int                   @default(0)
+  acceptedAt  DateTime?
+  rejectedAt  DateTime?
+
+  invitedById String?
+  invitedBy   StaffAccount? @relation("InvitedBy", fields: [invitedById], references: [id])
+
+  staffAccountId String?       @unique
+  staffAccount   StaffAccount? @relation("InvitationAccount", fields: [staffAccountId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([status])
+  @@index([expiresAt])
   @@schema("internal")
 }
 

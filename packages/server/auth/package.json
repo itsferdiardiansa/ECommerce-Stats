@@ -1,8 +1,8 @@
 {
-  "name": "@rufieltics/auth-core",
+  "name": "@rufieltics/auth-server",
   "version": "0.1.0",
   "private": true,
-  "description": "Shared, principal-agnostic auth primitives (password, TOTP) for Rufieltics",
+  "description": "Shared server-side auth logic (device binding, denylist + lockout algorithms via injected per-app stores) for Rufieltics",
   "files": [
     "dist"
   ],
@@ -20,13 +20,9 @@
     "postinstall": "pnpm build"
   },
   "dependencies": {
-    "argon2": "^0.44.0",
-    "geoip-lite": "^2.0.1",
-    "otplib": "^13.4.1",
-    "ua-parser-js": "^2.0.9"
+    "@rufieltics/auth-core": "workspace:^"
   },
   "devDependencies": {
-    "@types/geoip-lite": "^1.4.4",
     "@types/node": "^22.10.7",
     "typescript": "^5.7.3"
   }

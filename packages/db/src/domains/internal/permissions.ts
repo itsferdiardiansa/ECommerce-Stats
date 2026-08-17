@@ -6,12 +6,21 @@ export const PERMISSION_KEYS = [
   'users.ban',
   'lockouts.manage',
   'organizations.view',
+  'analytics.view',
+  'integrations.view',
+  'integrations.manage',
   'plans.view',
   'plans.manage',
+  'billing.view',
+  'payments.manage',
   'revenue.view',
   'staff.view',
   'staff.manage',
+  'roles.manage',
   'audit.view',
+  'settings.manage',
+  'support.view',
+  'notifications.manage',
 ] as const
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number]
@@ -27,14 +36,25 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
   {
     key: 'support',
     name: 'Support',
-    description: 'Handle user issues: view users, manage lockouts.',
-    permissions: ['users.view', 'lockouts.manage', 'organizations.view'],
+    description: 'Handle user issues: view users, manage lockouts, tickets.',
+    permissions: [
+      'users.view',
+      'lockouts.manage',
+      'organizations.view',
+      'support.view',
+    ],
   },
   {
     key: 'billing',
     name: 'Billing',
-    description: 'Manage plans and view billing-related user data.',
-    permissions: ['plans.view', 'plans.manage', 'users.view'],
+    description: 'Manage plans, subscriptions and payment providers.',
+    permissions: [
+      'plans.view',
+      'plans.manage',
+      'billing.view',
+      'payments.manage',
+      'users.view',
+    ],
   },
   {
     key: 'read_only',
@@ -42,10 +62,80 @@ export const SYSTEM_ROLES: SystemRoleSeed[] = [
     description: 'View-only access across the admin console.',
     permissions: [
       'users.view',
+      'organizations.view',
+      'analytics.view',
+      'integrations.view',
+      'plans.view',
+      'billing.view',
+      'revenue.view',
+      'audit.view',
+    ],
+  },
+  {
+    key: 'user_admin',
+    name: 'User admin',
+    description: 'Full user lifecycle: view, edit and ban accounts.',
+    permissions: ['users.view', 'users.manage', 'users.ban'],
+  },
+  {
+    key: 'security',
+    name: 'Security',
+    description: 'Investigate and lock down accounts, review the audit trail.',
+    permissions: ['users.view', 'users.ban', 'lockouts.manage', 'audit.view'],
+  },
+  {
+    key: 'finance',
+    name: 'Finance',
+    description: 'Manage plans, payments and read revenue reporting.',
+    permissions: [
+      'plans.view',
+      'plans.manage',
+      'billing.view',
+      'payments.manage',
+      'revenue.view',
+    ],
+  },
+  {
+    key: 'analyst',
+    name: 'Analyst',
+    description: 'Read revenue, analytics, integrations and the audit trail.',
+    permissions: [
+      'revenue.view',
+      'analytics.view',
+      'integrations.view',
       'plans.view',
       'organizations.view',
       'audit.view',
     ],
+  },
+  {
+    key: 'org_manager',
+    name: 'Organization manager',
+    description: 'Review organizations and their users.',
+    permissions: ['organizations.view', 'users.view'],
+  },
+  {
+    key: 'compliance',
+    name: 'Compliance',
+    description: 'Read-only oversight for audit and account data.',
+    permissions: ['audit.view', 'users.view', 'organizations.view'],
+  },
+  {
+    key: 'staff_admin',
+    name: 'Staff admin',
+    description: 'Manage staff accounts, roles and announcements.',
+    permissions: [
+      'staff.view',
+      'staff.manage',
+      'roles.manage',
+      'notifications.manage',
+    ],
+  },
+  {
+    key: 'integrations_manager',
+    name: 'Integrations manager',
+    description: 'Connect and manage store, ad and analytics integrations.',
+    permissions: ['integrations.view', 'integrations.manage'],
   },
 ]
 
@@ -90,6 +180,12 @@ export async function seedPermissionsAndRoles() {
     permissions: PERMISSION_KEYS.length,
     roles: SYSTEM_ROLES.length,
   }
+}
+
+export const Permissions = {
+  async list() {
+    return db.permission.findMany({ orderBy: { key: 'asc' } })
+  },
 }
 
 export async function getStaffPermissions(

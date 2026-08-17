@@ -28,6 +28,9 @@
     "migrate:dev": "prisma migrate dev --schema=prisma/schema",
     "migrate:deploy": "prisma migrate deploy --schema=prisma/schema",
     "studio": "prisma studio --schema=prisma/schema",
+    "seed:internal": "tsx scripts/seed-internal.ts",
+    "seed:staff-demo": "tsx scripts/seed-staff-demo.ts",
+    "seed:role-users": "tsx scripts/seed-role-users.ts",
     "build": "tsx scripts/build.ts",
     "test": "vitest",
     "test:coverage": "vitest --coverage --watch false",
@@ -44,6 +47,7 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^10.2.0",
+    "@rufieltics/auth-core": "workspace:^",
     "@types/node": "^25.0.10",
     "@types/pg": "^8.16.0",
     "prisma": "^7.3.0",
