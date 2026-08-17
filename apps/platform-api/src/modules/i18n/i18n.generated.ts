@@ -52,6 +52,8 @@ export type I18nTranslations = {
             "invite_used": string;
             "code_incorrect": string;
             "invalid_credentials": string;
+            "invalid_credentials_remaining": string;
+            "too_many_attempts": string;
             "mfa_expired": string;
             "mfa_code_incorrect": string;
             "refresh_invalid": string;
@@ -60,6 +62,15 @@ export type I18nTranslations = {
             "email_exists": string;
             "account_not_found": string;
             "role_not_found": string;
+            "role_key_exists": string;
+            "role_system_locked": string;
+            "cannot_grant": string;
+            "cannot_modify_superadmin": string;
+            "self_lockout": string;
+            "invite_not_pending": string;
+            "invitation_not_found": string;
+            "invite_already_accepted": string;
+            "too_many_invites": string;
             "reset_invalid": string;
         };
         "success": {
@@ -73,7 +84,17 @@ export type I18nTranslations = {
             "invited": string;
             "list": string;
             "roles": string;
+            "permissions": string;
+            "role_created": string;
+            "role_updated": string;
+            "role_deleted": string;
+            "role_members": string;
+            "audit": string;
+            "invitations": string;
+            "invite_cancelled": string;
+            "invite_resent": string;
             "role_assigned": string;
+            "role_removed": string;
             "totp_reset_requested": string;
             "totp_reset_ready": string;
             "totp_reset_done": string;

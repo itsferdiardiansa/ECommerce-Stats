@@ -4,11 +4,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { I18nContext } from 'nestjs-i18n'
 import { randomUUID } from 'node:crypto'
 import {
   StaffAccounts,
   StaffSessions,
   StaffTotps,
+  StaffInvitations,
   getStaffPermissions,
 } from '@rufieltics/db/domains/internal'
 import {
@@ -18,6 +20,11 @@ import {
   buildOtpauthUri,
   verifyTotp,
 } from '@rufieltics/auth-core'
+import {
+  LoginLockout,
+  hashDeviceSecret,
+  computeEnvHash,
+} from '@rufieltics/auth-server'
 import { StaffTokenService } from './staff-token.service'
 import { MailService } from '../../modules/mail/mail.service'
 
@@ -33,8 +40,25 @@ export class StaffAuthService {
   constructor(
     private readonly tokens: StaffTokenService,
     private readonly config: ConfigService,
-    private readonly mail: MailService
+    private readonly mail: MailService,
+    private readonly lockout: LoginLockout
   ) {}
+
+  private lockoutKey(email: string): string {
+    return email.trim().toLowerCase()
+  }
+
+  private lockedMessage(
+    i18n: I18nContext | undefined,
+    retryAfterSeconds: number
+  ): string {
+    const minutes = Math.max(1, Math.ceil(retryAfterSeconds / 60))
+    return (
+      (i18n?.t('staff.errors.too_many_attempts', {
+        args: { minutes },
+      }) as string) ?? 'staff.errors.too_many_attempts'
+    )
+  }
 
   private issuer(): string {
     return this.config.get<string>('STAFF_ISSUER', 'Rufieltics Admin')
@@ -79,10 +103,21 @@ export class StaffAuthService {
 
     await StaffTotps.confirm(staff.id)
     await StaffAccounts.update(staff.id, { mfaEnabled: true, status: 'ACTIVE' })
+    await StaffInvitations.markAcceptedByAccount(staff.id)
     return { activated: true }
   }
 
-  async login(email: string, password: string) {
+  async login(email: string, password: string, i18n?: I18nContext) {
+    const key = this.lockoutKey(email)
+    // Fail-open: a Redis outage must never block sign-in.
+    const status = await this.lockout.status(key).catch(() => null)
+    if (status?.locked) {
+      throw new UnauthorizedException({
+        message: this.lockedMessage(i18n, status.retryAfterSeconds),
+        code: 'ACCOUNT_LOCKED',
+      })
+    }
+
     const staff = await StaffAccounts.findByEmail(email)
     const hash =
       staff?.passwordHash ??
@@ -90,7 +125,21 @@ export class StaffAuthService {
     const valid = await verifyPassword(hash, password).catch(() => false)
 
     if (!staff || !valid || staff.status !== 'ACTIVE') {
-      throw new UnauthorizedException('staff.errors.invalid_credentials')
+      const after = await this.lockout.recordFailure(key).catch(() => null)
+      if (after?.locked) {
+        throw new UnauthorizedException({
+          message: this.lockedMessage(i18n, after.retryAfterSeconds),
+          code: 'ACCOUNT_LOCKED',
+        })
+      }
+      const remaining = after?.remainingAttempts
+      const message =
+        remaining && remaining > 0
+          ? ((i18n?.t('staff.errors.invalid_credentials_remaining', {
+              args: { attempts: remaining },
+            }) as string) ?? 'staff.errors.invalid_credentials')
+          : 'staff.errors.invalid_credentials'
+      throw new UnauthorizedException({ message, code: 'INVALID_CREDENTIALS' })
     }
 
     const mfaToken = this.tokens.signMfa(staff.id)
@@ -137,6 +186,10 @@ export class StaffAuthService {
     } else {
       await StaffTotps.touch(staff.id)
     }
+    // Full sign-in succeeded: clear the failed-attempt counter.
+    await this.lockout
+      .reset(this.lockoutKey(staff.email))
+      .catch(() => undefined)
     return this.issueSession(staff.id, meta)
   }
 
@@ -214,9 +267,19 @@ export class StaffAuthService {
     })
     await StaffAccounts.update(staffAccountId, { lastLoginAt: new Date() })
 
+    // Device binding: the token carries hashes of a fresh device secret (set as
+    // an httpOnly cookie) and the browser/os, so a stolen token without the
+    // cookie or from a different environment is rejected by the guard.
+    const deviceSecret = randomUUID()
+    const binding = {
+      fph: hashDeviceSecret(deviceSecret),
+      env: computeEnvHash(staffAccountId, meta.userAgent ?? ''),
+    }
+
     return {
-      accessToken: this.tokens.signAccess(staffAccountId, jti),
+      accessToken: this.tokens.signAccess(staffAccountId, jti, binding),
       refreshToken,
+      deviceSecret,
       expiresIn: this.tokens.getAccessExpiresIn(),
     }
   }

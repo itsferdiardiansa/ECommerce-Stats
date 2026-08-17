@@ -6,6 +6,9 @@
       "path": "../../packages/emails"
     },
     {
+      "path": "../../packages/server/auth"
+    },
+    {
       "path": "../../packages/auth-core"
     },
     {

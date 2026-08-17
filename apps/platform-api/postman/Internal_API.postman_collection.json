@@ -16,14 +16,51 @@
       "value": "owner@rufieltics.local",
       "type": "string"
     },
-    { "key": "staff_password", "value": "SuperSecret12345!", "type": "string" },
-    { "key": "invite_token", "value": "", "type": "string" },
-    { "key": "totp_secret", "value": "", "type": "string" },
-    { "key": "totp_code", "value": "123456", "type": "string" },
-    { "key": "mfa_token", "value": "", "type": "string" },
-    { "key": "staff_access_token", "value": "", "type": "string" },
-    { "key": "staff_id", "value": "", "type": "string" },
-    { "key": "role_key", "value": "support", "type": "string" }
+    {
+      "key": "staff_password",
+      "value": "SuperSecret12345!",
+      "type": "string"
+    },
+    {
+      "key": "invite_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "totp_secret",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "totp_code",
+      "value": "123456",
+      "type": "string"
+    },
+    {
+      "key": "mfa_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "staff_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "staff_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "role_key",
+      "value": "support",
+      "type": "string"
+    },
+    {
+      "key": "custom_role_key",
+      "value": "content_mod",
+      "type": "string"
+    }
   ],
   "item": [
     {
@@ -33,8 +70,12 @@
         "header": [],
         "url": {
           "raw": "{{base_url}}/health",
-          "host": ["{{base_url}}"],
-          "path": ["health"]
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "health"
+          ]
         },
         "description": "Liveness check for platform-api. Public."
       },
@@ -47,15 +88,26 @@
           "name": "Setup (set password + begin TOTP)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"inviteToken\": \"{{invite_token}}\",\n  \"password\": \"{{staff_password}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/staff/auth/setup",
-              "host": ["{{base_url}}"],
-              "path": ["staff", "auth", "setup"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "auth",
+                "setup"
+              ]
             },
             "description": "Accepts an invite token, sets the password, and returns { otpauthUri, secret }. Scan the otpauthUri (or enter the secret) into an authenticator app, then run Confirm. The base32 secret is saved to {{totp_secret}} for generating codes."
           },
@@ -80,15 +132,27 @@
           "name": "Confirm Setup (activate)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"inviteToken\": \"{{invite_token}}\",\n  \"code\": \"{{totp_code}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/staff/auth/setup/confirm",
-              "host": ["{{base_url}}"],
-              "path": ["staff", "auth", "setup", "confirm"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "auth",
+                "setup",
+                "confirm"
+              ]
             },
             "description": "Verifies the TOTP code, enables MFA, and activates the account (status ACTIVE). Set {{totp_code}} to the current 6-digit code first."
           },
@@ -103,15 +167,26 @@
           "name": "Login (saves mfa_token)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{staff_email}}\",\n  \"password\": \"{{staff_password}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/staff/auth/login",
-              "host": ["{{base_url}}"],
-              "path": ["staff", "auth", "login"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "auth",
+                "login"
+              ]
             },
             "description": "Password step. Returns { mfaRequired: true, mfaToken }. Complete with Verify MFA."
           },
@@ -136,15 +211,26 @@
           "name": "Verify MFA (saves staff_access_token)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"mfaToken\": \"{{mfa_token}}\",\n  \"code\": \"{{totp_code}}\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/staff/auth/mfa",
-              "host": ["{{base_url}}"],
-              "path": ["staff", "auth", "mfa"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "auth",
+                "mfa"
+              ]
             },
             "description": "Second factor. Set {{totp_code}} to the current code. Returns { accessToken, expiresIn } and sets an httpOnly refresh cookie."
           },
@@ -178,8 +264,14 @@
             ],
             "url": {
               "raw": "{{base_url}}/staff/auth/me",
-              "host": ["{{base_url}}"],
-              "path": ["staff", "auth", "me"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "auth",
+                "me"
+              ]
             },
             "description": "Current staff account + resolved permissions (super-admin returns all)."
           },
@@ -192,8 +284,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/staff/auth/refresh",
-              "host": ["{{base_url}}"],
-              "path": ["staff", "auth", "refresh"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "auth",
+                "refresh"
+              ]
             },
             "description": "Rotates the session using the httpOnly refresh cookie set at MFA. Returns a new accessToken."
           },
@@ -227,8 +325,14 @@
             ],
             "url": {
               "raw": "{{base_url}}/staff/auth/logout",
-              "host": ["{{base_url}}"],
-              "path": ["staff", "auth", "logout"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "auth",
+                "logout"
+              ]
             },
             "description": "Revokes the current staff session and clears the refresh cookie."
           },
@@ -244,7 +348,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{staff_access_token}}",
@@ -257,8 +364,12 @@
             },
             "url": {
               "raw": "{{base_url}}/staff",
-              "host": ["{{base_url}}"],
-              "path": ["staff"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff"
+              ]
             },
             "description": "Requires the staff.manage permission (super-admin has it). Creates an INVITED staff account and returns { staffId, inviteToken, setupUrl }. Email delivery is a follow-up - the invite token is returned here for testing."
           },
@@ -282,6 +393,104 @@
           ]
         },
         {
+          "name": "List Invitations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/staff/invitations?status=ALL&search=&page=1&pageSize=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "invitations"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "ALL",
+                  "description": "ALL | PENDING | ACCEPTED | REJECTED | EXPIRED"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Matches email or name."
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Requires staff.view. Paginated invitation lifecycle. Expired pending invites are swept to EXPIRED on read. Returns { items, total }."
+          },
+          "response": []
+        },
+        {
+          "name": "Resend Invitation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/staff/invitations/{{invitation_id}}/resend",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "invitations",
+                "{{invitation_id}}",
+                "resend"
+              ]
+            },
+            "description": "Requires staff.manage. Regenerates the token, resets expiry (PENDING), re-sends the email. Blocked on ACCEPTED and by the per-email daily cap (429 too_many_invites)."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Invitation (reject)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/staff/invitations/{{invitation_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "invitations",
+                "{{invitation_id}}"
+              ]
+            },
+            "description": "Requires staff.manage. Marks the invitation REJECTED (kept for history) and deletes the pending account. Blocked on ACCEPTED."
+          },
+          "response": []
+        },
+        {
           "name": "List Staff",
           "request": {
             "method": "GET",
@@ -293,11 +502,141 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/staff",
-              "host": ["{{base_url}}"],
-              "path": ["staff"]
+              "raw": "{{base_url}}/staff?page=1&pageSize=10&search=&status=ALL&role=ALL",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Min 3 chars applied client-side; server matches email/name (case-insensitive)."
+                },
+                {
+                  "key": "status",
+                  "value": "ALL",
+                  "description": "ALL | INVITED | ACTIVE | SUSPENDED"
+                },
+                {
+                  "key": "role",
+                  "value": "ALL",
+                  "description": "ALL | __super | a role key"
+                }
+              ]
             },
-            "description": "Requires staff.view. Lists staff with roles and status."
+            "description": "Requires staff.view. Server-side filter + pagination. Returns { items, total }."
+          },
+          "response": []
+        },
+        {
+          "name": "List Permissions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/staff/permissions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "permissions"
+              ]
+            },
+            "description": "Requires staff.view. All permission keys the RBAC matrix is built from."
+          },
+          "response": []
+        },
+        {
+          "name": "Audit Log",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/staff/audit?search=&action=&targetType=&page=1&pageSize=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "audit"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Free-text (min 3 chars on web): actor email/name, action, target."
+                },
+                {
+                  "key": "action",
+                  "value": "",
+                  "description": "Exact action key (e.g. role.assign). Omit for all."
+                },
+                {
+                  "key": "targetType",
+                  "value": "",
+                  "description": "Exact target type (e.g. StaffAccount). Omit for all."
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Requires audit.view. Paginated admin actions with search + per-column filters. Returns { items, total }."
+          },
+          "response": []
+        },
+        {
+          "name": "Audit Log Filters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/staff/audit/filters",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "audit",
+                "filters"
+              ]
+            },
+            "description": "Requires audit.view. Distinct action + targetType values for the filter dropdowns."
           },
           "response": []
         },
@@ -314,10 +653,135 @@
             ],
             "url": {
               "raw": "{{base_url}}/staff/roles",
-              "host": ["{{base_url}}"],
-              "path": ["staff", "roles"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "roles"
+              ]
             },
             "description": "Requires staff.view. Lists system roles (support, billing, read_only) and their permissions."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_access_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"{{custom_role_key}}\",\n  \"name\": \"Content moderator\",\n  \"description\": \"Moderate user content.\",\n  \"permissionKeys\": [\n    \"users.view\",\n    \"users.ban\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/staff/roles",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "roles"
+              ]
+            },
+            "description": "Requires staff.manage. Creates a custom (non-system) role with a permission set."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_access_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Content moderator\",\n  \"description\": \"Moderate user content and lockouts.\",\n  \"permissionKeys\": [\n    \"users.view\",\n    \"users.ban\",\n    \"lockouts.manage\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/staff/roles/{{custom_role_key}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "roles",
+                "{{custom_role_key}}"
+              ]
+            },
+            "description": "Requires staff.manage. Updates name/description and replaces the permission set. System roles are rejected."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Role",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/staff/roles/{{custom_role_key}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "roles",
+                "{{custom_role_key}}"
+              ]
+            },
+            "description": "Requires staff.manage. Deletes a custom role. System roles are rejected."
+          },
+          "response": []
+        },
+        {
+          "name": "Role Members",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/staff/roles/{{role_key}}/members",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "roles",
+                "{{role_key}}",
+                "members"
+              ]
+            },
+            "description": "Requires staff.view. Lists staff who hold {{role_key}}."
           },
           "response": []
         },
@@ -326,7 +790,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{staff_access_token}}",
@@ -339,10 +806,43 @@
             },
             "url": {
               "raw": "{{base_url}}/staff/{{staff_id}}/roles",
-              "host": ["{{base_url}}"],
-              "path": ["staff", "{{staff_id}}", "roles"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "{{staff_id}}",
+                "roles"
+              ]
             },
             "description": "Requires staff.manage. Assigns a role (by key) to the staff member in {{staff_id}}."
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Role",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/staff/{{staff_id}}/roles/{{role_key}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "staff",
+                "{{staff_id}}",
+                "roles",
+                "{{role_key}}"
+              ]
+            },
+            "description": "Requires staff.manage. Removes {{role_key}} from the staff member in {{staff_id}}."
           },
           "response": []
         }

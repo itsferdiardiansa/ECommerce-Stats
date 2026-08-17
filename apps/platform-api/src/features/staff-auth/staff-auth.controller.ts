@@ -30,17 +30,19 @@ import {
 
 const REFRESH_COOKIE = 'staffRefreshToken'
 const REFRESH_PATH = '/api/v1/staff/auth'
+const DEVICE_COOKIE = 'staffDeviceSecret'
+const DEVICE_PATH = '/api/v1/staff'
 
 @Controller('staff/auth')
 export class StaffAuthController {
   constructor(private readonly auth: StaffAuthService) {}
 
-  private cookieOptions(): CookieOptions {
+  private cookieOptions(path: string = REFRESH_PATH): CookieOptions {
     return {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      path: REFRESH_PATH,
+      path,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     }
   }
@@ -62,7 +64,7 @@ export class StaffAuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto, @I18n() i18n: I18nContext) {
-    const result = await this.auth.login(dto.email, dto.password)
+    const result = await this.auth.login(dto.email, dto.password, i18n)
     return success(i18n.t('staff.success.mfa_required'), result)
   }
 
@@ -75,12 +77,13 @@ export class StaffAuthController {
     @Res({ passthrough: true }) res: Response,
     @I18n() i18n: I18nContext
   ) {
-    const { refreshToken, ...result } = await this.auth.verifyMfa(
+    const { refreshToken, deviceSecret, ...result } = await this.auth.verifyMfa(
       dto.mfaToken,
       dto.code,
       { ip, userAgent: req.headers['user-agent'] }
     )
     res.cookie(REFRESH_COOKIE, refreshToken, this.cookieOptions())
+    res.cookie(DEVICE_COOKIE, deviceSecret, this.cookieOptions(DEVICE_PATH))
     return success(i18n.t('staff.success.logged_in'), result)
   }
 
@@ -94,11 +97,12 @@ export class StaffAuthController {
   ) {
     const token = req.cookies?.[REFRESH_COOKIE] as string | undefined
     if (!token) throw new BadRequestException('staff.errors.refresh_missing')
-    const { refreshToken, ...result } = await this.auth.refresh(token, {
-      ip,
-      userAgent: req.headers['user-agent'],
-    })
+    const { refreshToken, deviceSecret, ...result } = await this.auth.refresh(
+      token,
+      { ip, userAgent: req.headers['user-agent'] }
+    )
     res.cookie(REFRESH_COOKIE, refreshToken, this.cookieOptions())
+    res.cookie(DEVICE_COOKIE, deviceSecret, this.cookieOptions(DEVICE_PATH))
     return success(i18n.t('staff.success.refreshed'), result)
   }
 
@@ -112,6 +116,7 @@ export class StaffAuthController {
   ) {
     if (req.staff) await this.auth.logout(req.staff.jti)
     res.clearCookie(REFRESH_COOKIE, { path: REFRESH_PATH })
+    res.clearCookie(DEVICE_COOKIE, { path: DEVICE_PATH })
     return success(i18n.t('staff.success.logged_out'), { success: true })
   }
 

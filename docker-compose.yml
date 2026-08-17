@@ -47,6 +47,23 @@ services:
       timeout: 3s
       retries: 5
 
+  internal-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Dedicated to the internal/platform-api plane (staff lockout etc.), kept
+    # separate from the customer `redis` so an incident on one never affects the
+    # other. Point platform-api at it with STAFF_REDIS_URL=redis://localhost:6380.
+    command: redis-server --maxmemory 64mb --maxmemory-policy noeviction --appendonly yes
+    ports:
+      - "6380:6379"
+    volumes:
+      - ./data/internal-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   pgadmin:
     image: dpage/pgadmin4
     restart: unless-stopped

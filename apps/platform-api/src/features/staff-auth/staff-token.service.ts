@@ -6,6 +6,15 @@ export interface StaffAccessPayload {
   sub: string
   jti: string
   typ: 'staff-access'
+  /** device-secret hash (device binding) */
+  fph?: string
+  /** environment (browser/os) hash (device binding) */
+  env?: string
+}
+
+export interface DeviceBinding {
+  fph: string
+  env: string
 }
 export interface StaffRefreshPayload {
   sub: string
@@ -40,9 +49,9 @@ export class StaffTokenService {
     return this.config.getOrThrow<string>('STAFF_INVITE_SECRET')
   }
 
-  signAccess(sub: string, jti: string): string {
+  signAccess(sub: string, jti: string, binding?: DeviceBinding): string {
     return this.jwt.sign(
-      { sub, jti, typ: 'staff-access' },
+      { sub, jti, typ: 'staff-access', ...binding },
       { secret: this.accessSecret, expiresIn: '15m' }
     )
   }
