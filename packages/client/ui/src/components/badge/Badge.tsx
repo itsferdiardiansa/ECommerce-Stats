@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
+import { X } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
@@ -29,17 +30,36 @@ function Badge({
   className,
   variant,
   asChild = false,
+  onRemove,
+  removeLabel = 'Remove',
+  children,
   ...props
 }: React.ComponentProps<'span'> &
-  VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
+  VariantProps<typeof badgeVariants> & {
+    asChild?: boolean
+    onRemove?: () => void
+    removeLabel?: string
+  }) {
   const Comp = asChild ? Slot : 'span'
 
   return (
     <Comp
       data-slot="badge"
-      className={cn(badgeVariants({ variant }), className)}
+      className={cn(badgeVariants({ variant }), onRemove && 'pr-1', className)}
       {...props}
-    />
+    >
+      {children}
+      {onRemove && !asChild ? (
+        <button
+          type="button"
+          aria-label={removeLabel}
+          onClick={onRemove}
+          className="hover:bg-foreground/15 -mr-0.5 ml-0.5 inline-flex size-3.5 cursor-pointer items-center justify-center rounded-sm opacity-70 transition hover:opacity-100"
+        >
+          <X className="size-3" />
+        </button>
+      ) : null}
+    </Comp>
   )
 }
 

@@ -16,6 +16,7 @@ export interface FormFieldProps<T extends FieldValues = FieldValues> {
   label?: React.ReactNode
   description?: React.ReactNode
   required?: boolean
+  disabled?: boolean
   className?: string
   control?: Control<T>
   /** Normalize the value on every change, e.g. `v => v.replace(/\D/g, '')`. */
@@ -32,6 +33,7 @@ export function FormField<T extends FieldValues = FieldValues>({
   label,
   description,
   required,
+  disabled,
   className,
   control: controlProp,
   transform,
@@ -68,7 +70,7 @@ export function FormField<T extends FieldValues = FieldValues>({
     value: field.value ?? '',
     onChange: handleChange,
     onBlur: field.onBlur,
-    disabled: field.disabled,
+    disabled: disabled ?? field.disabled,
     'aria-invalid': error ? true : undefined,
     'aria-describedby': describedBy,
   }
