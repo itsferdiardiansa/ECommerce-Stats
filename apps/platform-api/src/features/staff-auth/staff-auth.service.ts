@@ -26,6 +26,7 @@ import {
   computeEnvHash,
 } from '@rufieltics/auth-server'
 import { StaffTokenService } from './staff-token.service'
+import { StaffSetupStore } from './stores/staff-setup.store'
 import { MailService } from '../../modules/mail/mail.service'
 
 interface RequestMeta {
@@ -34,6 +35,7 @@ interface RequestMeta {
 }
 
 const TOTP_RESET_EXPIRES_MINUTES = 30
+const SETUP_STAGE_TTL_SECONDS = 24 * 60 * 60
 
 @Injectable()
 export class StaffAuthService {
@@ -41,7 +43,8 @@ export class StaffAuthService {
     private readonly tokens: StaffTokenService,
     private readonly config: ConfigService,
     private readonly mail: MailService,
-    private readonly lockout: LoginLockout
+    private readonly lockout: LoginLockout,
+    private readonly setupStore: StaffSetupStore
   ) {}
 
   private lockoutKey(email: string): string {
@@ -79,14 +82,47 @@ export class StaffAuthService {
       throw new BadRequestException('staff.errors.invite_used')
     }
 
+    // Nothing durable yet: stage the credentials in Redis until the ceremony
+    // completes. An abandoned setup simply expires and leaves the account clean.
     const passwordHash = await hashPassword(password)
-    await StaffAccounts.update(staff.id, { passwordHash })
-
     const secret = generateTotpSecret()
-    await StaffTotps.upsert(staff.id, secret)
+    await this.setupStore.stage(
+      staff.id,
+      { passwordHash, totpSecret: secret },
+      SETUP_STAGE_TTL_SECONDS
+    )
     const otpauthUri = buildOtpauthUri(secret, staff.email, this.issuer())
 
     return { otpauthUri, secret }
+  }
+
+  async setupStatus(inviteToken: string) {
+    let sub: string
+    try {
+      sub = this.tokens.verifyInvite(inviteToken).sub
+    } catch {
+      return { status: 'invalid' as const }
+    }
+
+    const staff = await StaffAccounts.findById(sub)
+    if (!staff) return { status: 'invalid' as const }
+    if (staff.status === 'ACTIVE') return { status: 'completed' as const }
+    if (staff.status !== 'INVITED') return { status: 'invalid' as const }
+
+    const staged = await this.setupStore.get(staff.id)
+    if (!staged) return { status: 'pending' as const, staged: false as const }
+
+    const otpauthUri = buildOtpauthUri(
+      staged.totpSecret,
+      staff.email,
+      this.issuer()
+    )
+    return {
+      status: 'pending' as const,
+      staged: true as const,
+      otpauthUri,
+      secret: staged.totpSecret,
+    }
   }
 
   async confirmSetup(inviteToken: string, code: string) {
@@ -96,14 +132,37 @@ export class StaffAuthService {
       throw new BadRequestException('staff.errors.invite_used')
     }
 
-    const totp = await StaffTotps.findByStaff(staff.id)
-    if (!totp || !verifyTotp(code, totp.secret)) {
+    const staged = await this.setupStore.get(staff.id)
+    if (!staged) {
+      throw new BadRequestException('staff.errors.setup_expired')
+    }
+    if (!verifyTotp(code, staged.totpSecret)) {
       throw new BadRequestException('staff.errors.code_incorrect')
     }
 
+    // Ceremony complete: now write the durable record and drop the staging key.
+    await StaffAccounts.update(staff.id, {
+      passwordHash: staged.passwordHash,
+      mfaEnabled: true,
+      status: 'ACTIVE',
+    })
+    await StaffTotps.upsert(staff.id, staged.totpSecret)
     await StaffTotps.confirm(staff.id)
-    await StaffAccounts.update(staff.id, { mfaEnabled: true, status: 'ACTIVE' })
     await StaffInvitations.markAcceptedByAccount(staff.id)
+    await this.setupStore.remove(staff.id)
+
+    const dashboardUrl = this.config.get<string>(
+      'PLATFORM_WEB_URL',
+      'http://localhost:3001'
+    )
+    await this.mail
+      .sendStaffWelcome({
+        to: staff.email,
+        name: staff.name,
+        url: dashboardUrl,
+      })
+      .catch(() => undefined)
+
     return { activated: true }
   }
 

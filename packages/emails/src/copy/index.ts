@@ -88,7 +88,11 @@ export interface MethodStrings {
 }
 
 type CodeName = 'verification-code' | 'step-up-otp' | 'email-change'
-type LinkName = 'password-reset' | 'staff-invite' | 'staff-totp-reset'
+type LinkName =
+  | 'password-reset'
+  | 'staff-invite'
+  | 'staff-totp-reset'
+  | 'staff-welcome'
 type MethodName = 'security-method-enabled' | 'security-method-disabled'
 type AlertName =
   | 'new-sign-in'
@@ -140,6 +144,18 @@ const enLink: LinkBuilders = {
     footer:
       "If you didn't request this, ignore this email - your current authenticator keeps working.",
   }),
+  'staff-welcome': v => ({
+    subject: 'Welcome to Rufieltics',
+    preview: "You're now part of the Rufieltics staff",
+    heading: 'Welcome aboard',
+    greeting: `Hi ${v.name},`,
+    body: "Your account is all set - you're now part of the Rufieltics staff. Head to your internal dashboard to get started.",
+    buttonLabel: 'Access your dashboard',
+    expiry: '',
+    fallback: '',
+    footer:
+      "You received this because your staff account was just activated. If this wasn't you, contact your administrator.",
+  }),
 }
 
 const idLink: LinkBuilders = {
@@ -181,6 +197,18 @@ const idLink: LinkBuilders = {
       'Jika tombol tidak berfungsi, tempel tautan ini ke peramban Anda:',
     footer:
       'Jika Anda tidak meminta ini, abaikan email ini - autentikator Anda saat ini tetap berfungsi.',
+  }),
+  'staff-welcome': v => ({
+    subject: 'Selamat datang di Rufieltics',
+    preview: 'Anda kini bagian dari staf Rufieltics',
+    heading: 'Selamat bergabung',
+    greeting: `Hai ${v.name},`,
+    body: 'Akun Anda sudah siap - Anda kini bagian dari staf Rufieltics. Buka dasbor internal Anda untuk memulai.',
+    buttonLabel: 'Buka dasbor Anda',
+    expiry: '',
+    fallback: '',
+    footer:
+      'Anda menerima ini karena akun staf Anda baru saja diaktifkan. Jika ini bukan Anda, hubungi administrator Anda.',
   }),
 }
 

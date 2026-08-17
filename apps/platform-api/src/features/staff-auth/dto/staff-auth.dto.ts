@@ -6,6 +6,10 @@ export const SetupSchema = z.object({
   password: z.string().min(12),
 })
 
+export const SetupStatusSchema = z.object({
+  inviteToken: z.string().min(1),
+})
+
 export const ConfirmSetupSchema = z.object({
   inviteToken: z.string().min(1),
   code: z.string().min(6).max(8),
@@ -35,6 +39,7 @@ export const TotpResetConfirmSchema = z.object({
 })
 
 export class SetupDto extends createZodDto(SetupSchema) {}
+export class SetupStatusDto extends createZodDto(SetupStatusSchema) {}
 export class ConfirmSetupDto extends createZodDto(ConfirmSetupSchema) {}
 export class LoginDto extends createZodDto(LoginSchema) {}
 export class MfaDto extends createZodDto(MfaSchema) {}

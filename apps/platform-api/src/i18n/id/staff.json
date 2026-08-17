@@ -2,6 +2,7 @@
   "errors": {
     "invite_invalid": "Undangan ini tidak valid atau telah kedaluwarsa.",
     "invite_used": "Undangan ini sudah tidak berlaku.",
+    "setup_expired": "Sesi penyiapan Anda kedaluwarsa. Silakan pilih kata sandi lagi.",
     "code_incorrect": "Kode salah. Silakan coba lagi.",
     "invalid_credentials": "Kredensial tidak valid.",
     "invalid_credentials_remaining": "Kredensial tidak valid. Anda memiliki {attempts} percobaan tersisa.",

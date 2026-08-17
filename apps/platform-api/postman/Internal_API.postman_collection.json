@@ -70,12 +70,8 @@
         "header": [],
         "url": {
           "raw": "{{base_url}}/health",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "health"
-          ]
+          "host": ["{{base_url}}"],
+          "path": ["health"]
         },
         "description": "Liveness check for platform-api. Public."
       },
@@ -100,14 +96,8 @@
             },
             "url": {
               "raw": "{{base_url}}/staff/auth/setup",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "auth",
-                "setup"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "auth", "setup"]
             },
             "description": "Accepts an invite token, sets the password, and returns { otpauthUri, secret }. Scan the otpauthUri (or enter the secret) into an authenticator app, then run Confirm. The base32 secret is saved to {{totp_secret}} for generating codes."
           },
@@ -129,6 +119,29 @@
           ]
         },
         {
+          "name": "Setup Status (gate)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inviteToken\": \"{{invite_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/staff/auth/setup/status",
+              "host": ["{{base_url}}"],
+              "path": ["staff", "auth", "setup", "status"]
+            },
+            "description": "Resolves what the setup page should render before showing fields: { status: 'invalid' } (bad/expired invite), { status: 'completed' } (already activated), or { status: 'pending', staged, otpauthUri?, secret? }. When staged in Redis the UI resumes at the authenticator step. Nothing is written to the DB until Confirm."
+          },
+          "response": []
+        },
+        {
           "name": "Confirm Setup (activate)",
           "request": {
             "method": "POST",
@@ -144,15 +157,8 @@
             },
             "url": {
               "raw": "{{base_url}}/staff/auth/setup/confirm",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "auth",
-                "setup",
-                "confirm"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "auth", "setup", "confirm"]
             },
             "description": "Verifies the TOTP code, enables MFA, and activates the account (status ACTIVE). Set {{totp_code}} to the current 6-digit code first."
           },
@@ -179,14 +185,8 @@
             },
             "url": {
               "raw": "{{base_url}}/staff/auth/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "auth",
-                "login"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "auth", "login"]
             },
             "description": "Password step. Returns { mfaRequired: true, mfaToken }. Complete with Verify MFA."
           },
@@ -223,14 +223,8 @@
             },
             "url": {
               "raw": "{{base_url}}/staff/auth/mfa",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "auth",
-                "mfa"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "auth", "mfa"]
             },
             "description": "Second factor. Set {{totp_code}} to the current code. Returns { accessToken, expiresIn } and sets an httpOnly refresh cookie."
           },
@@ -264,14 +258,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/staff/auth/me",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "auth",
-                "me"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "auth", "me"]
             },
             "description": "Current staff account + resolved permissions (super-admin returns all)."
           },
@@ -284,14 +272,8 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/staff/auth/refresh",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "auth",
-                "refresh"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "auth", "refresh"]
             },
             "description": "Rotates the session using the httpOnly refresh cookie set at MFA. Returns a new accessToken."
           },
@@ -325,14 +307,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/staff/auth/logout",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "auth",
-                "logout"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "auth", "logout"]
             },
             "description": "Revokes the current staff session and clears the refresh cookie."
           },
@@ -364,12 +340,8 @@
             },
             "url": {
               "raw": "{{base_url}}/staff",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff"]
             },
             "description": "Requires the staff.manage permission (super-admin has it). Creates an INVITED staff account and returns { staffId, inviteToken, setupUrl }. Email delivery is a follow-up - the invite token is returned here for testing."
           },
@@ -405,13 +377,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/staff/invitations?status=ALL&search=&page=1&pageSize=10",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "invitations"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["staff", "invitations"],
               "query": [
                 {
                   "key": "status",
@@ -450,15 +417,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/staff/invitations/{{invitation_id}}/resend",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "invitations",
-                "{{invitation_id}}",
-                "resend"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "invitations", "{{invitation_id}}", "resend"]
             },
             "description": "Requires staff.manage. Regenerates the token, resets expiry (PENDING), re-sends the email. Blocked on ACCEPTED and by the per-email daily cap (429 too_many_invites)."
           },
@@ -477,14 +437,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/staff/invitations/{{invitation_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "invitations",
-                "{{invitation_id}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "invitations", "{{invitation_id}}"]
             },
             "description": "Requires staff.manage. Marks the invitation REJECTED (kept for history) and deletes the pending account. Blocked on ACCEPTED."
           },
@@ -503,12 +457,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/staff?page=1&pageSize=10&search=&status=ALL&role=ALL",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["staff"],
               "query": [
                 {
                   "key": "page",
@@ -552,13 +502,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/staff/permissions",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "permissions"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "permissions"]
             },
             "description": "Requires staff.view. All permission keys the RBAC matrix is built from."
           },
@@ -577,13 +522,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/staff/audit?search=&action=&targetType=&page=1&pageSize=20",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "audit"
-              ],
+              "host": ["{{base_url}}"],
+              "path": ["staff", "audit"],
               "query": [
                 {
                   "key": "search",
@@ -627,14 +567,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/staff/audit/filters",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "audit",
-                "filters"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "audit", "filters"]
             },
             "description": "Requires audit.view. Distinct action + targetType values for the filter dropdowns."
           },
@@ -653,13 +587,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/staff/roles",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "roles"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "roles"]
             },
             "description": "Requires staff.view. Lists system roles (support, billing, read_only) and their permissions."
           },
@@ -686,13 +615,8 @@
             },
             "url": {
               "raw": "{{base_url}}/staff/roles",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "roles"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "roles"]
             },
             "description": "Requires staff.manage. Creates a custom (non-system) role with a permission set."
           },
@@ -719,14 +643,8 @@
             },
             "url": {
               "raw": "{{base_url}}/staff/roles/{{custom_role_key}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "roles",
-                "{{custom_role_key}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "roles", "{{custom_role_key}}"]
             },
             "description": "Requires staff.manage. Updates name/description and replaces the permission set. System roles are rejected."
           },
@@ -745,14 +663,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/staff/roles/{{custom_role_key}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "roles",
-                "{{custom_role_key}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "roles", "{{custom_role_key}}"]
             },
             "description": "Requires staff.manage. Deletes a custom role. System roles are rejected."
           },
@@ -771,15 +683,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/staff/roles/{{role_key}}/members",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "roles",
-                "{{role_key}}",
-                "members"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "roles", "{{role_key}}", "members"]
             },
             "description": "Requires staff.view. Lists staff who hold {{role_key}}."
           },
@@ -806,14 +711,8 @@
             },
             "url": {
               "raw": "{{base_url}}/staff/{{staff_id}}/roles",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "{{staff_id}}",
-                "roles"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "{{staff_id}}", "roles"]
             },
             "description": "Requires staff.manage. Assigns a role (by key) to the staff member in {{staff_id}}."
           },
@@ -832,15 +731,8 @@
             ],
             "url": {
               "raw": "{{base_url}}/staff/{{staff_id}}/roles/{{role_key}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "staff",
-                "{{staff_id}}",
-                "roles",
-                "{{role_key}}"
-              ]
+              "host": ["{{base_url}}"],
+              "path": ["staff", "{{staff_id}}", "roles", "{{role_key}}"]
             },
             "description": "Requires staff.manage. Removes {{role_key}} from the staff member in {{staff_id}}."
           },

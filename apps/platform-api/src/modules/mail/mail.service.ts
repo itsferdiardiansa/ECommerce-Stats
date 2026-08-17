@@ -29,6 +29,20 @@ export class MailService {
     await this.transport.send({ to: params.to, subject, text, html })
   }
 
+  async sendStaffWelcome(params: {
+    to: string
+    name: string
+    url: string
+    locale?: string
+  }): Promise<void> {
+    const { subject, html, text } = await renderEmail(
+      'staff-welcome',
+      params.locale ?? 'en',
+      { name: params.name, url: params.url, minutes: 0 }
+    )
+    await this.transport.send({ to: params.to, subject, text, html })
+  }
+
   async sendTotpReset(params: StaffInviteParams): Promise<void> {
     const { subject, html, text } = await renderEmail(
       'staff-totp-reset',

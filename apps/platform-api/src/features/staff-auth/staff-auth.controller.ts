@@ -20,6 +20,7 @@ import { StaffAuthGuard } from './guards/staff-auth.guard'
 import type { StaffRequestUser } from './guards/staff-auth.guard'
 import {
   SetupDto,
+  SetupStatusDto,
   ConfirmSetupDto,
   LoginDto,
   MfaDto,
@@ -51,6 +52,13 @@ export class StaffAuthController {
   @HttpCode(HttpStatus.OK)
   async setup(@Body() dto: SetupDto, @I18n() i18n: I18nContext) {
     const result = await this.auth.setup(dto.inviteToken, dto.password)
+    return success(i18n.t('staff.success.setup_ready'), result)
+  }
+
+  @Post('setup/status')
+  @HttpCode(HttpStatus.OK)
+  async setupStatus(@Body() dto: SetupStatusDto, @I18n() i18n: I18nContext) {
+    const result = await this.auth.setupStatus(dto.inviteToken)
     return success(i18n.t('staff.success.setup_ready'), result)
   }
 

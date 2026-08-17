@@ -13,5 +13,10 @@
     }
   },
   "include": ["src/**/*", "prisma/**/*"],
-  "exclude": ["node_modules", "dist", "scripts"]
+  "exclude": ["node_modules", "dist", "scripts"],
+  "references": [
+    {
+      "path": "../auth-core"
+    }
+  ]
 }

@@ -24,6 +24,23 @@ export const authApi = {
       { method: 'POST', json: { inviteToken, password }, signal }
     )
   },
+  setupStatus(inviteToken: string, signal?: AbortSignal) {
+    return apiFetch<
+      | { status: 'invalid' }
+      | { status: 'completed' }
+      | { status: 'pending'; staged: false }
+      | {
+          status: 'pending'
+          staged: true
+          otpauthUri: string
+          secret: string
+        }
+    >('/staff/auth/setup/status', {
+      method: 'POST',
+      json: { inviteToken },
+      signal,
+    })
+  },
   confirmSetup(inviteToken: string, code: string, signal?: AbortSignal) {
     return apiFetch<{ activated: boolean }>('/staff/auth/setup/confirm', {
       method: 'POST',

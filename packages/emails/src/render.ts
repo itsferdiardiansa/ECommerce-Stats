@@ -22,6 +22,7 @@ export interface EmailVars {
   'password-reset': LinkVars
   'staff-invite': LinkVars
   'staff-totp-reset': LinkVars
+  'staff-welcome': LinkVars
   'email-change': CodeVars
   'new-sign-in': AlertVars
   'blocked-attempt': AlertVars
@@ -49,6 +50,7 @@ const COMPONENTS: Record<EmailName, AnyComponent> = {
   'password-reset': LinkEmail as unknown as AnyComponent,
   'staff-invite': LinkEmail as unknown as AnyComponent,
   'staff-totp-reset': LinkEmail as unknown as AnyComponent,
+  'staff-welcome': LinkEmail as unknown as AnyComponent,
   'email-change': CodeEmail as unknown as AnyComponent,
   'new-sign-in': AlertEmail as unknown as AnyComponent,
   'blocked-attempt': AlertEmail as unknown as AnyComponent,
@@ -72,11 +74,16 @@ function isCodeEmail(
 
 function isLinkEmail(
   name: EmailName
-): name is 'password-reset' | 'staff-invite' | 'staff-totp-reset' {
+): name is
+  | 'password-reset'
+  | 'staff-invite'
+  | 'staff-totp-reset'
+  | 'staff-welcome' {
   return (
     name === 'password-reset' ||
     name === 'staff-invite' ||
-    name === 'staff-totp-reset'
+    name === 'staff-totp-reset' ||
+    name === 'staff-welcome'
   )
 }
 
@@ -115,6 +122,7 @@ export async function renderEmail<N extends EmailName>(
             | 'password-reset'
             | 'staff-invite'
             | 'staff-totp-reset'
+            | 'staff-welcome'
           >
         ] as unknown as Build)
 

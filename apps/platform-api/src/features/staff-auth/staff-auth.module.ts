@@ -8,6 +8,7 @@ import { StaffTokenService } from './staff-token.service'
 import { StaffAuthGuard } from './guards/staff-auth.guard'
 import { StaffPermissionGuard } from './guards/staff-permission.guard'
 import { StaffLockoutStore } from './stores/staff-lockout.store'
+import { StaffSetupStore } from './stores/staff-setup.store'
 
 @Module({
   imports: [JwtModule.register({})],
@@ -18,6 +19,7 @@ import { StaffLockoutStore } from './stores/staff-lockout.store'
     StaffAuthGuard,
     StaffPermissionGuard,
     StaffLockoutStore,
+    StaffSetupStore,
     {
       provide: LoginLockout,
       inject: [StaffLockoutStore, ConfigService],

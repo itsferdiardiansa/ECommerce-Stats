@@ -50,6 +50,7 @@ export type I18nTranslations = {
         "errors": {
             "invite_invalid": string;
             "invite_used": string;
+            "setup_expired": string;
             "code_incorrect": string;
             "invalid_credentials": string;
             "invalid_credentials_remaining": string;

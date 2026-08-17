@@ -43,16 +43,22 @@ export function LinkEmail(props: LinkEmailProps) {
           {props.buttonLabel}
         </Button>
       </Section>
-      <Text style={{ fontSize: '13px', color: '#6b7280' }}>{props.expiry}</Text>
-      <Text style={{ fontSize: '12px', color: '#9ca3af' }}>
-        {props.fallback}{' '}
-        <Link
-          href={props.url}
-          style={{ color: '#2563eb', wordBreak: 'break-all' }}
-        >
-          {props.url}
-        </Link>
-      </Text>
+      {props.expiry ? (
+        <Text style={{ fontSize: '13px', color: '#6b7280' }}>
+          {props.expiry}
+        </Text>
+      ) : null}
+      {props.fallback ? (
+        <Text style={{ fontSize: '12px', color: '#9ca3af' }}>
+          {props.fallback}{' '}
+          <Link
+            href={props.url}
+            style={{ color: '#2563eb', wordBreak: 'break-all' }}
+          >
+            {props.url}
+          </Link>
+        </Text>
+      ) : null}
     </Layout>
   )
 }

@@ -2,6 +2,7 @@
   "errors": {
     "invite_invalid": "This invite is invalid or has expired.",
     "invite_used": "This invite is no longer valid.",
+    "setup_expired": "Your setup session expired. Please choose your password again.",
     "code_incorrect": "That code is incorrect. Try again.",
     "invalid_credentials": "Invalid credentials.",
     "invalid_credentials_remaining": "Invalid credentials. You have {attempts} attempt(s) remaining.",

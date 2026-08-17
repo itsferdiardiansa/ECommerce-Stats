@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useState, type FormEvent } from 'react'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { CheckCircle2, CircleAlert, Loader2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -15,7 +17,6 @@ import {
   CardTitle,
   Form,
   FormField,
-  FormError,
   Input,
 } from '@rufieltics/ui'
 import { authApi } from '@/features/auth/api'
@@ -26,7 +27,6 @@ import { useAbortSignal } from '@/hooks/useAbortSignal'
 import { AuthenticatorQr } from './AuthenticatorQr'
 
 export function SetupForm() {
-  const router = useRouter()
   const params = useSearchParams()
   const inviteToken = params.get('token') ?? ''
 
@@ -36,8 +36,40 @@ export function SetupForm() {
   const [apiError, setApiError] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [gate, setGate] = useState<
+    'checking' | 'invalid' | 'completed' | 'form'
+  >('checking')
 
   const nextSignal = useAbortSignal()
+
+  useEffect(() => {
+    let active = true
+    if (!inviteToken) {
+      setGate('invalid')
+      return
+    }
+    authApi
+      .setupStatus(inviteToken)
+      .then(res => {
+        if (!active) return
+        if (res.status === 'invalid') return setGate('invalid')
+        if (res.status === 'completed') return setGate('completed')
+        if (res.staged) {
+          setSecret(res.secret)
+          setOtpauthUri(res.otpauthUri)
+          setStep('mfa')
+        }
+        setGate('form')
+      })
+      // A transient failure shouldn't lock the invitee out - fall back to the
+      // form, which re-validates the token on submit anyway.
+      .catch(() => {
+        if (active) setGate('form')
+      })
+    return () => {
+      active = false
+    }
+  }, [inviteToken])
 
   const form = useForm<SetupValues>({
     resolver: zodResolver(setupSchema),
@@ -74,7 +106,6 @@ export function SetupForm() {
           nextSignal()
         )
         setDone(true)
-        router.push('/sign-in')
       } catch (err) {
         if (isSilentError(err)) return
         setApiError(err instanceof Error ? err.message : 'Verification failed')
@@ -89,11 +120,67 @@ export function SetupForm() {
     void submit()
   }
 
-  if (!inviteToken) {
+  if (gate === 'checking') {
     return (
       <Card className="w-full max-w-sm">
-        <CardContent className="pt-6">
-          <FormError message="This setup link is missing its invite token." />
+        <CardContent className="flex items-center justify-center py-16">
+          <Loader2
+            className="text-muted-foreground size-6 animate-spin"
+            aria-hidden
+          />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (gate === 'invalid') {
+    return (
+      <Card className="w-full max-w-sm">
+        <CardContent className="flex flex-col items-center gap-4 pt-6 text-center">
+          <CircleAlert className="text-muted-foreground size-12" aria-hidden />
+          <div className="space-y-1">
+            <CardTitle>Invitation expired</CardTitle>
+            <CardDescription>
+              This invitation is invalid or has expired. Ask an administrator to
+              send you a new one.
+            </CardDescription>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (gate === 'completed') {
+    return (
+      <Card className="w-full max-w-sm">
+        <CardContent className="flex flex-col items-center gap-4 pt-6 text-center">
+          <CheckCircle2 className="size-12 text-emerald-500" aria-hidden />
+          <div className="space-y-1">
+            <CardTitle>Your account is already set up</CardTitle>
+            <CardDescription>Sign in to reach your dashboard.</CardDescription>
+          </div>
+          <Button asChild className="w-full">
+            <Link href="/sign-in">Sign in</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (done) {
+    return (
+      <Card className="w-full max-w-sm">
+        <CardContent className="flex flex-col items-center gap-4 pt-6 text-center">
+          <CheckCircle2 className="size-12 text-emerald-500" aria-hidden />
+          <div className="space-y-1">
+            <CardTitle>Your account is set</CardTitle>
+            <CardDescription>
+              You&apos;re all set - sign in to reach your dashboard.
+            </CardDescription>
+          </div>
+          <Button asChild className="w-full">
+            <Link href="/sign-in">Sign in</Link>
+          </Button>
         </CardContent>
       </Card>
     )
