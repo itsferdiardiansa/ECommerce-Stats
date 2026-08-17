@@ -1,5 +1,8 @@
+import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { SetupForm } from '@/features/auth/components/SetupForm'
+
+export const metadata: Metadata = { title: 'Set up account' }
 
 export default function SetupPage() {
   return (

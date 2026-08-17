@@ -44,6 +44,7 @@ export function ResetTotpForm() {
   const [loadError, setLoadError] = useState<LoadError | null>(null)
   const [apiError, setApiError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
 
   const nextSignal = useAbortSignal()
 
@@ -106,6 +107,7 @@ export function ResetTotpForm() {
         nextSignal()
       )
       toast.success('Your authenticator has been reset. Sign in again.')
+      setDone(true)
       router.push('/sign-in')
     } catch (err) {
       if (isSilentError(err)) return
@@ -169,7 +171,7 @@ export function ResetTotpForm() {
         <Form {...form}>
           <form onSubmit={handleSubmit}>
             <fieldset
-              disabled={loading}
+              disabled={loading || done}
               className="m-0 min-w-0 space-y-4 border-0 p-0"
             >
               <AuthenticatorQr
@@ -187,7 +189,11 @@ export function ResetTotpForm() {
                   maxLength={8}
                 />
               </FormField>
-              <Button type="submit" className="w-full" loading={loading}>
+              <Button
+                type="submit"
+                className="w-full"
+                loading={loading || done}
+              >
                 Confirm reset
               </Button>
             </fieldset>

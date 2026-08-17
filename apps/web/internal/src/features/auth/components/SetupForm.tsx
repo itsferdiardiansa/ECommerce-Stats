@@ -35,6 +35,7 @@ export function SetupForm() {
   const [otpauthUri, setOtpauthUri] = useState('')
   const [apiError, setApiError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
 
   const nextSignal = useAbortSignal()
 
@@ -72,6 +73,7 @@ export function SetupForm() {
           form.getValues('code'),
           nextSignal()
         )
+        setDone(true)
         router.push('/sign-in')
       } catch (err) {
         if (isSilentError(err)) return
@@ -116,7 +118,7 @@ export function SetupForm() {
         <Form {...form}>
           <form onSubmit={handleSubmit}>
             <fieldset
-              disabled={loading}
+              disabled={loading || done}
               className="m-0 min-w-0 space-y-4 border-0 p-0"
             >
               {step === 'password' ? (
@@ -145,7 +147,11 @@ export function SetupForm() {
                       maxLength={8}
                     />
                   </FormField>
-                  <Button type="submit" className="w-full" loading={loading}>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    loading={loading || done}
+                  >
                     Activate account
                   </Button>
                 </>

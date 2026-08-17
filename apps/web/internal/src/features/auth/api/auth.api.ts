@@ -44,6 +44,12 @@ export const authApi = {
       { method: 'POST', json: { mfaToken, code }, signal }
     )
   },
+  refresh(signal?: AbortSignal) {
+    return apiFetch<{ accessToken: string; expiresIn: number }>(
+      '/staff/auth/refresh',
+      { method: 'POST', skipAuthRefresh: true, signal }
+    )
+  },
   requestTotpReset(email: string, signal?: AbortSignal) {
     return apiFetch<{ requested: boolean }>('/staff/auth/totp/reset-request', {
       method: 'POST',

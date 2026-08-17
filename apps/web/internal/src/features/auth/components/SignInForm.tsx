@@ -40,6 +40,7 @@ export function SignInForm() {
   const [enroll, setEnroll] = useState<Enroll | null>(null)
   const [apiError, setApiError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
 
   const nextSignal = useAbortSignal()
 
@@ -81,7 +82,8 @@ export function SignInForm() {
     setLoading(true)
     try {
       await verifyMfa(mfaToken, form.getValues('code'), nextSignal())
-      router.push('/staff')
+      setDone(true)
+      router.push('/')
     } catch (err) {
       if (isSilentError(err)) return
       setApiError(err instanceof Error ? err.message : 'Verification failed')
@@ -155,7 +157,7 @@ export function SignInForm() {
         <Form {...form}>
           <form onSubmit={handleSubmit}>
             <fieldset
-              disabled={loading}
+              disabled={loading || done}
               className="m-0 min-w-0 space-y-4 border-0 p-0"
             >
               {step === 'password' ? (
@@ -206,7 +208,11 @@ export function SignInForm() {
                       maxLength={8}
                     />
                   </FormField>
-                  <Button type="submit" className="w-full" loading={loading}>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    loading={loading || done}
+                  >
                     {enroll ? 'Confirm & sign in' : 'Verify & sign in'}
                   </Button>
                   <div className="flex items-center justify-between">

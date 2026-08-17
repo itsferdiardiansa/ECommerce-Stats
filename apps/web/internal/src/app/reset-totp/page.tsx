@@ -1,5 +1,8 @@
+import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { ResetTotpForm } from '@/features/auth/components/ResetTotpForm'
+
+export const metadata: Metadata = { title: 'Reset authenticator' }
 
 export default function ResetTotpPage() {
   return (

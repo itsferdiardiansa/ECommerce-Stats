@@ -18,6 +18,7 @@ import {
   FormField,
   Input,
   toast,
+  useDismissGuard,
 } from '@rufieltics/ui'
 import { useAuth } from '@/features/auth/context'
 import { staffApi } from '@/features/staff/api'
@@ -33,6 +34,7 @@ export function InviteStaffDialog({ onInvited }: { onInvited: () => void }) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const nextSignal = useAbortSignal()
+  const { guard, dismissProps, hideClose } = useDismissGuard(loading)
   const form = useForm<InviteStaffValues>({
     resolver: zodResolver(inviteStaffSchema),
     defaultValues: { email: '' },
@@ -63,14 +65,18 @@ export function InviteStaffDialog({ onInvited }: { onInvited: () => void }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={guard(setOpen)}>
       <DialogTrigger asChild>
         <Button>
           <UserPlus className="size-4" />
           Invite staff
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        hideClose={hideClose}
+        {...dismissProps}
+      >
         <DialogHeader>
           <DialogTitle>Invite a staff member</DialogTitle>
           <DialogDescription>
@@ -80,17 +86,16 @@ export function InviteStaffDialog({ onInvited }: { onInvited: () => void }) {
         </DialogHeader>
         <Form {...form}>
           <form
+            noValidate
             onSubmit={form.handleSubmit(handleInvite)}
             className="space-y-4"
           >
-            <fieldset disabled={loading} className="m-0 min-w-0 border-0 p-0">
-              <FormField name="email" label="Email">
-                <Input type="email" autoFocus />
-              </FormField>
-            </fieldset>
+            <FormField name="email" label="Email" disabled={loading}>
+              <Input type="text" inputMode="email" autoFocus />
+            </FormField>
             <DialogFooter>
               <DialogClose asChild>
-                <Button type="button" variant="outline">
+                <Button type="button" variant="outline" disabled={loading}>
                   Cancel
                 </Button>
               </DialogClose>
