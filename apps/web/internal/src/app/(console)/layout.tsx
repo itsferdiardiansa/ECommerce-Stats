@@ -2,11 +2,12 @@
 
 import { type ReactNode } from 'react'
 import { DashboardShell, Spinner } from '@rufieltics/ui'
-import { QueryProvider } from '@rufieltics/query'
+import { QueryProvider } from '@rufieltics/core-client'
 import { useConsoleShell } from '@/features/console'
 
 export default function ConsoleLayout({ children }: { children: ReactNode }) {
-  const { isBootstrapping, navGroups, user, handleSignOut } = useConsoleShell()
+  const { isBootstrapping, navGroups, section, user, handleSignOut } =
+    useConsoleShell()
 
   if (isBootstrapping) {
     return (
@@ -21,6 +22,7 @@ export default function ConsoleLayout({ children }: { children: ReactNode }) {
       <DashboardShell
         appName="Rufieltics Admin"
         navGroups={navGroups}
+        section={section}
         user={user}
         onSignOut={handleSignOut}
       >

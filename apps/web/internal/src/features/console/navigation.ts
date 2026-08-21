@@ -1,4 +1,5 @@
 import {
+  ArrowLeftRight,
   Bell,
   BarChart3,
   Blocks,
@@ -6,39 +7,58 @@ import {
   CreditCard,
   FileBarChart,
   Home,
+  LayoutDashboard,
+  LayoutGrid,
   LifeBuoy,
   Lock,
   MailCheck,
+  Plug,
   ReceiptText,
+  Scale,
   ScrollText,
   Settings,
+  ShieldAlert,
   ShieldCheck,
+  SlidersHorizontal,
+  Tags,
+  TriangleAlert,
   TrendingUp,
   Users,
   UsersRound,
   Wallet,
+  Webhook,
   type LucideIcon,
 } from 'lucide-react'
-import type { DashboardNavGroup, DashboardNavItem } from '@rufieltics/ui'
 
-interface NavConfigItem {
+export interface NavConfigItem {
   title: string
   href?: string
   icon?: LucideIcon
+  /** Visible only when the staff member holds this permission. */
   permission?: string
+  /** Visible when the staff member holds ANY of these (use instead of `permission`). */
+  anyPermission?: string[]
   /** Feature not built yet: shown (if permitted) but dimmed + non-clickable. */
   disabled?: boolean
   items?: NavConfigItem[]
 }
 
-interface NavConfigGroup {
+export interface NavConfigGroup {
   label?: string
   items: NavConfigItem[]
 }
 
+export interface NavSectionConfig {
+  /** Route prefix that activates this section's dedicated sidebar. */
+  prefix: string
+  title: string
+  backHref: string
+  groups: NavConfigGroup[]
+}
+
 /**
- * The complete console menu. `permission` controls visibility (hidden when the
- * staff member lacks it); `disabled` marks features that aren't built yet.
+ * The main console menu. Payments & billing collapses to a single entry that
+ * drills into its own dedicated sidebar (see PAYMENTS_BILLING_SECTION).
  */
 export const CONSOLE_NAV: NavConfigGroup[] = [
   {
@@ -134,25 +154,10 @@ export const CONSOLE_NAV: NavConfigGroup[] = [
     label: 'Billing',
     items: [
       {
-        title: 'Plans',
-        href: '/plans',
-        icon: CreditCard,
-        permission: 'plans.view',
-        disabled: true,
-      },
-      {
-        title: 'Subscriptions',
-        href: '/subscriptions',
-        icon: ReceiptText,
-        permission: 'billing.view',
-        disabled: true,
-      },
-      {
-        title: 'Payments',
-        href: '/payments',
+        title: 'Payments & billing',
+        href: '/billing',
         icon: Wallet,
-        permission: 'payments.manage',
-        disabled: true,
+        anyPermission: ['payments.manage', 'billing.view', 'plans.view'],
       },
     ],
   },
@@ -207,45 +212,174 @@ export const CONSOLE_NAV: NavConfigGroup[] = [
   },
 ]
 
-type Has = (permission: string) => boolean
-
-function isActive(pathname: string, href?: string) {
-  if (!href) return false
-  if (href === '/') return pathname === '/'
-  return pathname === href || pathname.startsWith(`${href}/`)
+/** Dedicated Payments & Billing section — activates on any /billing route. */
+export const PAYMENTS_BILLING_SECTION: NavSectionConfig = {
+  prefix: '/billing',
+  title: 'Payments & Billing',
+  backHref: '/',
+  groups: [
+    {
+      label: 'Payments',
+      items: [
+        {
+          title: 'Overview',
+          href: '/billing',
+          icon: LayoutDashboard,
+          permission: 'billing.view',
+        },
+        {
+          title: 'Needs attention',
+          href: '/billing/attention',
+          icon: TriangleAlert,
+          permission: 'billing.view',
+        },
+        {
+          title: 'Transactions',
+          icon: ArrowLeftRight,
+          permission: 'payments.manage',
+          items: [
+            { title: 'All charges', href: '/billing/transactions' },
+            { title: 'Refunds', href: '/billing/transactions/refunds' },
+            { title: 'Failed & retries', href: '/billing/transactions/failed' },
+          ],
+        },
+        {
+          title: 'Disputes & chargebacks',
+          href: '/billing/disputes',
+          icon: ShieldAlert,
+          permission: 'payments.manage',
+        },
+        {
+          title: 'Payouts & settlements',
+          href: '/billing/payouts',
+          icon: Wallet,
+          permission: 'payments.manage',
+          disabled: true,
+        },
+        {
+          title: 'Reconciliation',
+          href: '/billing/reconciliation',
+          icon: Scale,
+          permission: 'payments.manage',
+          disabled: true,
+        },
+      ],
+    },
+    {
+      label: 'Billing',
+      items: [
+        {
+          title: 'Plans & pricing',
+          icon: CreditCard,
+          permission: 'plans.view',
+          items: [
+            { title: 'Plans', href: '/billing/plans', disabled: true },
+            {
+              title: 'Prices & currencies',
+              href: '/billing/prices',
+              disabled: true,
+            },
+            {
+              title: 'Coupons & discounts',
+              href: '/billing/coupons',
+              disabled: true,
+            },
+          ],
+        },
+        {
+          title: 'Subscriptions',
+          icon: ReceiptText,
+          permission: 'billing.view',
+          items: [
+            { title: 'Active', href: '/billing/subscriptions', disabled: true },
+            { title: 'Upcoming renewals', href: '/billing/renewals' },
+            {
+              title: 'Trials',
+              href: '/billing/subscriptions/trials',
+              disabled: true,
+            },
+            {
+              title: 'Past due · dunning',
+              href: '/billing/subscriptions/past-due',
+              disabled: true,
+            },
+            {
+              title: 'Canceled',
+              href: '/billing/subscriptions/canceled',
+              disabled: true,
+            },
+          ],
+        },
+        {
+          title: 'Invoices',
+          href: '/billing/invoices',
+          icon: FileBarChart,
+          permission: 'billing.view',
+          disabled: true,
+        },
+        {
+          title: 'Billing accounts',
+          href: '/billing/accounts',
+          icon: Building2,
+          permission: 'billing.view',
+          disabled: true,
+        },
+        {
+          title: 'Tax · PPN & e-Faktur',
+          href: '/billing/tax',
+          icon: Scale,
+          permission: 'billing.view',
+          disabled: true,
+        },
+      ],
+    },
+    {
+      label: 'Configuration',
+      items: [
+        {
+          title: 'Payment providers',
+          href: '/billing/providers',
+          icon: Plug,
+          permission: 'payments.manage',
+        },
+        {
+          title: 'Methods & routing',
+          href: '/billing/routing',
+          icon: SlidersHorizontal,
+          permission: 'payments.manage',
+          disabled: true,
+        },
+        {
+          title: 'Webhooks & events',
+          href: '/billing/webhooks',
+          icon: Webhook,
+          permission: 'payments.manage',
+          disabled: true,
+        },
+        {
+          title: 'Entitlements & limits',
+          href: '/billing/entitlements',
+          icon: LayoutGrid,
+          permission: 'payments.manage',
+          disabled: true,
+        },
+        {
+          title: 'Features',
+          href: '/billing/features',
+          icon: Tags,
+          permission: 'payments.manage',
+          disabled: true,
+        },
+        {
+          title: 'Billing settings',
+          href: '/billing/settings',
+          icon: Settings,
+          permission: 'settings.manage',
+          disabled: true,
+        },
+      ],
+    },
+  ],
 }
 
-function resolveItem(
-  item: NavConfigItem,
-  pathname: string,
-  has: Has
-): DashboardNavItem | null {
-  if (item.permission && !has(item.permission)) return null
-
-  const children = item.items
-    ?.map(child => resolveItem(child, pathname, has))
-    .filter((child): child is DashboardNavItem => child !== null)
-
-  if (item.items && (!children || children.length === 0)) return null
-
-  return {
-    title: item.title,
-    href: item.href,
-    icon: item.icon,
-    disabled: item.disabled,
-    active: isActive(pathname, item.href),
-    items: children,
-  }
-}
-
-export function resolveNavGroups(
-  pathname: string,
-  has: Has
-): DashboardNavGroup[] {
-  return CONSOLE_NAV.map(group => ({
-    label: group.label,
-    items: group.items
-      .map(item => resolveItem(item, pathname, has))
-      .filter((item): item is DashboardNavItem => item !== null),
-  })).filter(group => group.items.length > 0)
-}
+export const CONSOLE_SECTIONS: NavSectionConfig[] = [PAYMENTS_BILLING_SECTION]
