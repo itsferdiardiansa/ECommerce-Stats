@@ -15,7 +15,7 @@ import {
   SheetTitle,
   toast,
 } from '@rufieltics/ui'
-import { useMutation, useQueryClient } from '@rufieltics/query'
+import { useMutation, useQueryClient } from '@rufieltics/core-client'
 import {
   staffApi,
   staffKeys,

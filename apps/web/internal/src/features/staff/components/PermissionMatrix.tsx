@@ -1,6 +1,6 @@
 'use client'
 
-import { Checkbox } from '@rufieltics/ui'
+import { Checkbox, cn } from '@rufieltics/ui'
 import { groupPermissions } from '@/features/staff/lib/permissions'
 
 interface PermissionMatrixProps {
@@ -86,13 +86,16 @@ export function PermissionMatrix({
                     title={
                       locked ? "You don't hold this permission" : undefined
                     }
-                    className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-                      readOnly
-                        ? ''
-                        : locked
+                    className={cn(
+                      'flex items-center gap-2 rounded-md border px-3 py-2 text-sm',
+                      !readOnly &&
+                        (locked
                           ? 'cursor-not-allowed opacity-50'
-                          : 'hover:bg-accent/50 cursor-pointer'
-                    } ${checked ? 'border-primary/40 bg-primary/5' : 'border-border'}`}
+                          : 'hover:bg-accent/50 cursor-pointer'),
+                      checked
+                        ? 'border-primary/40 bg-primary/5'
+                        : 'border-border'
+                    )}
                   >
                     {!readOnly ? (
                       <Checkbox

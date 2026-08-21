@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { DataTable, useDebouncedValue } from '@rufieltics/ui'
-import { useResource, useServerTable } from '@rufieltics/query'
+import { useResource, useServerTable } from '@rufieltics/core-client'
 import { useAuth } from '@/features/auth/context'
 import {
   staffApi,

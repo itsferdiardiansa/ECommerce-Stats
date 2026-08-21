@@ -1,29 +1,11 @@
-import { Badge, type DataTableColumn } from '@rufieltics/ui'
+import { Badge, TONE, type DataTableColumn, type Tone } from '@rufieltics/ui'
 import type { InvitationRow, InvitationStatus } from '@/features/staff/api'
 
-const STATUS_STYLES: Record<
-  InvitationStatus,
-  { label: string; className: string }
-> = {
-  PENDING: {
-    label: 'Pending',
-    className:
-      'border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-400',
-  },
-  ACCEPTED: {
-    label: 'Accepted',
-    className:
-      'border-transparent bg-emerald-500/15 text-emerald-700 dark:text-emerald-400',
-  },
-  REJECTED: {
-    label: 'Rejected',
-    className:
-      'border-transparent bg-rose-500/15 text-rose-700 dark:text-rose-400',
-  },
-  EXPIRED: {
-    label: 'Expired',
-    className: 'border-transparent bg-muted text-muted-foreground',
-  },
+const STATUS_STYLES: Record<InvitationStatus, { label: string; tone: Tone }> = {
+  PENDING: { label: 'Pending', tone: 'warning' },
+  ACCEPTED: { label: 'Accepted', tone: 'success' },
+  REJECTED: { label: 'Rejected', tone: 'destructive' },
+  EXPIRED: { label: 'Expired', tone: 'neutral' },
 }
 
 export function InvitationStatusBadge({
@@ -32,7 +14,7 @@ export function InvitationStatusBadge({
   status: InvitationStatus
 }) {
   const style = STATUS_STYLES[status]
-  return <Badge className={style.className}>{style.label}</Badge>
+  return <Badge className={TONE[style.tone].soft}>{style.label}</Badge>
 }
 
 const dateFmt = (value: string) =>

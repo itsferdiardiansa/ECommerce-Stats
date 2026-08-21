@@ -6,7 +6,7 @@ import {
   useDebouncedValue,
   type DataTableColumn,
 } from '@rufieltics/ui'
-import { useQueryClient, useServerTable } from '@rufieltics/query'
+import { useQueryClient, useServerTable } from '@rufieltics/core-client'
 import { useAuth } from '@/features/auth/context'
 import { usePermissions } from '@/features/auth/hooks/usePermissions'
 import { staffApi, staffKeys, type InvitationRow } from '@/features/staff/api'

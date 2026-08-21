@@ -1,8 +1,13 @@
 'use client'
 
-import { useResource } from '@rufieltics/query'
+import { useResource } from '@rufieltics/core-client'
 import { useAuth } from '@/features/auth/context'
-import { staffApi, staffKeys, type PermissionRow, type RoleRow } from '../api'
+import {
+  staffApi,
+  staffKeys,
+  type PermissionRow,
+  type RoleRow,
+} from '@/features/staff/api'
 
 interface RefData {
   roles: RoleRow[]

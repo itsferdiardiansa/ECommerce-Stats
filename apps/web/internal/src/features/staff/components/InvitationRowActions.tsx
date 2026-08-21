@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
   toast,
 } from '@rufieltics/ui'
-import { useMutation } from '@rufieltics/query'
+import { useMutation } from '@rufieltics/core-client'
 import { staffApi, type InvitationRow } from '@/features/staff/api'
 
 export function InvitationRowActions({

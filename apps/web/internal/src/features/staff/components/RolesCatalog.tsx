@@ -10,6 +10,7 @@ import {
   CardContent,
   Input,
   Skeleton,
+  cn,
 } from '@rufieltics/ui'
 import { useStaffRefData } from '@/features/staff/hooks/useStaffRefData'
 import type { RoleRow } from '@/features/staff/api'
@@ -71,11 +72,12 @@ export function RolesCatalog() {
             key={role.key}
             type="button"
             onClick={() => setSelectedKey(role.key)}
-            className={`flex w-full flex-col gap-0.5 rounded-md border px-3 py-2 text-left transition ${
+            className={cn(
+              'flex w-full flex-col gap-0.5 rounded-md border px-3 py-2 text-left transition',
               selected?.key === role.key
                 ? 'border-primary/40 bg-primary/5'
                 : 'hover:bg-accent/50 border-transparent'
-            }`}
+            )}
           >
             <span className="flex items-center gap-1.5 text-sm font-medium">
               {role.name}

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useDebouncedValue } from '@rufieltics/ui'
-import { useQueryClient, useServerTable } from '@rufieltics/query'
+import { useQueryClient, useServerTable } from '@rufieltics/core-client'
 import { staffApi, staffKeys } from '@/features/staff/api'
 import { usePermissions } from '@/features/auth/hooks/usePermissions'
 import { useStaffRefData } from '@/features/staff/hooks/useStaffRefData'
