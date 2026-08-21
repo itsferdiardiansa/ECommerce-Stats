@@ -34,8 +34,6 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     # noeviction: never silently drop keys under memory pressure (BullMQ jobs,
-    # sessions, step-up challenges, verification codes must not be evicted).
-    # Memory stays bounded because these keys all carry TTLs.
     command: redis-server --maxmemory 256mb --maxmemory-policy noeviction --appendonly yes
     ports:
       - "6379:6379"
@@ -51,8 +49,6 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     # Dedicated to the internal/platform-api plane (staff lockout etc.), kept
-    # separate from the customer `redis` so an incident on one never affects the
-    # other. Point platform-api at it with STAFF_REDIS_URL=redis://localhost:6380.
     command: redis-server --maxmemory 64mb --maxmemory-policy noeviction --appendonly yes
     ports:
       - "6380:6379"
