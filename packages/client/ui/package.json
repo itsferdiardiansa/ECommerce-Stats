@@ -15,6 +15,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./charts": {
+      "types": "./dist/charts/index.d.ts",
+      "default": "./dist/charts/index.js"
+    },
     "./styles.css": "./styles.css"
   },
   "scripts": {
@@ -34,6 +38,8 @@
     "@radix-ui/react-tooltip": "^1.1.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "echarts": "^5.5.1",
+    "embla-carousel-react": "^8.6.0",
     "lucide-react": "^0.476.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.0.2"

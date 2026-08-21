@@ -1,6 +1,6 @@
 'use client'
 
-import * as React from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import {
   SidebarGroup,
@@ -44,7 +44,7 @@ function NavLeaf({ item }: { item: DashboardNavItem }) {
           className="cursor-not-allowed opacity-50"
           aria-disabled
         >
-          {Icon ? <Icon className="size-4" /> : null}
+          {Icon ? <Icon className="size-4 shrink-0" /> : null}
           <span className="min-w-0 flex-1 truncate">{item.title}</span>
           <SoonTag />
         </SidebarMenuButton>
@@ -52,14 +52,22 @@ function NavLeaf({ item }: { item: DashboardNavItem }) {
     )
   }
 
+  const content = (
+    <>
+      {Icon ? <Icon className="size-4 shrink-0" /> : null}
+      <span className="min-w-0 flex-1 truncate">{item.title}</span>
+      {item.badge !== undefined ? <NavBadge value={item.badge} /> : null}
+    </>
+  )
+
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={item.active} tooltip={item.title}>
-        <a href={item.href ?? '#'}>
-          {Icon ? <Icon className="size-4" /> : null}
-          <span>{item.title}</span>
-          {item.badge != null ? <NavBadge value={item.badge} /> : null}
-        </a>
+        {item.active ? (
+          <span aria-current="page">{content}</span>
+        ) : (
+          <a href={item.href ?? '#'}>{content}</a>
+        )}
       </SidebarMenuButton>
     </SidebarMenuItem>
   )
@@ -67,8 +75,12 @@ function NavLeaf({ item }: { item: DashboardNavItem }) {
 
 function NavCollapsible({ item }: { item: DashboardNavItem }) {
   const childActive = item.items?.some(sub => sub.active) ?? false
-  const [open, setOpen] = React.useState(item.defaultOpen ?? childActive)
+  const [open, setOpen] = useState(item.defaultOpen ?? childActive)
   const Icon = item.icon
+
+  useEffect(() => {
+    if (childActive) setOpen(true)
+  }, [childActive])
 
   return (
     <SidebarMenuItem>
@@ -78,7 +90,7 @@ function NavCollapsible({ item }: { item: DashboardNavItem }) {
         onClick={() => setOpen(prev => !prev)}
         aria-expanded={open}
       >
-        {Icon ? <Icon className="size-4" /> : null}
+        {Icon ? <Icon className="size-4 shrink-0" /> : null}
         <span className="min-w-0 flex-1 truncate">{item.title}</span>
         <ChevronRight
           className={cn(
@@ -103,10 +115,25 @@ function NavCollapsible({ item }: { item: DashboardNavItem }) {
             ) : (
               <SidebarMenuSubItem key={sub.title}>
                 <SidebarMenuSubButton asChild isActive={sub.active}>
-                  <a href={sub.href ?? '#'}>
-                    <span className="min-w-0 flex-1 truncate">{sub.title}</span>
-                    {sub.badge != null ? <NavBadge value={sub.badge} /> : null}
-                  </a>
+                  {sub.active ? (
+                    <span aria-current="page">
+                      <span className="min-w-0 flex-1 truncate">
+                        {sub.title}
+                      </span>
+                      {sub.badge !== undefined ? (
+                        <NavBadge value={sub.badge} />
+                      ) : null}
+                    </span>
+                  ) : (
+                    <a href={sub.href ?? '#'}>
+                      <span className="min-w-0 flex-1 truncate">
+                        {sub.title}
+                      </span>
+                      {sub.badge !== undefined ? (
+                        <NavBadge value={sub.badge} />
+                      ) : null}
+                    </a>
+                  )}
                 </SidebarMenuSubButton>
               </SidebarMenuSubItem>
             )

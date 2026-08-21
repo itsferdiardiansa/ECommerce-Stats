@@ -24,6 +24,13 @@ export interface DashboardUser {
   email?: string | null
 }
 
+/** When set, the sidebar drills into a dedicated section with a back header. */
+export interface DashboardSection {
+  title: string
+  /** Where the back affordance returns to (usually the console home). */
+  backHref: string
+}
+
 export interface DashboardShellProps {
   appName: string
   /** Single flat menu. Ignored when `navGroups` is provided. */
@@ -33,6 +40,8 @@ export interface DashboardShellProps {
   navLabel?: string
   /** Where the brand in the sidebar header links to. Defaults to '/'. */
   homeHref?: string
+  /** Drill-in section: swaps the brand header for a back header. */
+  section?: DashboardSection
   user?: DashboardUser
   headerActions?: React.ReactNode
   onSignOut?: () => void

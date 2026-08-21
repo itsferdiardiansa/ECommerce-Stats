@@ -49,7 +49,7 @@ export function SidebarUser({
   user?: DashboardUser
   onSignOut?: () => void
 }) {
-  const display = user?.name || user?.email || '—'
+  const display = user?.name || user?.email || '-'
 
   return (
     <SidebarMenu>
