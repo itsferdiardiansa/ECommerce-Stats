@@ -25,7 +25,7 @@
   --destructive: oklch(62.807% 0.20601 23.054);
   --destructive-foreground: oklch(0.985 0 0);
   --info: oklch(96.06% 0.0157 266.28);
-  --info-foreground: oklch(0.985 0 0);
+  --info-foreground: oklch(0 0 0);
   --success: oklch(0.6 0.15 150);
   --success-foreground: oklch(0.985 0 0);
   --warning: oklch(0.828 0.189 84);
