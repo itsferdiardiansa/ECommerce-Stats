@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { EChart } from '@/charts/core/EChart'
 import { useChartTheme } from '@/charts/core/useChartTheme'
+import { chartTooltip } from '@/charts/core/tooltip'
 import type { ChartOption } from '@/charts/core/echarts'
 
 export interface DonutSlice {
@@ -37,14 +38,12 @@ export function DonutChart({
   const theme = useChartTheme()
 
   const option = React.useMemo<ChartOption>(() => {
-    const fmt = valueFormatter ?? ((v: number) => `${v}`)
+    const fmt = valueFormatter ?? ((value: number) => `${value}`)
     return {
       color: theme.palette,
       tooltip: {
+        ...chartTooltip(theme),
         trigger: 'item',
-        backgroundColor: theme.tooltipBg,
-        borderColor: theme.tooltipBorder,
-        textStyle: { color: theme.text },
         valueFormatter: value => fmt(Number(value)),
       },
       legend: showLegend
@@ -83,10 +82,10 @@ export function DonutChart({
           center: ['50%', '50%'],
           avoidLabelOverlap: false,
           label: { show: false },
-          data: data.map(d => ({
-            name: d.name,
-            value: d.value,
-            itemStyle: d.color ? { color: d.color } : undefined,
+          data: data.map(item => ({
+            name: item.name,
+            value: item.value,
+            itemStyle: item.color ? { color: item.color } : undefined,
           })),
         },
       ],

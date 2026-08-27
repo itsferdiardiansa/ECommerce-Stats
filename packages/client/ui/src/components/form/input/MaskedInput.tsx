@@ -12,8 +12,6 @@ interface CurrencyConfig {
   decimals: number
 }
 
-// Input-masking config kept local to the UI layer (currency *display*
-// formatting lives in @rufieltics/core-client).
 const MASK_CURRENCY: Record<string, CurrencyConfig> = {
   IDR: { prefix: 'Rp', group: '.', decimal: ',', decimals: 0 },
   USD: { prefix: '$', group: ',', decimal: '.', decimals: 2 },
@@ -85,9 +83,9 @@ export function MaskedInput({
     setText(format(value, cfg))
   }, [value, cfgKey])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const decEsc = cfg.decimal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const cleaned = e.target.value.replace(
+    const cleaned = event.target.value.replace(
       new RegExp(`[^0-9${decEsc}]`, 'g'),
       ''
     )

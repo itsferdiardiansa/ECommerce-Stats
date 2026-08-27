@@ -15,14 +15,20 @@ export interface CarouselProps {
   children: ReactNode
   itemClassName?: string
   gapClassName?: string
+  /** Fade (mask) the left edge while there is content scrolled off to the left
+   *  and the right edge while there is more to the right. */
+  fade?: boolean
   className?: string
   ariaLabel?: string
 }
+
+const FADE_EDGE = '2rem'
 
 export function Carousel({
   children,
   itemClassName,
   gapClassName = 'gap-4',
+  fade = false,
   className,
   ariaLabel,
 }: CarouselProps) {
@@ -54,9 +60,20 @@ export function Carousel({
 
   const overflowing = canPrev || canNext
 
+  const maskImage =
+    fade && overflowing
+      ? `linear-gradient(to right, ${canPrev ? 'transparent' : 'black'} 0, black ${FADE_EDGE}, black calc(100% - ${FADE_EDGE}), ${canNext ? 'transparent' : 'black'} 100%)`
+      : undefined
+
   return (
     <div className={cn('group relative w-full min-w-0', className)}>
-      <div ref={viewportRef} className="w-full overflow-hidden">
+      <div
+        ref={viewportRef}
+        className="w-full overflow-hidden"
+        style={
+          maskImage ? { maskImage, WebkitMaskImage: maskImage } : undefined
+        }
+      >
         <div
           className={cn('flex items-stretch', gapClassName)}
           role="group"

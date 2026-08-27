@@ -24,7 +24,7 @@ function Checkbox({
         data-slot="checkbox"
         checked={checked}
         disabled={disabled}
-        onChange={e => onCheckedChange?.(e.target.checked)}
+        onChange={event => onCheckedChange?.(event.target.checked)}
         className={cn(
           'peer size-4 shrink-0 cursor-pointer appearance-none rounded-[4px] border shadow-xs transition-[color,box-shadow] outline-none',
           'border-input bg-transparent',

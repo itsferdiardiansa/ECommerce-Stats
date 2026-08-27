@@ -13,7 +13,7 @@ import {
 import { Skeleton } from '@/components/skeleton'
 import { ErrorState } from '@/components/error-state'
 import { Button } from '@/components/button'
-import { Card, CardContent } from '@/components/card'
+import { Card } from '@/components/card'
 import { cn } from '@/lib/utils'
 import { Pagination } from './Pagination'
 import type { DataTableColumn, PaginationState } from './types'
@@ -151,14 +151,14 @@ export function DataTable<T>({
             ) : null}
             <Table className={className}>
               <TableHeader>
-                <TableRow>
+                <TableRow className="hover:bg-transparent">
                   {columns.map(col => (
                     <TableHead
                       key={col.id}
                       className={cn(
                         col.width,
-                        alignClass(col.align),
-                        col.headerClassName
+                        col.headerClassName,
+                        alignClass(col.align)
                       )}
                     >
                       {col.header}
@@ -171,8 +171,8 @@ export function DataTable<T>({
                 className={cn(isRefetching && 'opacity-60 transition-opacity')}
               >
                 {loading ? (
-                  Array.from({ length: skeletonRows }).map((_, r) => (
-                    <TableRow key={`skeleton-${r}`}>
+                  Array.from({ length: skeletonRows }).map((_, index) => (
+                    <TableRow key={`skeleton-${index}`}>
                       {columns.map(col => (
                         <TableCell
                           key={col.id}
@@ -227,8 +227,8 @@ export function DataTable<T>({
 
   if (variant === 'card') {
     return (
-      <Card>
-        <CardContent>{body}</CardContent>
+      <Card padding="md">
+        <Card.Content>{body}</Card.Content>
       </Card>
     )
   }

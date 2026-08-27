@@ -1,21 +1,17 @@
 export {
   Sidebar,
-  SidebarProvider,
   SidebarTrigger,
-  SidebarRail,
+  SidebarToggleButton,
   SidebarInset,
   SidebarHeader,
-  SidebarFooter,
-  SidebarSeparator,
   SidebarContent,
   SidebarGroup,
   SidebarGroupLabel,
-  SidebarGroupAction,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
-  useSidebar,
 } from './Sidebar'
+export { SidebarProvider, useSidebar } from './SidebarProvider'

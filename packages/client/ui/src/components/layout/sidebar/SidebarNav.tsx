@@ -11,7 +11,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-} from '@/components/sidebar'
+} from '@/components/layout/sidebar'
 import { Skeleton } from '@/components/skeleton'
 import { cn } from '@/lib/utils'
 import type { DashboardNavGroup, DashboardNavItem } from './types'
@@ -156,11 +156,11 @@ export function SidebarNavSkeleton() {
   return (
     <SidebarGroup>
       <SidebarMenu>
-        {Array.from({ length: 5 }).map((_, i) => (
-          <SidebarMenuItem key={i}>
+        {Array.from({ length: 5 }).map((_, index) => (
+          <SidebarMenuItem key={index}>
             <div className="flex items-center gap-2 px-2 py-1.5">
-              <Skeleton className="size-4 rounded" />
-              <Skeleton className="h-4 w-24 group-data-[collapsible=icon]:hidden" />
+              <Skeleton className="bg-sidebar-accent size-4 rounded" />
+              <Skeleton className="bg-sidebar-accent h-4 w-24 group-data-[collapsible=icon]:hidden" />
             </div>
           </SidebarMenuItem>
         ))}

@@ -28,11 +28,11 @@ export function Timeline({
 }) {
   return (
     <ol className={cn('relative space-y-0', className)}>
-      {steps.map((step, i) => {
+      {steps.map((step, index) => {
         const status = step.status ?? 'pending'
-        const last = i === steps.length - 1
+        const last = index === steps.length - 1
         return (
-          <li key={i} className="relative flex gap-3 pb-4 last:pb-0">
+          <li key={index} className="relative flex gap-3 pb-4 last:pb-0">
             {!last ? (
               <span
                 className="bg-border absolute top-5 left-[9px] h-full w-px"

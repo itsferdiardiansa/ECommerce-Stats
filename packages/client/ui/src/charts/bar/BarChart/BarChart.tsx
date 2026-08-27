@@ -3,6 +3,8 @@
 import * as React from 'react'
 import { EChart } from '@/charts/core/EChart'
 import { useChartTheme } from '@/charts/core/useChartTheme'
+import { legendMarkerStyle, type LegendMarker } from '@/charts/core/legend'
+import { chartTooltip } from '@/charts/core/tooltip'
 import type { ChartOption } from '@/charts/core/echarts'
 
 export interface BarSeries {
@@ -18,6 +20,12 @@ export interface BarChartProps {
   horizontal?: boolean
   stacked?: boolean
   showLegend?: boolean
+  /** Legend marker shape + size (default: small square). */
+  legendMarker?: LegendMarker
+  /** Draws a subtle track behind every bar. */
+  showBackground?: boolean
+  /** Hovering a series highlights it and fades the others to 0.4 opacity. */
+  focusSeries?: boolean
   valueFormatter?: (value: number) => string
   className?: string
   ariaLabel?: string
@@ -31,6 +39,9 @@ export function BarChart({
   horizontal = false,
   stacked = false,
   showLegend = false,
+  legendMarker,
+  showBackground = false,
+  focusSeries = false,
   valueFormatter,
   className,
   ariaLabel,
@@ -38,7 +49,7 @@ export function BarChart({
   const theme = useChartTheme()
 
   const option = React.useMemo<ChartOption>(() => {
-    const fmt = valueFormatter ?? ((v: number) => `${v}`)
+    const fmt = valueFormatter ?? ((value: number) => `${value}`)
     const catAxis = {
       type: 'category' as const,
       data: categories,
@@ -65,29 +76,36 @@ export function BarChart({
             top: 0,
             right: 0,
             textStyle: { color: theme.text },
-            icon: 'roundRect',
+            ...legendMarkerStyle(legendMarker),
           }
         : undefined,
       tooltip: {
+        ...chartTooltip(theme),
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        backgroundColor: theme.tooltipBg,
-        borderColor: theme.tooltipBorder,
-        textStyle: { color: theme.text },
         valueFormatter: value => fmt(Number(value)),
       },
       xAxis: horizontal ? valAxis : catAxis,
       yAxis: horizontal ? catAxis : valAxis,
-      series: series.map(s => ({
+      series: series.map(item => ({
         type: 'bar',
-        name: s.name,
-        data: s.data,
+        name: item.name,
+        data: item.data,
         stack: stacked ? 'total' : undefined,
         itemStyle: {
-          color: s.color,
+          color: item.color,
           borderRadius: horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0],
         },
         barMaxWidth: 28,
+        showBackground,
+        backgroundStyle: showBackground
+          ? {
+              color: theme.split,
+              borderRadius: horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0],
+            }
+          : undefined,
+        emphasis: focusSeries ? { focus: 'series' } : undefined,
+        blur: focusSeries ? { itemStyle: { opacity: 0.4 } } : undefined,
       })),
     }
   }, [
@@ -96,6 +114,9 @@ export function BarChart({
     horizontal,
     stacked,
     showLegend,
+    legendMarker,
+    showBackground,
+    focusSeries,
     valueFormatter,
     theme,
   ])

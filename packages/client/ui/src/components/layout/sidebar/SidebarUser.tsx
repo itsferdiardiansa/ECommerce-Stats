@@ -1,11 +1,11 @@
 'use client'
 
-import { ChevronsUpDown, LogOut } from 'lucide-react'
+import { ChevronRight, LogOut } from 'lucide-react'
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@/components/sidebar'
+} from '@/components/layout/sidebar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,10 +33,10 @@ function initialsOf(text: string) {
 export function SidebarUserSkeleton() {
   return (
     <div className="flex items-center gap-2 px-2 py-1.5">
-      <Skeleton className="size-8 rounded-md" />
+      <Skeleton className="bg-sidebar-accent size-8 rounded-md" />
       <div className="grid flex-1 gap-1 group-data-[collapsible=icon]:hidden">
-        <Skeleton className="h-3.5 w-24" />
-        <Skeleton className="h-3 w-32" />
+        <Skeleton className="bg-sidebar-accent h-3.5 w-24" />
+        <Skeleton className="bg-sidebar-accent h-3 w-32" />
       </div>
     </div>
   )
@@ -56,10 +56,7 @@ export function SidebarUser({
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
+            <SidebarMenuButton size="lg">
               <Avatar className="size-8 rounded-md">
                 <AvatarFallback className="rounded-md text-xs">
                   {initialsOf(display)}
@@ -73,7 +70,7 @@ export function SidebarUser({
                   </span>
                 ) : null}
               </div>
-              <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+              <ChevronRight className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent

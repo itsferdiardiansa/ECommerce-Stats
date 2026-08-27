@@ -23,9 +23,10 @@ export function useDismissGuard(active: boolean) {
 
   const dismissProps = active
     ? {
-        onEscapeKeyDown: (e: PreventableEvent) => e.preventDefault(),
-        onPointerDownOutside: (e: PreventableEvent) => e.preventDefault(),
-        onInteractOutside: (e: PreventableEvent) => e.preventDefault(),
+        onEscapeKeyDown: (event: PreventableEvent) => event.preventDefault(),
+        onPointerDownOutside: (event: PreventableEvent) =>
+          event.preventDefault(),
+        onInteractOutside: (event: PreventableEvent) => event.preventDefault(),
       }
     : {}
 

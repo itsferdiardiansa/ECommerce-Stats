@@ -1,89 +1,127 @@
 import * as React from 'react'
-import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react'
+import { Info, TrendingDown, TrendingUp, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { TONE } from '@/lib/tone'
-import { Card, CardContent } from '@/components/card'
+import { TONE, type Tone } from '@/lib/tone'
+import { Card } from '@/components/card'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/tooltip'
 
 export interface StatDelta {
   value: string
   direction: 'up' | 'down' | 'flat'
-  /** When true, a downward move is good (e.g. churn, failure rate). */
   invert?: boolean
 }
 
 export interface StatCardProps {
   label: string
+  info?: React.ReactNode
   value: React.ReactNode
-  /** Secondary value shown next to the main one (e.g. a USD equivalent). */
   sub?: React.ReactNode
   delta?: StatDelta
   hint?: React.ReactNode
   icon?: React.ComponentType<{ className?: string }>
-  /** Right-aligned decoration such as a sparkline. */
+  iconTone?: Tone
   aside?: React.ReactNode
   className?: string
 }
 
-function deltaTone(d: StatDelta) {
-  if (d.direction === 'flat') return TONE.neutral.text
-  const good = d.invert ? d.direction === 'down' : d.direction === 'up'
-  return good ? TONE.success.text : TONE.destructive.text
+function deltaTone(delta: StatDelta, type: 'border' | 'text') {
+  if (delta.direction === 'flat') return TONE.neutral.text
+  const good = delta.invert
+    ? delta.direction === 'down'
+    : delta.direction === 'up'
+  return good ? TONE.success[type] : TONE.destructive[type]
 }
 
 export function StatCard({
   label,
+  info,
   value,
   sub,
   delta,
   hint,
   icon: Icon,
+  iconTone,
   aside,
   className,
 }: StatCardProps) {
   const DeltaIcon =
     delta?.direction === 'up'
-      ? ArrowUpRight
+      ? TrendingUp
       : delta?.direction === 'down'
-        ? ArrowDownRight
+        ? TrendingDown
         : Minus
 
   return (
-    <Card className={className}>
-      <CardContent className="flex items-start gap-3 p-4">
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
-            {Icon ? <Icon className="size-3.5" /> : null}
-            {label}
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-semibold tracking-tight tabular-nums">
-              {value}
-            </span>
-            {sub ? (
-              <span className="text-muted-foreground text-xs tabular-nums">
-                {sub}
-              </span>
+    <Card
+      padding="sm"
+      className={cn('h-full justify-between gap-2', className)}
+    >
+      <Card.Content className="space-y-4">
+        <div className="flex items-center justify-between gap-1.5 text-sm font-semibold">
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            <span className="truncate">{label}</span>
+            {info ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`About ${label}`}
+                    className="text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+                  >
+                    <Info className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{info}</TooltipContent>
+              </Tooltip>
             ) : null}
-          </div>
-          <div className="flex items-center gap-1.5 text-xs">
-            {delta ? (
-              <span
+          </span>
+          {Icon ? (
+            <div className="rounded-full border p-2">
+              <Icon
                 className={cn(
-                  'inline-flex items-center gap-0.5 font-semibold',
-                  deltaTone(delta)
+                  'size-3.5 shrink-0',
+                  iconTone && TONE[iconTone].text
                 )}
-              >
-                <DeltaIcon className="size-3.5" />
-                {delta.value}
-              </span>
-            ) : null}
-            {hint ? (
-              <span className="text-muted-foreground">{hint}</span>
-            ) : null}
-          </div>
+              />
+            </div>
+          ) : null}
         </div>
-        {aside ? <div className="shrink-0">{aside}</div> : null}
-      </CardContent>
+        <div className="flex items-end justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-semibold tracking-tight tabular-nums">
+                {value}
+              </span>
+              {sub ? (
+                <span className="text-muted-foreground text-xs tabular-nums">
+                  {sub}
+                </span>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-1.5 text-xs">
+              {delta ? (
+                <div className="inline-flex items-center gap-2">
+                  <div
+                    className={cn(
+                      'font-semibold p-[2px] border-2 rounded-sm',
+                      deltaTone(delta, 'border')
+                    )}
+                  >
+                    <DeltaIcon className="size-3 stroke-3" />
+                  </div>
+                  <span className={cn(deltaTone(delta, 'text'))}>
+                    {delta.value}
+                  </span>
+                </div>
+              ) : null}
+              {hint ? (
+                <span className="text-muted-foreground">{hint}</span>
+              ) : null}
+            </div>
+          </div>
+          {aside ? <div className="shrink-0">{aside}</div> : null}
+        </div>
+      </Card.Content>
     </Card>
   )
 }

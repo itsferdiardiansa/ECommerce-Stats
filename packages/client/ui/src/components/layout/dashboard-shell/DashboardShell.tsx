@@ -1,11 +1,7 @@
 'use client'
 
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from '@/components/sidebar'
-import { Separator } from '@/components/separator'
+import { SidebarInset, SidebarTrigger } from '@/components/layout/sidebar'
+import { SidebarProvider } from '@/components/layout/sidebar'
 import { AppSidebar } from './AppSidebar'
 import type { DashboardNavGroup, DashboardShellProps } from './types'
 
@@ -17,6 +13,7 @@ export function DashboardShell({
   homeHref = '/',
   section,
   user,
+  breadcrumb,
   headerActions,
   onSignOut,
   loading = false,
@@ -37,13 +34,16 @@ export function DashboardShell({
         loading={loading}
       />
 
-      <SidebarInset>
-        <header className="bg-background sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
+      <SidebarInset className="overflow-hidden md:my-2 md:mr-2 md:ml-2 md:rounded-md md:border">
+        <header className="bg-background flex h-14 shrink-0 items-center gap-2 border-b px-6">
+          <SidebarTrigger className="-ml-1 md:hidden" />
+          {breadcrumb ? (
+            <div className="min-w-0 flex-1">{breadcrumb}</div>
+          ) : null}
           <div className="ml-auto flex items-center gap-2">{headerActions}</div>
         </header>
-        <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">{children}</div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   )

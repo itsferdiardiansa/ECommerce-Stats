@@ -55,14 +55,14 @@ export function Combobox({
     const q = query.trim().toLowerCase()
     if (!q) return options
     return options.filter(
-      o =>
-        o.label.toLowerCase().includes(q) ||
-        o.value.toLowerCase().includes(q) ||
-        o.description?.toLowerCase().includes(q)
+      option =>
+        option.label.toLowerCase().includes(q) ||
+        option.value.toLowerCase().includes(q) ||
+        option.description?.toLowerCase().includes(q)
     )
   }, [options, query])
 
-  const selectedLabel = options.find(o => o.value === value)?.label
+  const selectedLabel = options.find(option => option.value === value)?.label
 
   const handleSelect = (next: string) => {
     onSelect(next)
@@ -100,7 +100,7 @@ export function Combobox({
           <input
             autoFocus
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={event => setQuery(event.target.value)}
             placeholder={searchPlaceholder}
             className="placeholder:text-muted-foreground h-9 w-full bg-transparent text-sm outline-none"
           />

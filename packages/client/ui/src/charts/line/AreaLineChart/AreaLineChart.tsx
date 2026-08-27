@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { EChart } from '@/charts/core/EChart'
 import { useChartTheme } from '@/charts/core/useChartTheme'
+import { chartTooltip } from '@/charts/core/tooltip'
 import type { ChartOption } from '@/charts/core/echarts'
 
 export interface AreaLineSeries {
@@ -38,7 +39,7 @@ export function AreaLineChart({
   const theme = useChartTheme()
 
   const option = React.useMemo<ChartOption>(() => {
-    const fmt = valueFormatter ?? ((v: number) => `${v}`)
+    const fmt = valueFormatter ?? ((value: number) => `${value}`)
     return {
       color: theme.palette,
       grid: {
@@ -57,10 +58,8 @@ export function AreaLineChart({
           }
         : undefined,
       tooltip: {
+        ...chartTooltip(theme),
         trigger: 'axis',
-        backgroundColor: theme.tooltipBg,
-        borderColor: theme.tooltipBorder,
-        textStyle: { color: theme.text },
         valueFormatter: value => fmt(Number(value)),
       },
       xAxis: {
@@ -76,16 +75,16 @@ export function AreaLineChart({
         splitLine: { lineStyle: { color: theme.split } },
         axisLabel: { color: theme.text, fontSize: 11, formatter: fmt },
       },
-      series: series.map((s, i) => ({
+      series: series.map((item, index) => ({
         type: 'line',
-        name: s.name,
-        data: s.data,
+        name: item.name,
+        data: item.data,
         smooth,
         showSymbol: false,
-        lineStyle: { width: 2, color: s.color },
-        itemStyle: { color: s.color },
+        lineStyle: { width: 2, color: item.color },
+        itemStyle: { color: item.color },
         areaStyle: { opacity: series.length > 1 ? 0.12 : 0.18 },
-        z: series.length - i,
+        z: series.length - index,
       })),
     }
   }, [categories, series, showLegend, smooth, valueFormatter, theme])

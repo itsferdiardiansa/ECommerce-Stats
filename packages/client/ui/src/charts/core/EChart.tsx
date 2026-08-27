@@ -41,7 +41,12 @@ export function EChart({
   React.useEffect(() => {
     const el = ref.current
     if (!el) return
-    getChartInstance(el)?.setOption(option, true)
+    const fontFamily = getComputedStyle(el).fontFamily
+    const base = option as ChartOption & { textStyle?: Record<string, unknown> }
+    getChartInstance(el)?.setOption(
+      { ...option, textStyle: { fontFamily, ...(base.textStyle ?? {}) } },
+      true
+    )
   }, [option])
 
   return (

@@ -2,6 +2,8 @@
 
 import * as React from 'react'
 import { EChart } from '@/charts/core/EChart'
+import { useChartTheme } from '@/charts/core/useChartTheme'
+import { chartTooltip } from '@/charts/core/tooltip'
 import type { ChartOption } from '@/charts/core/echarts'
 
 export interface SparklineProps {
@@ -21,6 +23,8 @@ export function Sparkline({
   className,
   ariaLabel,
 }: SparklineProps) {
+  const theme = useChartTheme()
+
   const option = React.useMemo<ChartOption>(() => {
     const up = data.length < 2 || data[data.length - 1] >= data[0]
     const stroke = color ?? (up ? '#059669' : '#e11d48')
@@ -30,10 +34,11 @@ export function Sparkline({
         type: 'category',
         show: false,
         boundaryGap: false,
-        data: data.map((_, i) => i),
+        data: data.map((_, index) => index),
       },
       yAxis: { type: 'value', show: false, scale: true },
       tooltip: {
+        ...chartTooltip(theme),
         trigger: 'axis',
         confine: true,
         formatter: params => {
@@ -52,7 +57,7 @@ export function Sparkline({
         },
       ],
     }
-  }, [data, color])
+  }, [data, color, theme])
 
   return (
     <EChart

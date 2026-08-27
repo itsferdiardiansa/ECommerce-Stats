@@ -4,18 +4,22 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const alertVariants = cva(
-  'relative w-full rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current',
+  'relative w-full rounded-lg px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current',
   {
     variants: {
       variant: {
         default: 'bg-card text-card-foreground',
+        primary:
+          'bg-primary text-primary-foreground *:data-[slot=alert-description]:text-primary-foreground/90',
+        secondary:
+          'bg-secondary text-secondary-foreground *:data-[slot=alert-description]:text-secondary-foreground/90',
         destructive:
-          'text-destructive bg-destructive/10 border-destructive/30 [&>svg]:text-current *:data-[slot=alert-description]:text-destructive/90',
-        info: 'text-info bg-info/10 border-info/25 [&>svg]:text-info *:data-[slot=alert-description]:text-info/90',
+          'bg-destructive text-white *:data-[slot=alert-description]:text-white/90',
+        info: 'bg-info text-info-foreground *:data-[slot=alert-description]:text-info-foreground/90',
         success:
-          'text-success bg-success/10 border-success/25 [&>svg]:text-success *:data-[slot=alert-description]:text-success/90',
+          'bg-success text-success-foreground *:data-[slot=alert-description]:text-success-foreground/90',
         warning:
-          'text-warning bg-warning/10 border-warning/25 [&>svg]:text-warning *:data-[slot=alert-description]:text-warning/90',
+          'bg-warning text-warning-foreground *:data-[slot=alert-description]:text-warning-foreground/90',
       },
     },
     defaultVariants: {
