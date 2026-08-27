@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 import {
+  DashboardContentShell,
   DataTable,
+  SectionShell,
   useDebouncedValue,
   type DataTableColumn,
 } from '@rufieltics/ui'
-import { useQueryClient, useServerTable } from '@rufieltics/core-client'
+import { useQueryClient, useServerTable } from '@rufieltics/core/client'
 import { useAuth } from '@/features/auth/context'
 import { usePermissions } from '@/features/auth/hooks/usePermissions'
 import { staffApi, staffKeys, type InvitationRow } from '@/features/staff/api'
@@ -63,29 +65,27 @@ export function InvitationsList() {
     : invitationColumns
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Invitations</h1>
-        <p className="text-muted-foreground text-sm">
-          Track invitation status - pending, accepted, rejected and expired.
-        </p>
-      </div>
-
-      <DataTable
-        variant="card"
-        columns={columns}
-        data={table.items}
-        rowKey={row => row.id}
-        loading={table.status === 'pending'}
-        error={table.error}
-        onRetry={table.reload}
-        onRefetch={table.reload}
-        isRefetching={table.isRefetching}
-        pagination={table.pagination}
-        emptyMessage="No invitations match these filters."
-        errorTitle="Couldn't load invitations"
-        toolbar={<InvitationFilters value={filters} onChange={setFilters} />}
-      />
-    </div>
+    <DashboardContentShell
+      title="Invitations"
+      subTitle="Track invitation status - pending, accepted, rejected and expired."
+    >
+      <SectionShell>
+        <DataTable
+          variant="card"
+          columns={columns}
+          data={table.items}
+          rowKey={row => row.id}
+          loading={table.status === 'pending'}
+          error={table.error}
+          onRetry={table.reload}
+          onRefetch={table.reload}
+          isRefetching={table.isRefetching}
+          pagination={table.pagination}
+          emptyMessage="No invitations match these filters."
+          errorTitle="Couldn't load invitations"
+          toolbar={<InvitationFilters value={filters} onChange={setFilters} />}
+        />
+      </SectionShell>
+    </DashboardContentShell>
   )
 }

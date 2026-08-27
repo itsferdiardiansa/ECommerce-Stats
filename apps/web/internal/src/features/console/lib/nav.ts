@@ -1,3 +1,4 @@
+import { Home, type LucideIcon } from 'lucide-react'
 import type {
   DashboardNavGroup,
   DashboardNavItem,
@@ -8,7 +9,14 @@ import {
   CONSOLE_SECTIONS,
   type NavConfigGroup,
   type NavConfigItem,
+  type NavSectionConfig,
 } from '@/features/console/navigation'
+
+export interface BreadcrumbCrumb {
+  label: string
+  href?: string
+  icon?: LucideIcon
+}
 
 type Has = (permission: string) => boolean
 
@@ -33,6 +41,46 @@ function bestHref(groups: NavConfigGroup[], pathname: string): string | null {
     }
   }
   return best
+}
+
+function findChain(
+  items: NavConfigItem[],
+  target: string
+): NavConfigItem[] | null {
+  for (const item of items) {
+    if (item.href === target) return [item]
+    if (item.items) {
+      const sub = findChain(item.items, target)
+      if (sub) return [item, ...sub]
+    }
+  }
+  return null
+}
+
+function buildBreadcrumbs(
+  groups: NavConfigGroup[],
+  pathname: string,
+  section?: NavSectionConfig
+): BreadcrumbCrumb[] {
+  const crumbs: BreadcrumbCrumb[] = [{ label: 'Home', href: '/', icon: Home }]
+  if (section) crumbs.push({ label: section.title, href: section.prefix })
+
+  const activeHref = bestHref(groups, pathname)
+  if (activeHref) {
+    let chain: NavConfigItem[] | null = null
+    for (const group of groups) {
+      chain = findChain(group.items, activeHref)
+      if (chain) break
+    }
+    if (chain) {
+      for (const item of chain) {
+        const last = crumbs[crumbs.length - 1]
+        if (last && last.href === item.href) continue
+        crumbs.push({ label: item.title, href: item.href })
+      }
+    }
+  }
+  return crumbs
 }
 
 function isVisible(item: NavConfigItem, has: Has) {
@@ -90,22 +138,24 @@ export function resolveNavGroups(
 export interface ResolvedNav {
   section?: DashboardSection
   groups: DashboardNavGroup[]
+  breadcrumbs: BreadcrumbCrumb[]
 }
 
-/**
- * Resolves the sidebar for the current route: the dedicated section nav when
- * inside a section's route prefix, otherwise the main console nav. The nav is
- * always filtered by permission and marked active.
- */
 export function resolveConsoleNav(pathname: string, has: Has): ResolvedNav {
   const active = CONSOLE_SECTIONS.find(
-    s => pathname === s.prefix || pathname.startsWith(`${s.prefix}/`)
+    consoleSection =>
+      pathname === consoleSection.prefix ||
+      pathname.startsWith(`${consoleSection.prefix}/`)
   )
   if (active) {
     return {
       section: { title: active.title, backHref: active.backHref },
       groups: resolveGroups(active.groups, pathname, has),
+      breadcrumbs: buildBreadcrumbs(active.groups, pathname, active),
     }
   }
-  return { groups: resolveNavGroups(pathname, has) }
+  return {
+    groups: resolveNavGroups(pathname, has),
+    breadcrumbs: buildBreadcrumbs(CONSOLE_NAV, pathname),
+  }
 }

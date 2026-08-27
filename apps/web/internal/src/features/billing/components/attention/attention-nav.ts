@@ -1,4 +1,4 @@
-import { slugify } from '@rufieltics/core-client'
+import { slugify } from '@rufieltics/core'
 import type {
   AttentionAccount,
   AttentionKey,

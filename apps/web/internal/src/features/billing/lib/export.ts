@@ -36,13 +36,15 @@ export function downloadXLS<T>(
 ) {
   const name = filename.endsWith('.xls') ? filename : `${filename}.xls`
   const head = `<tr>${columns
-    .map(c => `<th>${escapeHtml(c.label)}</th>`)
+    .map(column => `<th>${escapeHtml(column.label)}</th>`)
     .join('')}</tr>`
   const body = rows
     .map(
       row =>
         `<tr>${columns
-          .map(c => `<td>${escapeHtml(String(row[c.key] ?? ''))}</td>`)
+          .map(
+            column => `<td>${escapeHtml(String(row[column.key] ?? ''))}</td>`
+          )
           .join('')}</tr>`
     )
     .join('')

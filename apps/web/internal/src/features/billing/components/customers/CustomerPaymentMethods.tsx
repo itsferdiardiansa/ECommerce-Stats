@@ -12,15 +12,17 @@ import {
   Badge,
   Button,
   Card,
-  CardContent,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  PaymentLogo,
   ResponsiveDrawer,
+  resolvePaymentKey,
   toast,
 } from '@rufieltics/ui'
 import type { PaymentMethodView } from '@/features/billing/data/customers'
+import { ProviderLogo } from '@/features/billing/components/shared/ProviderLogo'
 import { AddMethodDialog } from './AddMethodDialog'
 
 const KIND_ICON = {
@@ -35,12 +37,13 @@ function MethodRow({ method }: { method: PaymentMethodView }) {
   const Icon = KIND_ICON[method.kind]
   return (
     <div className="flex items-center gap-3 px-4 py-3">
-      <div
-        className="flex size-9 shrink-0 items-center justify-center rounded-md text-white"
-        style={{ background: method.color }}
-      >
-        <Icon className="size-4" />
-      </div>
+      <span className="flex size-9 shrink-0 items-center justify-center">
+        {resolvePaymentKey(method.label) ? (
+          <PaymentLogo name={method.label} className="h-6" />
+        ) : (
+          <Icon className="text-muted-foreground size-5" />
+        )}
+      </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-medium">{method.label}</span>
@@ -55,11 +58,13 @@ function MethodRow({ method }: { method: PaymentMethodView }) {
         </div>
         <div className="text-muted-foreground truncate text-xs">
           {method.detail}
+          {method.expires ? ` · exp ${method.expires}` : ''}
         </div>
       </div>
-      <span className="text-muted-foreground hidden shrink-0 rounded-md border px-1.5 py-0.5 text-[11px] sm:inline">
-        {method.provider}
-      </span>
+      <ProviderLogo
+        name={method.provider}
+        className="hidden shrink-0 sm:block"
+      />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" aria-label="Method actions">
@@ -106,11 +111,11 @@ export function CustomerPaymentMethods({
           Add method
         </Button>
       </div>
-      <Card className="flex-1 gap-0 overflow-hidden py-0">
-        <CardContent className="flex h-full flex-col p-0">
+      <Card padding="none" className="flex-1 overflow-hidden">
+        <Card.Content className="flex h-full flex-col">
           <div className="divide-y">
-            {visible.map(m => (
-              <MethodRow key={m.id} method={m} />
+            {visible.map(item => (
+              <MethodRow key={item.id} method={item} />
             ))}
           </div>
           {hidden > 0 ? (
@@ -123,7 +128,7 @@ export function CustomerPaymentMethods({
               See all {methods.length} methods
             </Button>
           ) : null}
-        </CardContent>
+        </Card.Content>
       </Card>
 
       <AddMethodDialog email={email} open={adding} onOpenChange={setAdding} />

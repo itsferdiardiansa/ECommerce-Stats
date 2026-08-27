@@ -11,7 +11,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
     "@rufieltics/api-client": "workspace:^",
-    "@rufieltics/core-client": "workspace:^",
+    "@rufieltics/core": "workspace:^",
     "@rufieltics/ui": "workspace:^",
     "@tanstack/react-query": "^5.101.4",
     "lucide-react": "^0.476.0",

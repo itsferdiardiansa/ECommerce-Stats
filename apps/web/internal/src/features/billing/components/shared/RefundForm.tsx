@@ -11,7 +11,7 @@ import {
   SelectField,
   cn,
 } from '@rufieltics/ui'
-import { formatCurrency, percentOf } from '@rufieltics/core-client'
+import { formatCurrency, percentOf } from '@rufieltics/core'
 import {
   REFUND_CURRENCIES,
   REFUND_QUICK_PERCENTS,
@@ -123,15 +123,15 @@ export function RefundForm({
 
       {values.mode === 'percent' ? (
         <div className="flex flex-wrap items-center gap-2">
-          {REFUND_QUICK_PERCENTS.map(q => (
+          {REFUND_QUICK_PERCENTS.map(refundQuickPercent => (
             <Button
-              key={q}
+              key={refundQuickPercent}
               type="button"
-              variant={pct === q ? 'default' : 'outline'}
+              variant={pct === refundQuickPercent ? 'default' : 'outline'}
               size="sm"
-              onClick={() => applyPercent(q)}
+              onClick={() => applyPercent(refundQuickPercent)}
             >
-              {q}%
+              {refundQuickPercent}%
             </Button>
           ))}
         </div>
@@ -143,7 +143,7 @@ export function RefundForm({
             <Input
               inputMode="decimal"
               value={percentText}
-              onChange={e => onPercentText(e.target.value)}
+              onChange={event => onPercentText(event.target.value)}
               className="pr-7"
             />
             <span className="text-muted-foreground pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm">
@@ -223,7 +223,7 @@ export function RefundForm({
         <textarea
           rows={3}
           value={values.message}
-          onChange={e => onChange({ message: e.target.value })}
+          onChange={event => onChange({ message: event.target.value })}
           placeholder="Added to the refund email / ticket reply."
           className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
         />

@@ -2,34 +2,36 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CreditCard, TriangleAlert, User } from 'lucide-react'
+import {
+  CalendarDays,
+  Hash,
+  Layers,
+  MoreHorizontal,
+  Receipt,
+  RefreshCw,
+  Repeat,
+  TrendingUp,
+  TriangleAlert,
+  User,
+} from 'lucide-react'
 import {
   Alert,
   AlertDescription,
   Button,
   ConfirmDialog,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   ResponsiveDrawer,
   toast,
 } from '@rufieltics/ui'
-import { slugify } from '@rufieltics/core-client'
+import { slugify } from '@rufieltics/core'
 import type { Renewal } from '@/features/billing/data/renewals'
 import { TxnStatusBadge } from '@/features/billing/components/shared/TxnStatusBadge'
+import { DetailField } from '@/features/billing/components/shared/DetailField'
+import { PaymentMethodRow } from '@/features/billing/components/shared/PaymentMethodRow'
 import { ChangePlanDialog } from './ChangePlanDialog'
-
-function Field({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex items-start justify-between gap-3 py-2 text-sm">
-      <span className="text-muted-foreground shrink-0">{label}</span>
-      <span className="text-right font-medium">{children}</span>
-    </div>
-  )
-}
 
 export function RenewalDrawer({
   renewal,
@@ -87,19 +89,47 @@ export function RenewalDrawer({
       footer={footer}
     >
       {renewal ? (
-        <div className="space-y-5">
-          <div className="bg-muted/50 rounded-lg px-4 py-3">
-            <div className="text-muted-foreground text-xs tracking-wide uppercase">
-              Next charge
+        <div className="space-y-6">
+          <div className="bg-muted/50 flex items-center justify-between gap-3 rounded-xl p-4">
+            <div>
+              <div className="text-muted-foreground text-xs tracking-wide uppercase">
+                Next charge
+              </div>
+              <div className="mt-0.5 flex items-baseline gap-2">
+                <span className="text-2xl font-semibold tabular-nums">
+                  {renewal.amount}
+                </span>
+                <span className="text-muted-foreground text-sm">
+                  / {renewal.interval} · {renewal.nextCharge}
+                </span>
+              </div>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-semibold tabular-nums">
-                {renewal.amount}
-              </span>
-              <span className="text-muted-foreground text-sm">
-                / {renewal.interval} · {renewal.nextCharge}
-              </span>
-            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8 shrink-0"
+                >
+                  <MoreHorizontal className="size-4" />
+                  <span className="sr-only">Manage subscription</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setPlanOpen(true)}>
+                  <Layers className="size-4" />
+                  Change plan
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant={renewal.autoRenew ? 'destructive' : 'default'}
+                  onSelect={() => setRenewOpen(true)}
+                >
+                  <RefreshCw className="size-4" />
+                  {renewal.autoRenew ? 'Pause auto-renew' : 'Resume auto-renew'}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {renewal.riskNote ? (
@@ -110,63 +140,45 @@ export function RenewalDrawer({
           ) : null}
 
           <section>
-            <h3 className="mb-1 text-sm font-medium">Charged to</h3>
-            <div className="flex items-center gap-3 rounded-lg px-1 py-1.5">
-              <span
-                className="flex size-9 shrink-0 items-center justify-center rounded-md text-white"
-                style={{ background: renewal.methodColor }}
-              >
-                <CreditCard className="size-4" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium">{renewal.method}</div>
-                <div className="text-muted-foreground text-xs">
-                  {renewal.methodAccount}
-                  {renewal.methodExpires
-                    ? ` · exp ${renewal.methodExpires}`
-                    : ''}
-                </div>
-              </div>
-              <span className="text-muted-foreground shrink-0 rounded-md border px-1.5 py-0.5 text-[11px]">
-                {renewal.provider}
-              </span>
-            </div>
+            <h3 className="mb-3 text-sm font-medium">Payment method</h3>
+            <PaymentMethodRow
+              method={renewal.method}
+              provider={renewal.provider}
+              subtitle={`${renewal.methodAccount}${
+                renewal.methodExpires ? ` · exp ${renewal.methodExpires}` : ''
+              }`}
+            />
           </section>
 
-          <section className="divide-border/60 divide-y">
-            <Field label="Plan">{renewal.plan}</Field>
-            <Field label="Billing interval">Every 1 {renewal.interval}</Field>
-            <Field label="MRR">{renewal.mrr}</Field>
-            <Field label="Contact">
+          <section className="space-y-3">
+            <DetailField icon={Layers} label="Plan">
+              {renewal.plan}
+            </DetailField>
+            <DetailField icon={Repeat} label="Billing interval">
+              Every 1 {renewal.interval}
+            </DetailField>
+            <DetailField icon={TrendingUp} label="MRR">
+              {renewal.mrr}
+            </DetailField>
+            <DetailField icon={User} label="Contact">
               {renewal.contact}
               <span className="text-muted-foreground block text-xs font-normal">
                 {renewal.email}
               </span>
-            </Field>
-            <Field label="Auto-renew">{renewal.autoRenew ? 'On' : 'Off'}</Field>
-            <Field label="Customer since">{renewal.since}</Field>
-            <Field label="Last payment">{renewal.lastPayment}</Field>
-            <Field label="Subscription">
+            </DetailField>
+            <DetailField icon={RefreshCw} label="Auto-renew">
+              {renewal.autoRenew ? 'On' : 'Off'}
+            </DetailField>
+            <DetailField icon={CalendarDays} label="Customer since">
+              {renewal.since}
+            </DetailField>
+            <DetailField icon={Receipt} label="Last payment">
+              {renewal.lastPayment}
+            </DetailField>
+            <DetailField icon={Hash} label="Subscription">
               <span className="font-mono text-xs">{renewal.id}</span>
-            </Field>
+            </DetailField>
           </section>
-
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPlanOpen(true)}
-            >
-              Change plan
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setRenewOpen(true)}
-            >
-              {renewal.autoRenew ? 'Pause auto-renew' : 'Resume auto-renew'}
-            </Button>
-          </div>
         </div>
       ) : null}
 

@@ -2,23 +2,22 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Download } from 'lucide-react'
+import { Activity, Download } from 'lucide-react'
 import {
   Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Carousel,
+  DashboardContentShell,
   DataTable,
+  Divider,
   Input,
+  SectionShell,
   SelectField,
-  StatCard,
+  StatList,
   useDebouncedValue,
   usePagination,
+  type StatListItem,
 } from '@rufieltics/ui'
-import { AreaLineChart, Sparkline } from '@rufieltics/ui/charts'
-import { formatCurrencyCompact, slugify } from '@rufieltics/core-client'
+import { Sparkline } from '@rufieltics/ui/charts'
+import { formatCurrencyCompact, slugify } from '@rufieltics/core'
 import { transactionColumns } from '@/features/billing/configs/transactions'
 import {
   CHARGES,
@@ -29,7 +28,13 @@ import {
   type TxnRow,
   type TxnVariant,
 } from '@/features/billing/data/transactions'
+import { TrendChartCard } from '@/features/billing/components/shared/TrendChartCard'
 import { TransactionDetailDrawer } from './TransactionDetailDrawer'
+
+const CHARGE_TABS = [
+  { value: '7d', label: '7d' },
+  { value: '14d', label: '14d' },
+]
 
 const META: Record<
   TxnVariant,
@@ -76,102 +81,115 @@ export function TransactionsView({ variant }: { variant: TxnVariant }) {
   const debounced = useDebouncedValue(search, 250)
 
   const [selected, setSelected] = useState<TxnRow | null>(null)
+  const [chargeRange, setChargeRange] = useState('14d')
+
+  const kpiItems = useMemo<StatListItem[]>(
+    () =>
+      TXN_KPIS[variant].map(item => ({
+        label: item.label,
+        value: item.value,
+        sub: item.sub,
+        delta: item.delta,
+        hint: item.hint,
+        icon: item.icon,
+        aside: item.spark ? (
+          <div className="w-20">
+            <Sparkline data={item.spark} />
+          </div>
+        ) : undefined,
+      })),
+    [variant]
+  )
+
+  const chargeDays = chargeRange === '7d' ? 7 : 14
+  const chargeCategories = CHARGE_VOLUME.days.slice(-chargeDays)
+  const chargeData = CHARGE_VOLUME.series[0].data.slice(-chargeDays)
 
   const rows = useMemo(() => {
     const term = debounced.trim().toLowerCase()
     return meta.data.filter(
-      r =>
-        (provider === 'ALL' || r.provider === provider) &&
+      item =>
+        (provider === 'ALL' || item.provider === provider) &&
         (!term ||
-          `${r.org}${r.email}${r.id}${r.method}`.toLowerCase().includes(term))
+          `${item.org}${item.email}${item.id}${item.method}`
+            .toLowerCase()
+            .includes(term))
     )
   }, [meta.data, debounced, provider])
 
   const { pageItems, state } = usePagination(rows, 8)
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">{meta.title}</h1>
-          <p className="text-muted-foreground text-sm">{meta.subtitle}</p>
-        </div>
-        <Button variant="outline" className="ml-auto">
+    <DashboardContentShell
+      title={meta.title}
+      subTitle={meta.subtitle}
+      actions={
+        <Button variant="outline">
           <Download className="size-4" />
           Export
         </Button>
-      </div>
+      }
+    >
+      <SectionShell>
+        <StatList
+          layout="carousel"
+          items={kpiItems}
+          itemClassName="w-80"
+          ariaLabel="Transaction metrics"
+        />
 
-      <Carousel itemClassName="w-80" ariaLabel="Transaction metrics">
-        {TXN_KPIS[variant].map(k => (
-          <StatCard
-            key={k.label}
-            label={k.label}
-            value={k.value}
-            sub={k.sub}
-            delta={k.delta}
-            hint={k.hint}
-            icon={k.icon}
-            aside={
-              k.spark ? (
-                <div className="w-20">
-                  <Sparkline data={k.spark} />
-                </div>
-              ) : undefined
-            }
-          />
-        ))}
-      </Carousel>
+        {variant === 'all' ? (
+          <>
+            <Divider />
+            <TrendChartCard
+              title="Charge volume"
+              icon={Activity}
+              categories={chargeCategories}
+              data={chargeData}
+              name="Volume"
+              formatValue={value => formatCurrencyCompact(value, 'IDR')}
+              height={220}
+              tabs={CHARGE_TABS}
+              tabValue={chargeRange}
+              onTabChange={setChargeRange}
+            />
+          </>
+        ) : null}
+      </SectionShell>
 
-      {variant === 'all' ? (
-        <Card>
-          <CardHeader className="flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium">Charge volume</CardTitle>
-            <span className="text-muted-foreground text-xs">last 14 days</span>
-          </CardHeader>
-          <CardContent>
-            <AreaLineChart
-              categories={CHARGE_VOLUME.days}
-              series={CHARGE_VOLUME.series}
-              height={200}
-              valueFormatter={v => formatCurrencyCompact(v, 'IDR')}
-              ariaLabel="Daily charge volume over the last 14 days"
-            />
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <DataTable
-        variant="card"
-        columns={columns}
-        data={pageItems}
-        rowKey={row => row.id}
-        onRowClick={setSelected}
-        pagination={state}
-        emptyMessage="No transactions match these filters."
-        toolbar={
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Input
-              placeholder="Search org, email or txn id…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="sm:max-w-xs"
-            />
-            <SelectField
-              className="sm:w-44"
-              value={provider}
-              onChange={setProvider}
-              options={PROVIDER_OPTIONS}
-            />
-            <SelectField
-              className="sm:w-44"
-              value="ALL"
-              onChange={() => undefined}
-              options={STATUS_OPTIONS}
-            />
-          </div>
-        }
-      />
+      <SectionShell>
+        <DataTable
+          variant="card"
+          columns={columns}
+          data={pageItems}
+          rowKey={row => row.id}
+          onRowClick={setSelected}
+          pagination={state}
+          emptyMessage="No transactions match these filters."
+          toolbar={
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Input
+                placeholder="Search org, email or txn id…"
+                value={search}
+                onChange={event => setSearch(event.target.value)}
+                className="sm:max-w-xs"
+              />
+              <SelectField
+                className="sm:w-44"
+                value={provider}
+                onChange={setProvider}
+                options={PROVIDER_OPTIONS}
+              />
+              <SelectField
+                className="sm:w-44"
+                value="ALL"
+                onChange={() => undefined}
+                options={STATUS_OPTIONS}
+              />
+            </div>
+          }
+        />
+      </SectionShell>
 
       <TransactionDetailDrawer
         row={selected}
@@ -183,6 +201,6 @@ export function TransactionsView({ variant }: { variant: TxnVariant }) {
           router.push(`/billing/customers/${slugify(r.org)}?from=${from}`)
         }}
       />
-    </div>
+    </DashboardContentShell>
   )
 }

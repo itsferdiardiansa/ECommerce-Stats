@@ -1,8 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { DataTable, useDebouncedValue } from '@rufieltics/ui'
-import { useResource, useServerTable } from '@rufieltics/core-client'
+import {
+  DashboardContentShell,
+  DataTable,
+  SectionShell,
+  useDebouncedValue,
+} from '@rufieltics/ui'
+import { useResource, useServerTable } from '@rufieltics/core/client'
 import { useAuth } from '@/features/auth/context'
 import {
   staffApi,
@@ -62,36 +67,34 @@ export function AuditLog() {
   })
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Audit log</h1>
-        <p className="text-muted-foreground text-sm">
-          Administrative actions across the platform.
-        </p>
-      </div>
-
-      <DataTable
-        variant="card"
-        columns={auditColumns}
-        data={table.items}
-        rowKey={row => row.id}
-        loading={table.status === 'pending'}
-        error={table.error}
-        onRetry={table.reload}
-        onRefetch={table.reload}
-        isRefetching={table.isRefetching}
-        emptyMessage="No audit entries match these filters."
-        errorTitle="Couldn't load the audit log"
-        pagination={table.pagination}
-        toolbar={
-          <AuditFilters
-            value={filters}
-            onChange={setFilters}
-            actions={options.data?.actions ?? []}
-            targetTypes={options.data?.targetTypes ?? []}
-          />
-        }
-      />
-    </div>
+    <DashboardContentShell
+      title="Audit log"
+      subTitle="Administrative actions across the platform."
+    >
+      <SectionShell>
+        <DataTable
+          variant="card"
+          columns={auditColumns}
+          data={table.items}
+          rowKey={row => row.id}
+          loading={table.status === 'pending'}
+          error={table.error}
+          onRetry={table.reload}
+          onRefetch={table.reload}
+          isRefetching={table.isRefetching}
+          emptyMessage="No audit entries match these filters."
+          errorTitle="Couldn't load the audit log"
+          pagination={table.pagination}
+          toolbar={
+            <AuditFilters
+              value={filters}
+              onChange={setFilters}
+              actions={options.data?.actions ?? []}
+              targetTypes={options.data?.targetTypes ?? []}
+            />
+          }
+        />
+      </SectionShell>
+    </DashboardContentShell>
   )
 }

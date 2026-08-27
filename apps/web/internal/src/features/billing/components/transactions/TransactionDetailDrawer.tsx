@@ -1,52 +1,33 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowUpRight, RotateCw, Undo2, User } from 'lucide-react'
 import {
+  ArrowUpRight,
+  Building2,
+  CalendarDays,
+  Hash,
+  RotateCw,
+  TriangleAlert,
+  Undo2,
+  User,
+} from 'lucide-react'
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   ResponsiveDrawer,
-  TONE,
   Timeline,
-  cn,
   toast,
 } from '@rufieltics/ui'
-import { parseCurrency } from '@rufieltics/core-client'
 import { providerSteps } from '@/features/billing/lib/transaction-steps'
+import { txnToRefundTarget } from '@/features/billing/lib/refund/txn-refund-target'
 import { TxnStatusBadge } from '@/features/billing/components/shared/TxnStatusBadge'
+import { DetailField } from '@/features/billing/components/shared/DetailField'
+import { PaymentMethodRow } from '@/features/billing/components/shared/PaymentMethodRow'
 import { RefundModal } from '@/features/billing/components/shared/RefundModal'
-import { buildRefundTarget } from '@/features/billing/lib/refund/refund-target'
 import type { RefundTarget } from '@/features/billing/types/refund-types'
 import type { TxnRow, TxnVariant } from '@/features/billing/data/transactions'
-
-function Row({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex items-start justify-between gap-3 border-t py-2 text-sm first:border-t-0">
-      <span className="text-muted-foreground shrink-0">{label}</span>
-      <span className="text-right">{children}</span>
-    </div>
-  )
-}
-
-function toRefundTarget(row: TxnRow): RefundTarget {
-  return buildRefundTarget({
-    reference: row.id,
-    customer: row.org,
-    customerEmail: row.email,
-    paidAmount: parseCurrency(row.amount, row.currency),
-    currency: row.currency,
-    method: {
-      label: row.method,
-      color: row.methodColor,
-      account: '081288428842',
-    },
-  })
-}
 
 export function TransactionDetailDrawer({
   row,
@@ -62,8 +43,8 @@ export function TransactionDetailDrawer({
   const [refundOpen, setRefundOpen] = useState(false)
   const [refundTarget, setRefundTarget] = useState<RefundTarget | null>(null)
 
-  const openRefund = (r: TxnRow) => {
-    setRefundTarget(toRefundTarget(r))
+  const openRefund = (target: TxnRow) => {
+    setRefundTarget(txnToRefundTarget(target))
     onClose()
     setRefundOpen(true)
   }
@@ -121,64 +102,58 @@ export function TransactionDetailDrawer({
         footer={footer}
       >
         {row ? (
-          <div className="space-y-5">
-            <div>
-              <Row label="Organization">
-                <span className="font-medium">{row.org}</span>
-                <span className="text-muted-foreground block text-xs">
-                  {row.email}
-                </span>
-              </Row>
-              <Row label="Method">
-                <span className="inline-flex items-center gap-2">
-                  <span
-                    className="size-2 rounded-full"
-                    style={{ background: row.methodColor }}
-                  />
-                  {row.method}
-                </span>
-              </Row>
-              <Row label="Provider">
-                <span className="text-muted-foreground rounded-md border px-1.5 py-0.5 text-xs">
-                  {row.provider}
-                </span>
-              </Row>
-              <Row label="Date">
-                <span className="font-mono text-xs">{row.date}</span>
-              </Row>
-            </div>
+          <div className="space-y-6">
+            <PaymentMethodRow
+              method={row.method}
+              provider={row.provider}
+              subtitle="Payment method"
+            />
 
             {canRetry ? (
-              <div
-                className={cn(
-                  'rounded-lg border px-3 py-2 text-xs',
-                  TONE.warning.soft
-                )}
-              >
-                <span className="font-medium">Auto-retry is on</span>{' '}
-                <span className="text-muted-foreground">
-                  · next attempt in ~4h, then the subscription enters dunning.
-                  Use Retry now to attempt immediately.
-                </span>
-              </div>
+              <Alert variant="warning">
+                <TriangleAlert className="size-4" />
+                <AlertTitle>Auto-retry is on</AlertTitle>
+                <AlertDescription>
+                  Next attempt in ~4h, then the subscription enters dunning. Use
+                  Retry now to attempt immediately.
+                </AlertDescription>
+              </Alert>
             ) : null}
 
-            <div>
-              <div className="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
+            <section className="space-y-3">
+              <DetailField icon={Building2} label="Customer">
+                {row.org}
+                <span className="text-muted-foreground block text-xs font-normal">
+                  {row.email}
+                </span>
+              </DetailField>
+              <DetailField icon={Hash} label="Reference">
+                <span className="font-mono text-xs">{row.id}</span>
+              </DetailField>
+              <DetailField icon={CalendarDays} label="Date">
+                {row.date}
+              </DetailField>
+            </section>
+
+            <section>
+              <h3 className="mb-3 text-sm font-medium">
                 {variant === 'refunds'
                   ? 'Refund progress'
                   : 'Provider progress'}
-              </div>
+              </h3>
               <Timeline steps={providerSteps(row, variant)} />
-            </div>
+            </section>
 
             <button
               type="button"
               onClick={() => onViewCustomer(row)}
-              className="text-primary flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-sm font-medium"
+              className="hover:bg-accent/50 flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition-colors"
             >
-              View {row.org}&apos;s history &amp; payment methods
-              <ArrowUpRight className="size-4" />
+              <span className="inline-flex items-center gap-2">
+                <User className="text-muted-foreground size-4" />
+                {row.org}&apos;s history &amp; payment methods
+              </span>
+              <ArrowUpRight className="text-muted-foreground size-4" />
             </button>
           </div>
         ) : null}

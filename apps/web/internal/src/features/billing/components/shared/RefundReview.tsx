@@ -1,7 +1,7 @@
 'use client'
 
 import { Checkbox } from '@rufieltics/ui'
-import { formatCurrency, maskAccount, percentOf } from '@rufieltics/core-client'
+import { formatCurrency, maskAccount, percentOf } from '@rufieltics/core'
 import { REFUND_REASONS } from '@/features/billing/lib/refund/refund-constants'
 import { taxPortionOf } from '@/features/billing/lib/refund/refund-tax'
 import {
@@ -30,7 +30,8 @@ export function RefundReview({
   const arrival = estimatedArrival(target.method.label, values.currency)
   const isFull = values.mode === 'full'
   const reasonLabel =
-    REFUND_REASONS.find(r => r.value === values.reason)?.label ?? values.reason
+    REFUND_REASONS.find(refundReason => refundReason.value === values.reason)
+      ?.label ?? values.reason
 
   return (
     <div className="space-y-4">

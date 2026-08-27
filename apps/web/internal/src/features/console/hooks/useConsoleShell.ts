@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/features/auth/context'
 import { usePermissions } from '@/features/auth/hooks/usePermissions'
-import { resolveConsoleNav } from './lib/nav'
+import { resolveConsoleNav } from '../lib/nav'
 
 export function useConsoleShell() {
   const { status, staff, logout } = useAuth()
@@ -16,7 +16,7 @@ export function useConsoleShell() {
     if (status === 'unauthenticated') router.replace('/sign-in')
   }, [status, router])
 
-  const { section, groups } = useMemo(
+  const { section, groups, breadcrumbs } = useMemo(
     () => resolveConsoleNav(pathname, has),
     [pathname, has]
   )
@@ -35,6 +35,7 @@ export function useConsoleShell() {
     isBootstrapping: status !== 'authenticated',
     navGroups: groups,
     section,
+    breadcrumbs,
     user,
     handleSignOut,
   }

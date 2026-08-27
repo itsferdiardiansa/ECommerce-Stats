@@ -5,3 +5,11 @@
 @custom-variant dark (&:is(.dark *));
 
 @source '../**/*.{ts,tsx}';
+
+@theme {
+  --font-sans:
+    var(--font-sans-app), ui-sans-serif, system-ui, sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji';
+  --font-mono:
+    var(--font-mono-app), ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+}

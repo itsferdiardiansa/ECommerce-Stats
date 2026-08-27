@@ -26,8 +26,9 @@ const PLAN_OPTIONS = [
 ]
 
 const currentPlanKey = (plan: string) =>
-  PLAN_OPTIONS.find(p => plan.startsWith(p.value.split(' ')[0]))?.value ??
-  'Growth'
+  PLAN_OPTIONS.find(planOption =>
+    plan.startsWith(planOption.value.split(' ')[0])
+  )?.value ?? 'Growth'
 
 export function ChangePlanDialog({
   renewal,

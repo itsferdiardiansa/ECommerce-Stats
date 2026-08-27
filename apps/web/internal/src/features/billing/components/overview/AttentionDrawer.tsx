@@ -2,12 +2,21 @@
 
 import { useRouter } from 'next/navigation'
 import { ArrowUpRight } from 'lucide-react'
-import { Button, ResponsiveDrawer, TONE, cn, toast } from '@rufieltics/ui'
+import {
+  Button,
+  PaymentLogo,
+  ResponsiveDrawer,
+  TONE,
+  cn,
+  resolvePaymentKey,
+  toast,
+} from '@rufieltics/ui'
 import {
   ATTENTION_TONE,
   type AttentionCategory,
 } from '@/features/billing/data/attention'
 import { TxnStatusBadge } from '@/features/billing/components/shared/TxnStatusBadge'
+import { ProviderLogo } from '@/features/billing/components/shared/ProviderLogo'
 import {
   attentionCategoryHref,
   attentionRecordHref,
@@ -84,44 +93,52 @@ export function AttentionDrawer({
         <div className="space-y-4">
           <p className="text-muted-foreground text-sm">{category.summary}</p>
 
-          <div className="divide-y">
-            {category.accounts.map(a => (
+          <div className="flex flex-col gap-1">
+            {category.accounts.map(account => (
               <div
-                key={a.id}
-                className="flex items-center justify-between gap-3 py-3"
+                key={account.id}
+                className="hover:bg-accent/40 flex items-start justify-between gap-3 rounded-lg p-3 transition-colors"
               >
                 <button
                   type="button"
-                  onClick={() => openRecord(a)}
+                  onClick={() => openRecord(account)}
                   className="min-w-0 flex-1 text-left"
                 >
                   <div className="truncate text-sm font-medium hover:underline">
-                    {a.org}
+                    {account.org}
                   </div>
                   <div className="text-muted-foreground truncate text-xs">
-                    {a.plan} · {a.contact}
+                    {account.plan} · {account.contact}
                   </div>
-                  <div className="text-muted-foreground mt-0.5 flex items-center gap-1.5 text-xs">
-                    {a.nextAction}
-                    <span className="rounded border px-1 py-0.5">
-                      {a.provider}
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                    <span className="text-foreground/80 inline-flex items-center gap-1.5">
+                      {resolvePaymentKey(account.method) ? (
+                        <PaymentLogo name={account.method} className="h-4" />
+                      ) : null}
+                      {account.method}
+                    </span>
+                    <ProviderLogo name={account.provider} />
+                    <span className="text-muted-foreground">
+                      · {account.nextAction}
                     </span>
                   </div>
                 </button>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <span className="text-sm font-medium tabular-nums">
-                    {a.amount}
+                    {account.amount}
                   </span>
-                  <TxnStatusBadge tone={a.statusTone}>
-                    {a.status}
+                  <TxnStatusBadge tone={account.statusTone}>
+                    {account.status}
                   </TxnStatusBadge>
                   <Button
                     variant="outline"
                     size="sm"
                     className="mt-0.5 text-xs"
-                    onClick={() => toast.success(`${a.action} · ${a.org}`)}
+                    onClick={() =>
+                      toast.success(`${account.action} · ${account.org}`)
+                    }
                   >
-                    {a.action}
+                    {account.action}
                   </Button>
                 </div>
               </div>

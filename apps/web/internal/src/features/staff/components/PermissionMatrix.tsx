@@ -28,7 +28,9 @@ export function PermissionMatrix({
   const grantable = grantableKeys ? new Set(grantableKeys) : null
   const canGrant = (key: string) => !grantable || grantable.has(key)
   const groups = groupPermissions(
-    readOnly ? permissions.filter(k => selected.has(k)) : permissions
+    readOnly
+      ? permissions.filter(permission => selected.has(permission))
+      : permissions
   )
 
   const toggle = (key: string, checked: boolean) => {
@@ -57,9 +59,10 @@ export function PermissionMatrix({
   return (
     <div className="space-y-5">
       {groups.map(group => {
-        const groupKeys = group.items.map(i => i.key)
-        const allChecked = groupKeys.every(k => selected.has(k))
-        const someChecked = !allChecked && groupKeys.some(k => selected.has(k))
+        const groupKeys = group.items.map(item => item.key)
+        const allChecked = groupKeys.every(groupKey => selected.has(groupKey))
+        const someChecked =
+          !allChecked && groupKeys.some(groupKey => selected.has(groupKey))
 
         return (
           <div key={group.resource} className="space-y-2">

@@ -1,8 +1,12 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useDebouncedValue } from '@rufieltics/ui'
-import { useQueryClient, useServerTable } from '@rufieltics/core-client'
+import {
+  DashboardContentShell,
+  SectionShell,
+  useDebouncedValue,
+} from '@rufieltics/ui'
+import { useQueryClient, useServerTable } from '@rufieltics/core/client'
 import { staffApi, staffKeys } from '@/features/staff/api'
 import { usePermissions } from '@/features/auth/hooks/usePermissions'
 import { useStaffRefData } from '@/features/staff/hooks/useStaffRefData'
@@ -51,39 +55,37 @@ export function StaffList() {
     queryClient.invalidateQueries({ queryKey: staffKeys.all })
 
   const accessStaff = accessId
-    ? (table.items.find(r => r.id === accessId) ?? null)
+    ? (table.items.find(item => item.id === accessId) ?? null)
     : null
   const permissionKeys = useMemo(
-    () => permissions.map(p => p.key),
+    () => permissions.map(permission => permission.key),
     [permissions]
   )
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Staff</h1>
-          <p className="text-muted-foreground text-sm">
-            Manage platform staff accounts.
-          </p>
-        </div>
-        {has('staff.manage') ? (
+    <DashboardContentShell
+      title="Staff"
+      subTitle="Manage platform staff accounts."
+      actions={
+        has('staff.manage') ? (
           <InviteStaffDialog onInvited={invalidateStaff} />
-        ) : null}
-      </div>
-
-      <StaffTable
-        data={table.items}
-        loading={table.status === 'pending'}
-        error={table.error}
-        isRefetching={table.isRefetching}
-        onRetry={table.reload}
-        onManageAccess={row => setAccessId(row.id)}
-        pagination={table.pagination}
-        toolbar={
-          <StaffFilters value={filters} onChange={setFilters} roles={roles} />
-        }
-      />
+        ) : undefined
+      }
+    >
+      <SectionShell>
+        <StaffTable
+          data={table.items}
+          loading={table.status === 'pending'}
+          error={table.error}
+          isRefetching={table.isRefetching}
+          onRetry={table.reload}
+          onManageAccess={row => setAccessId(row.id)}
+          pagination={table.pagination}
+          toolbar={
+            <StaffFilters value={filters} onChange={setFilters} roles={roles} />
+          }
+        />
+      </SectionShell>
 
       <StaffAccessDrawer
         staff={accessStaff}
@@ -92,6 +94,6 @@ export function StaffList() {
         token={token}
         onOpenChange={open => setAccessId(open ? accessId : null)}
       />
-    </div>
+    </DashboardContentShell>
   )
 }

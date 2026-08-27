@@ -544,9 +544,9 @@ importers:
       '@rufieltics/api-client':
         specifier: workspace:^
         version: link:../../../packages/client/api-client
-      '@rufieltics/core-client':
+      '@rufieltics/core':
         specifier: workspace:^
-        version: link:../../../packages/client/core-client
+        version: link:../../../packages/core
       '@rufieltics/ui':
         specifier: workspace:^
         version: link:../../../packages/client/ui
@@ -643,31 +643,6 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
 
-  packages/client/core-client:
-    dependencies:
-      '@rufieltics/ui':
-        specifier: workspace:^
-        version: link:../ui
-      react-dom:
-        specifier: 19.2.8
-        version: 19.2.8(react@19.2.8)
-    devDependencies:
-      '@rufieltics/typescript-config':
-        specifier: workspace:^
-        version: link:../../config/typescript-config
-      '@tanstack/react-query':
-        specifier: ^5.101.4
-        version: 5.101.4(react@19.2.8)
-      '@types/react':
-        specifier: ^19
-        version: 19.2.14
-      react:
-        specifier: 19.2.8
-        version: 19.2.8
-      typescript:
-        specifier: 5.9.3
-        version: 5.9.3
-
   packages/client/ui:
     dependencies:
       '@radix-ui/react-avatar':
@@ -707,8 +682,8 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       echarts:
-        specifier: ^5.5.1
-        version: 5.6.0
+        specifier: ^6.1.0
+        version: 6.1.0
       embla-carousel-react:
         specifier: ^8.6.0
         version: 8.6.0(react@19.2.8)
@@ -772,6 +747,31 @@ importers:
   packages/config/jest-config: {}
 
   packages/config/typescript-config: {}
+
+  packages/core:
+    dependencies:
+      '@rufieltics/ui':
+        specifier: workspace:^
+        version: link:../client/ui
+      react-dom:
+        specifier: 19.2.8
+        version: 19.2.8(react@19.2.8)
+    devDependencies:
+      '@rufieltics/typescript-config':
+        specifier: workspace:^
+        version: link:../config/typescript-config
+      '@tanstack/react-query':
+        specifier: ^5.101.4
+        version: 5.101.4(react@19.2.8)
+      '@types/react':
+        specifier: ^19
+        version: 19.2.14
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
 
   packages/db:
     dependencies:
@@ -7722,8 +7722,8 @@ packages:
   ecdsa-sig-formatter@1.0.11:
     resolution: {integrity: sha512-nagl3RYrbNv6kQkeJIpt6NJZy8twLB/2vtz6yN9Z4vRKHN4/QZJIEbqohALSgwKdnksuY3k5Addp5lg8sVoVcQ==}
 
-  echarts@5.6.0:
-    resolution: {integrity: sha512-oTbVTsXfKuEhxftHqL5xprgLoc0k7uScAwtryCgWF6hPYFLRwOUHiFmHGCBKP5NPFNkDVopOieyUqYGH8Fa3kA==}
+  echarts@6.1.0:
+    resolution: {integrity: sha512-q0yaFPggC9FUdsWH4blavRWFmxdrIodbkoKNAjJudAI6CA9gNPxHtV2RcZNEepZVlk4yvBYkOkbk6HIVpIyHZA==}
 
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
@@ -12795,8 +12795,8 @@ packages:
   zod@4.3.6:
     resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
-  zrender@5.6.1:
-    resolution: {integrity: sha512-OFXkDJKcrlx5su2XbzJvj/34Q3m6PvyCZkVPHGYpcCJ52ek4U/ymZyfuV1nKE23AyBJ51E/6Yr0mhZ7xGTO4ag==}
+  zrender@6.1.0:
+    resolution: {integrity: sha512-oEGMDB6pOP2S6OwRR4PdVv610zrjnA3Bh+JnSG12fYJlBKjtNAoEb5fSUoCOOINlH96I2fU38/A2UpRKs67xYQ==}
 
 snapshots:
 
@@ -20554,10 +20554,10 @@ snapshots:
     dependencies:
       safe-buffer: 5.2.1
 
-  echarts@5.6.0:
+  echarts@6.1.0:
     dependencies:
       tslib: 2.3.0
-      zrender: 5.6.1
+      zrender: 6.1.0
 
   ee-first@1.1.1: {}
 
@@ -26648,6 +26648,6 @@ snapshots:
 
   zod@4.3.6: {}
 
-  zrender@5.6.1:
+  zrender@6.1.0:
     dependencies:
       tslib: 2.3.0

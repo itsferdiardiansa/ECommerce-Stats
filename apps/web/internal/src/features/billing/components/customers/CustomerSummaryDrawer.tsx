@@ -6,11 +6,14 @@ import { ArrowUpRight, ChevronDown, CreditCard } from 'lucide-react'
 import {
   Badge,
   Button,
+  PaymentLogo,
   ResponsiveDrawer,
   TONE,
   cn,
+  resolvePaymentKey,
   type Tone,
 } from '@rufieltics/ui'
+import { ProviderLogo } from '@/features/billing/components/shared/ProviderLogo'
 import {
   getCustomer,
   type PaymentMethodView,
@@ -53,14 +56,9 @@ function ExpandableList<T>({
 
   return (
     <>
-      <div
-        className={cn(
-          'divide-border/60 divide-y',
-          open && 'max-h-64 overflow-y-auto'
-        )}
-      >
-        {shown.map((item, i) => (
-          <div key={keyOf(item, i)}>{render(item)}</div>
+      <div className={cn('flex flex-col', open && 'max-h-64 overflow-y-auto')}>
+        {shown.map((item, index) => (
+          <div key={keyOf(item, index)}>{render(item)}</div>
         ))}
       </div>
       {extra > 0 ? (
@@ -82,29 +80,31 @@ function ExpandableList<T>({
   )
 }
 
-function MethodRow(m: PaymentMethodView) {
+function MethodRow(method: PaymentMethodView) {
   return (
-    <div className="flex items-center gap-3 py-2.5 text-sm">
-      <span
-        className="flex size-8 shrink-0 items-center justify-center rounded-md text-white"
-        style={{ background: m.color }}
-      >
-        <CreditCard className="size-4" />
+    <div className="flex items-center gap-3 py-2 text-sm">
+      <span className="flex size-9 shrink-0 items-center justify-center">
+        {resolvePaymentKey(method.label) ? (
+          <PaymentLogo name={method.label} className="h-6" />
+        ) : (
+          <CreditCard className="text-muted-foreground size-5" />
+        )}
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate font-medium">{m.label}</span>
-          {m.isDefault ? (
-            <Badge className="bg-muted text-muted-foreground border-transparent text-[10px]">
+          <span className="truncate font-medium">{method.label}</span>
+          {method.isDefault ? (
+            <Badge variant="secondary" className="text-[10px]">
               Default
             </Badge>
           ) : null}
         </div>
-        <div className="text-muted-foreground truncate text-xs">{m.detail}</div>
+        <div className="text-muted-foreground truncate text-xs">
+          {method.detail}
+          {method.expires ? ` · exp ${method.expires}` : ''}
+        </div>
       </div>
-      <span className="text-muted-foreground shrink-0 text-[11px]">
-        {m.provider}
-      </span>
+      <ProviderLogo name={method.provider} className="shrink-0" />
     </div>
   )
 }
@@ -205,7 +205,7 @@ export function CustomerSummaryDrawer({
               items={customer.planHistory}
               preview={3}
               noun="changes"
-              keyOf={(_, i) => String(i)}
+              keyOf={(_, index) => String(index)}
               render={e => <PlanRow {...e} />}
             />
           </section>

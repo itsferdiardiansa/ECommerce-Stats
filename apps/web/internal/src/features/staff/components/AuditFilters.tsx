@@ -26,12 +26,15 @@ export function AuditFilters({
 
   const actionOptions: SelectFieldOption[] = [
     { value: 'ALL', label: 'All actions' },
-    ...actions.map(a => ({ value: a, label: a })),
+    ...actions.map(action => ({ value: action, label: action })),
   ]
 
   const targetOptions: SelectFieldOption[] = [
     { value: 'ALL', label: 'All targets' },
-    ...targetTypes.map(t => ({ value: t, label: t })),
+    ...targetTypes.map(targetType => ({
+      value: targetType,
+      label: targetType,
+    })),
   ]
 
   return (

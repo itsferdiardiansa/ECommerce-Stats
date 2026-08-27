@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { Send, ShieldCheck, X } from 'lucide-react'
 import {
+  Alert,
+  AlertDescription,
   Button,
   Dialog,
   DialogClose,
@@ -32,30 +34,35 @@ export function AddMethodDialog({
         <DialogHeader>
           <DialogTitle>Request a payment method</DialogTitle>
           <DialogDescription>
-            We email the customer a secure link to add their own method - card
-            and wallet details are entered on their side, never by staff.
+            The customer adds their own card or wallet through a secure link.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <label className="text-xs font-medium">Customer email</label>
-            <Input value={email} readOnly className="bg-muted/40" />
+        <div className="space-y-4">
+          <Alert variant="info">
+            <ShieldCheck className="size-4" />
+            <AlertDescription className="text-xs">
+              We email the customer a secure link to add their own method - card
+              and wallet details are entered on their side, never by staff.
+            </AlertDescription>
+          </Alert>
+
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Customer email</label>
+              <Input value={email} readOnly className="bg-muted/40" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Message (optional)</label>
+              <textarea
+                rows={3}
+                value={message}
+                onChange={event => setMessage(event.target.value)}
+                placeholder="Add a short note included in the email…"
+                className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
+              />
+            </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium">Message (optional)</label>
-            <textarea
-              rows={3}
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              placeholder="Add a short note included in the email…"
-              className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
-            />
-          </div>
-          <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
-            <ShieldCheck className="size-3.5" />
-            Secure setup runs on the customer side (dedicated flow coming soon).
-          </p>
         </div>
 
         <DialogFooter>

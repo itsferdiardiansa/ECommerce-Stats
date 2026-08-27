@@ -10,10 +10,6 @@ import {
   AlertDescription,
   Button,
   Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   ErrorState,
   Form,
   FormField,
@@ -125,7 +121,7 @@ export function ResetTotpForm() {
   if (loadError) {
     return (
       <Card className="w-full max-w-sm">
-        <CardContent className="space-y-3 p-2">
+        <Card.Content className="space-y-3 p-2">
           <ErrorState
             title={loadError.title}
             description={loadError.description}
@@ -138,7 +134,7 @@ export function ResetTotpForm() {
           >
             Back to sign in
           </Button>
-        </CardContent>
+        </Card.Content>
       </Card>
     )
   }
@@ -146,23 +142,25 @@ export function ResetTotpForm() {
   if (!enroll) {
     return (
       <Card className="w-full max-w-sm">
-        <CardContent className="text-muted-foreground flex flex-col items-center gap-3 py-10 text-center text-sm">
+        <Card.Content className="text-muted-foreground flex flex-col items-center gap-3 py-10 text-center text-sm">
           <Loader2 className="size-6 animate-spin" aria-hidden="true" />
           Preparing your new authenticator…
-        </CardContent>
+        </Card.Content>
       </Card>
     )
   }
 
   return (
     <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Reset authenticator</CardTitle>
-        <CardDescription>
-          Scan the new QR code, then enter the code to confirm.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+      <Card.Header>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-lg font-semibold">Reset authenticator</span>
+          <span className="text-muted-foreground text-sm">
+            Scan the new QR code, then enter the code to confirm.
+          </span>
+        </div>
+      </Card.Header>
+      <Card.Content>
         {apiError ? (
           <Alert variant="destructive" className="mb-4">
             <AlertDescription>{apiError}</AlertDescription>
@@ -199,7 +197,7 @@ export function ResetTotpForm() {
             </fieldset>
           </form>
         </Form>
-      </CardContent>
+      </Card.Content>
     </Card>
   )
 }

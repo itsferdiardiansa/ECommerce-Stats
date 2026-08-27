@@ -59,9 +59,9 @@ function distinct(
   rows: HistoryRow[],
   key: keyof HistoryRow
 ): SelectFieldOption[] {
-  return Array.from(new Set(rows.map(r => String(r[key])))).map(v => ({
-    value: v,
-    label: v,
+  return Array.from(new Set(rows.map(row => String(row[key])))).map(item => ({
+    value: item,
+    label: item,
   }))
 }
 
@@ -92,16 +92,20 @@ export function CustomerHistory({
 
   const filtered = useMemo(() => {
     const term = debouncedSearch.trim().toLowerCase()
-    return rows.filter(r => {
-      if (filters.status !== 'ALL' && r.statusLabel !== filters.status)
+    return rows.filter(row => {
+      if (filters.status !== 'ALL' && row.statusLabel !== filters.status)
         return false
-      if (filters.method !== 'ALL' && r.method !== filters.method) return false
-      if (filters.provider !== 'ALL' && r.provider !== filters.provider)
+      if (filters.method !== 'ALL' && row.method !== filters.method)
         return false
-      if (filters.kind !== 'ALL' && r.kind !== filters.kind) return false
-      if (filters.from && r.date < filters.from) return false
-      if (filters.to && r.date > filters.to) return false
-      if (term && !`${r.id}${r.method}${r.amount}`.toLowerCase().includes(term))
+      if (filters.provider !== 'ALL' && row.provider !== filters.provider)
+        return false
+      if (filters.kind !== 'ALL' && row.kind !== filters.kind) return false
+      if (filters.from && row.date < filters.from) return false
+      if (filters.to && row.date > filters.to) return false
+      if (
+        term &&
+        !`${row.id}${row.method}${row.amount}`.toLowerCase().includes(term)
+      )
         return false
       return true
     })
@@ -160,7 +164,7 @@ export function CustomerHistory({
             <Input
               placeholder="Search txn id…"
               value={filters.search}
-              onChange={e => set({ search: e.target.value })}
+              onChange={event => set({ search: event.target.value })}
               className="w-full sm:w-48"
             />
             <SelectField
@@ -201,7 +205,7 @@ export function CustomerHistory({
               <input
                 type="date"
                 value={filters.from}
-                onChange={e => set({ from: e.target.value })}
+                onChange={event => set({ from: event.target.value })}
                 className="border-input bg-background h-9 rounded-md border px-2 text-sm"
                 aria-label="From date"
               />
@@ -209,7 +213,7 @@ export function CustomerHistory({
               <input
                 type="date"
                 value={filters.to}
-                onChange={e => set({ to: e.target.value })}
+                onChange={event => set({ to: event.target.value })}
                 className="border-input bg-background h-9 rounded-md border px-2 text-sm"
                 aria-label="To date"
               />

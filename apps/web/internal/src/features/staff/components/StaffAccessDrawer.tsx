@@ -15,7 +15,7 @@ import {
   SheetTitle,
   toast,
 } from '@rufieltics/ui'
-import { useMutation, useQueryClient } from '@rufieltics/core-client'
+import { useMutation, useQueryClient } from '@rufieltics/core/client'
 import {
   staffApi,
   staffKeys,
@@ -52,7 +52,10 @@ export function StaffAccessDrawer({
     setPending({})
   }, [staff?.id])
 
-  const roleByKey = useMemo(() => new Map(roles.map(r => [r.key, r])), [roles])
+  const roleByKey = useMemo(
+    () => new Map(roles.map(role => [role.key, role])),
+    [roles]
+  )
 
   const mutation = useMutation({
     mutationFn: ({
@@ -93,27 +96,28 @@ export function StaffAccessDrawer({
   // Optimistic sets: pending 'add' shows immediately (dimmed), pending 'remove'
   // stays visible (dimmed) until the server confirms.
   const baseKeys = staff?.roles ?? []
-  const addKeys = Object.keys(pending).filter(k => pending[k] === 'add')
+  const addKeys = Object.keys(pending).filter(item => pending[item] === 'add')
   const removeKeys = new Set(
-    Object.keys(pending).filter(k => pending[k] === 'remove')
+    Object.keys(pending).filter(item => pending[item] === 'remove')
   )
   const chipKeys = [...new Set([...baseKeys, ...addKeys])]
-  const finalKeys = chipKeys.filter(k => !removeKeys.has(k))
+  const finalKeys = chipKeys.filter(chipKey => !removeKeys.has(chipKey))
 
   const chips = chipKeys
-    .map(k => roleByKey.get(k))
-    .filter((r): r is RoleRow => !!r)
+    .map(chipKey => roleByKey.get(chipKey))
+    .filter((item): item is RoleRow => !!item)
 
   const grantSet = new Set(perm.permissions)
   const canGrantRole = (r: RoleRow) =>
-    perm.isSuperAdmin || r.permissions.every(p => grantSet.has(p))
+    perm.isSuperAdmin ||
+    r.permissions.every(permission => grantSet.has(permission))
 
   const available = roles
-    .filter(r => !chipKeys.includes(r.key) && canGrantRole(r))
-    .map(r => ({
-      value: r.key,
-      label: r.name,
-      description: `${r.permissions.length} permissions`,
+    .filter(role => !chipKeys.includes(role.key) && canGrantRole(role))
+    .map(item => ({
+      value: item.key,
+      label: item.name,
+      description: `${item.permissions.length} permissions`,
     }))
 
   const effective = (() => {

@@ -21,7 +21,7 @@ export const setupSchema = z
     confirm: z.string().min(1, 'Confirm your password'),
     code,
   })
-  .refine(v => v.password === v.confirm, {
+  .refine(value => value.password === value.confirm, {
     message: 'Passwords do not match',
     path: ['confirm'],
   })

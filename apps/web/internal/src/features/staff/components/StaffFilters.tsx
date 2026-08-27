@@ -41,7 +41,7 @@ export function StaffFilters({
   const roleOptions: SelectFieldOption[] = [
     { value: 'ALL', label: 'All roles' },
     { value: '__super', label: 'Super admin' },
-    ...roles.map(r => ({ value: r.key, label: r.name })),
+    ...roles.map(role => ({ value: role.key, label: role.name })),
   ]
 
   return (

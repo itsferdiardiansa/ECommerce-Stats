@@ -2,16 +2,27 @@
 
 import { type ReactNode } from 'react'
 import { DashboardShell, Spinner } from '@rufieltics/ui'
-import { QueryProvider } from '@rufieltics/core-client'
-import { useConsoleShell } from '@/features/console'
+import { QueryProvider } from '@rufieltics/core/client'
+import { useConsoleShell } from '@/features/console/hooks/useConsoleShell'
+import {
+  BreadcrumbScope,
+  ScopedBreadcrumb,
+} from '@/features/console/components/BreadcrumbScope'
+import { ConsoleHeaderActions } from '@/features/console/components/ConsoleHeaderActions'
 
 export default function ConsoleLayout({ children }: { children: ReactNode }) {
-  const { isBootstrapping, navGroups, section, user, handleSignOut } =
-    useConsoleShell()
+  const {
+    isBootstrapping,
+    navGroups,
+    section,
+    breadcrumbs,
+    user,
+    handleSignOut,
+  } = useConsoleShell()
 
   if (isBootstrapping) {
     return (
-      <DashboardShell appName="Rufieltics Admin" navGroups={[]} loading>
+      <DashboardShell appName="Rufieltics" navGroups={[]} loading>
         <Spinner fill />
       </DashboardShell>
     )
@@ -19,15 +30,19 @@ export default function ConsoleLayout({ children }: { children: ReactNode }) {
 
   return (
     <QueryProvider>
-      <DashboardShell
-        appName="Rufieltics Admin"
-        navGroups={navGroups}
-        section={section}
-        user={user}
-        onSignOut={handleSignOut}
-      >
-        {children}
-      </DashboardShell>
+      <BreadcrumbScope>
+        <DashboardShell
+          appName="Rufieltics"
+          navGroups={navGroups}
+          section={section}
+          user={user}
+          breadcrumb={<ScopedBreadcrumb base={breadcrumbs} />}
+          headerActions={<ConsoleHeaderActions />}
+          onSignOut={handleSignOut}
+        >
+          {children}
+        </DashboardShell>
+      </BreadcrumbScope>
     </QueryProvider>
   )
 }

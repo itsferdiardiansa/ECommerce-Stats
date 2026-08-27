@@ -11,10 +11,6 @@ import {
   AlertDescription,
   Button,
   Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   Form,
   FormField,
   Input,
@@ -123,12 +119,12 @@ export function SetupForm() {
   if (gate === 'checking') {
     return (
       <Card className="w-full max-w-sm">
-        <CardContent className="flex items-center justify-center py-16">
+        <Card.Content className="flex items-center justify-center py-16">
           <Loader2
             className="text-muted-foreground size-6 animate-spin"
             aria-hidden
           />
-        </CardContent>
+        </Card.Content>
       </Card>
     )
   }
@@ -136,16 +132,16 @@ export function SetupForm() {
   if (gate === 'invalid') {
     return (
       <Card className="w-full max-w-sm">
-        <CardContent className="flex flex-col items-center gap-4 pt-6 text-center">
+        <Card.Content className="flex flex-col items-center gap-4 pt-6 text-center">
           <CircleAlert className="text-muted-foreground size-12" aria-hidden />
           <div className="space-y-1">
-            <CardTitle>Invitation expired</CardTitle>
-            <CardDescription>
+            <div className="font-semibold">Invitation expired</div>
+            <p className="text-muted-foreground text-sm">
               This invitation is invalid or has expired. Ask an administrator to
               send you a new one.
-            </CardDescription>
+            </p>
           </div>
-        </CardContent>
+        </Card.Content>
       </Card>
     )
   }
@@ -153,16 +149,18 @@ export function SetupForm() {
   if (gate === 'completed') {
     return (
       <Card className="w-full max-w-sm">
-        <CardContent className="flex flex-col items-center gap-4 pt-6 text-center">
+        <Card.Content className="flex flex-col items-center gap-4 pt-6 text-center">
           <CheckCircle2 className="size-12 text-emerald-500" aria-hidden />
           <div className="space-y-1">
-            <CardTitle>Your account is already set up</CardTitle>
-            <CardDescription>Sign in to reach your dashboard.</CardDescription>
+            <div className="font-semibold">Your account is already set up</div>
+            <p className="text-muted-foreground text-sm">
+              Sign in to reach your dashboard.
+            </p>
           </div>
           <Button asChild className="w-full">
             <Link href="/sign-in">Sign in</Link>
           </Button>
-        </CardContent>
+        </Card.Content>
       </Card>
     )
   }
@@ -170,33 +168,35 @@ export function SetupForm() {
   if (done) {
     return (
       <Card className="w-full max-w-sm">
-        <CardContent className="flex flex-col items-center gap-4 pt-6 text-center">
+        <Card.Content className="flex flex-col items-center gap-4 pt-6 text-center">
           <CheckCircle2 className="size-12 text-emerald-500" aria-hidden />
           <div className="space-y-1">
-            <CardTitle>Your account is set</CardTitle>
-            <CardDescription>
+            <div className="font-semibold">Your account is set</div>
+            <p className="text-muted-foreground text-sm">
               You&apos;re all set - sign in to reach your dashboard.
-            </CardDescription>
+            </p>
           </div>
           <Button asChild className="w-full">
             <Link href="/sign-in">Sign in</Link>
           </Button>
-        </CardContent>
+        </Card.Content>
       </Card>
     )
   }
 
   return (
     <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Set up your account</CardTitle>
-        <CardDescription>
-          {step === 'password'
-            ? 'Choose a password (at least 12 characters).'
-            : 'Scan the QR code with your authenticator app, then enter the code.'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+      <Card.Header>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-lg font-semibold">Set up your account</span>
+          <span className="text-muted-foreground text-sm">
+            {step === 'password'
+              ? 'Choose a password (at least 12 characters).'
+              : 'Scan the QR code with your authenticator app, then enter the code.'}
+          </span>
+        </div>
+      </Card.Header>
+      <Card.Content>
         {apiError ? (
           <Alert variant="destructive" className="mb-4">
             <AlertDescription>{apiError}</AlertDescription>
@@ -246,7 +246,7 @@ export function SetupForm() {
             </fieldset>
           </form>
         </Form>
-      </CardContent>
+      </Card.Content>
     </Card>
   )
 }

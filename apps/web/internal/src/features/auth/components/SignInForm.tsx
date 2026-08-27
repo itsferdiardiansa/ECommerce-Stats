@@ -9,10 +9,6 @@ import {
   AlertDescription,
   Button,
   Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   Form,
   FormField,
   Input,
@@ -144,11 +140,15 @@ export function SignInForm() {
 
   return (
     <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>@rufieltics Admin</CardTitle>
-        <CardDescription>{stepDescription()}</CardDescription>
-      </CardHeader>
-      <CardContent>
+      <Card.Header>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-lg font-semibold">@rufieltics Admin</span>
+          <span className="text-muted-foreground text-sm">
+            {stepDescription()}
+          </span>
+        </div>
+      </Card.Header>
+      <Card.Content>
         {apiError ? (
           <Alert variant="destructive" className="mb-4">
             <AlertDescription>{apiError}</AlertDescription>
@@ -238,7 +238,7 @@ export function SignInForm() {
             </fieldset>
           </form>
         </Form>
-      </CardContent>
+      </Card.Content>
     </Card>
   )
 }

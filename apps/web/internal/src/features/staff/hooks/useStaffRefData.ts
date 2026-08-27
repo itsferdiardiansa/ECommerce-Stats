@@ -1,6 +1,6 @@
 'use client'
 
-import { useResource } from '@rufieltics/core-client'
+import { useResource } from '@rufieltics/core/client'
 import { useAuth } from '@/features/auth/context'
 import {
   staffApi,

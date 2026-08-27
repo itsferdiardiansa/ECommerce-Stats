@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Undo2 } from 'lucide-react'
+import { ArrowLeftRight, CalendarDays, Hash, Undo2 } from 'lucide-react'
 import { Button, ResponsiveDrawer, Timeline } from '@rufieltics/ui'
 import { historySteps } from '@/features/billing/lib/transaction-steps'
 import { TxnStatusBadge } from '@/features/billing/components/shared/TxnStatusBadge'
+import { DetailField } from '@/features/billing/components/shared/DetailField'
+import { PaymentMethodRow } from '@/features/billing/components/shared/PaymentMethodRow'
 import { RefundModal } from '@/features/billing/components/shared/RefundModal'
 import { buildRefundTarget } from '@/features/billing/lib/refund/refund-target'
 import type { RefundTarget } from '@/features/billing/types/refund-types'
@@ -20,21 +22,6 @@ const fmtDate = (iso: string) =>
     day: '2-digit',
     year: 'numeric',
   })
-
-function Row({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex items-start justify-between gap-3 border-t py-2 text-sm first:border-t-0">
-      <span className="text-muted-foreground shrink-0">{label}</span>
-      <span className="text-right">{children}</span>
-    </div>
-  )
-}
 
 function toRefundTarget(
   row: HistoryRow,
@@ -102,39 +89,36 @@ export function HistoryDetailDrawer({
         }
       >
         {row ? (
-          <div className="space-y-5">
-            <div>
-              <Row label="Date">
-                <span>{fmtDate(row.date)}</span>{' '}
+          <div className="space-y-6">
+            <PaymentMethodRow
+              method={row.method}
+              provider={row.provider}
+              subtitle="Payment method"
+            />
+
+            <section className="space-y-3">
+              <DetailField icon={CalendarDays} label="Date">
+                {fmtDate(row.date)}{' '}
                 <span className="text-muted-foreground font-mono text-xs">
                   {row.time}
                 </span>
-              </Row>
-              <Row label="Type">{row.kind}</Row>
-              <Row label="Method">
-                <span className="inline-flex items-center gap-2">
-                  <span
-                    className="size-2 rounded-full"
-                    style={{ background: row.methodColor }}
-                  />
-                  {row.method}
-                </span>
-              </Row>
-              <Row label="Provider">
-                <span className="text-muted-foreground rounded-md border px-1.5 py-0.5 text-xs">
-                  {row.provider}
-                </span>
-              </Row>
-            </div>
+              </DetailField>
+              <DetailField icon={ArrowLeftRight} label="Type">
+                {row.kind}
+              </DetailField>
+              <DetailField icon={Hash} label="Reference">
+                <span className="font-mono text-xs">{row.id}</span>
+              </DetailField>
+            </section>
 
-            <div>
-              <div className="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
+            <section>
+              <h3 className="mb-3 text-sm font-medium">
                 {row.kind === 'Refund'
                   ? 'Refund progress'
                   : 'Provider progress'}
-              </div>
+              </h3>
               <Timeline steps={historySteps(row)} />
-            </div>
+            </section>
           </div>
         ) : null}
       </ResponsiveDrawer>
